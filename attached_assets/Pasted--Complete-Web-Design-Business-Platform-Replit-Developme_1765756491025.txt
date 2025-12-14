@@ -1,0 +1,976 @@
+# Complete Web Design Business Platform - Replit Development Prompt
+
+## PROJECT OVERVIEW
+Build a full-stack web application for a web design business that consists of:
+1. **Public-facing portfolio website** (for credibility/showcase)
+2. **Client portal** (for invited clients to manage their projects)
+3. **Admin dashboard** (for business owners to manage all clients)
+
+**CRITICAL:** This is NOT a marketplace or application system. Clients are manually added by admins after offline conversations. The public site is purely for portfolio showcase.
+
+---
+
+## TECHNOLOGY STACK REQUIREMENTS
+
+### Backend
+- **Framework:** Node.js with Express.js
+- **Database:** PostgreSQL (or MongoDB if preferred)
+- **Authentication:** JWT tokens with bcrypt password hashing
+- **Payment Processing:** Stripe API integration (Checkout Sessions)
+- **File Storage:** Cloud storage (AWS S3, Cloudflare R2, or similar)
+- **Email:** Nodemailer or similar for automated emails
+
+### Frontend
+- **Public Site:** React or Next.js (static generation preferred)
+- **Client Portal:** React with protected routes
+- **Admin Dashboard:** React with protected admin routes
+- **Styling:** Tailwind CSS
+- **Icons:** Lucide React or similar
+- **Forms:** React Hook Form with validation
+
+### Security Requirements
+- HTTPS only (SSL certificate required)
+- Password hashing with bcrypt (min 10 rounds)
+- JWT tokens with expiration
+- CSRF protection
+- Rate limiting on API endpoints
+- Input sanitization on all forms
+- Prepared statements for database queries (SQL injection prevention)
+- Environment variables for all secrets (.env file)
+
+---
+
+## DATABASE SCHEMA
+
+### Users Table
+```sql
+users (
+  id: UUID PRIMARY KEY,
+  email: VARCHAR(255) UNIQUE NOT NULL,
+  password_hash: VARCHAR(255) NOT NULL,
+  role: ENUM('admin', 'client') NOT NULL,
+  first_name: VARCHAR(100) NOT NULL,
+  last_name: VARCHAR(100) NOT NULL,
+  phone: VARCHAR(20),
+  created_at: TIMESTAMP DEFAULT NOW(),
+  updated_at: TIMESTAMP DEFAULT NOW(),
+  last_login: TIMESTAMP,
+  is_active: BOOLEAN DEFAULT TRUE,
+  must_change_password: BOOLEAN DEFAULT TRUE
+)
+```
+
+### Clients Table
+```sql
+clients (
+  id: UUID PRIMARY KEY,
+  user_id: UUID FOREIGN KEY REFERENCES users(id),
+  
+  -- Business Information
+  business_legal_name: VARCHAR(255) NOT NULL,
+  business_dba: VARCHAR(255),
+  business_type: ENUM('sole_proprietor', 'llc', 'corporation', 'partnership', 'other'),
+  industry: VARCHAR(100),
+  tax_id: VARCHAR(20),
+  business_phone: VARCHAR(20),
+  business_email: VARCHAR(255),
+  
+  -- Business Address
+  address_street: VARCHAR(255),
+  address_city: VARCHAR(100),
+  address_state: VARCHAR(50),
+  address_zip: VARCHAR(10),
+  address_country: VARCHAR(50) DEFAULT 'USA',
+  
+  -- Online Presence
+  existing_website: VARCHAR(255),
+  facebook_url: VARCHAR(255),
+  instagram_url: VARCHAR(255),
+  other_social: TEXT,
+  
+  -- Primary Contact
+  primary_contact_title: VARCHAR(100),
+  primary_contact_preferred_method: ENUM('email', 'phone', 'text', 'no_preference'),
+  primary_contact_best_time: VARCHAR(100),
+  
+  -- Secondary Contact (Optional)
+  secondary_contact_name: VARCHAR(200),
+  secondary_contact_relationship: VARCHAR(100),
+  secondary_contact_email: VARCHAR(255),
+  secondary_contact_phone: VARCHAR(20),
+  
+  -- Project Assignment
+  assigned_to: UUID FOREIGN KEY REFERENCES users(id),
+  
+  -- Client Source
+  source: ENUM('referral', 'cold_call', 'social_media', 'previous_client', 'networking', 'other'),
+  source_details: VARCHAR(255),
+  
+  -- Priority
+  priority: ENUM('high', 'normal', 'low') DEFAULT 'normal',
+  
+  -- Internal Notes
+  internal_notes: TEXT,
+  
+  -- Metadata
+  created_at: TIMESTAMP DEFAULT NOW(),
+  updated_at: TIMESTAMP DEFAULT NOW(),
+  created_by: UUID FOREIGN KEY REFERENCES users(id)
+)
+```
+
+### Projects Table
+```sql
+projects (
+  id: UUID PRIMARY KEY,
+  client_id: UUID FOREIGN KEY REFERENCES clients(id),
+  
+  -- Project Type
+  project_type: ENUM('new_website', 'redesign', 'landing_page', 'ecommerce', 'other'),
+  project_type_other: VARCHAR(255),
+  
+  -- Services (Stored as JSON array)
+  services_included: JSON, -- Array of service codes
+  
+  -- Scope
+  number_of_pages: INTEGER,
+  special_requirements: TEXT,
+  
+  -- Pricing
+  total_cost: DECIMAL(10,2) NOT NULL,
+  payment_structure: ENUM('50_50', 'custom', 'full_upfront'),
+  
+  -- Timeline
+  start_date: DATE,
+  expected_completion_date: DATE,
+  estimated_duration_weeks: INTEGER,
+  actual_completion_date: DATE,
+  
+  -- Status
+  status: ENUM('pending_payment', 'in_progress', 'design_review', 'development', 'client_review', 'revisions', 'completed', 'on_hold', 'cancelled') DEFAULT 'pending_payment',
+  progress_percentage: INTEGER DEFAULT 0,
+  
+  -- Metadata
+  created_at: TIMESTAMP DEFAULT NOW(),
+  updated_at: TIMESTAMP DEFAULT NOW()
+)
+```
+
+### Payments Table
+```sql
+payments (
+  id: UUID PRIMARY KEY,
+  project_id: UUID FOREIGN KEY REFERENCES projects(id),
+  client_id: UUID FOREIGN KEY REFERENCES clients(id),
+  
+  -- Payment Details
+  payment_number: INTEGER, -- 1st payment, 2nd payment, etc.
+  amount: DECIMAL(10,2) NOT NULL,
+  description: VARCHAR(255),
+  due_date: DATE,
+  
+  -- Status
+  status: ENUM('pending', 'paid', 'overdue', 'cancelled') DEFAULT 'pending',
+  
+  -- Stripe Integration
+  stripe_payment_intent_id: VARCHAR(255),
+  stripe_checkout_session_id: VARCHAR(255),
+  stripe_transaction_id: VARCHAR(255),
+  
+  -- Payment Record
+  paid_at: TIMESTAMP,
+  paid_amount: DECIMAL(10,2),
+  
+  -- Invoice
+  invoice_number: VARCHAR(50) UNIQUE,
+  invoice_pdf_url: VARCHAR(500),
+  
+  -- Metadata
+  created_at: TIMESTAMP DEFAULT NOW(),
+  updated_at: TIMESTAMP DEFAULT NOW()
+)
+```
+
+### Documents Table
+```sql
+documents (
+  id: UUID PRIMARY KEY,
+  client_id: UUID FOREIGN KEY REFERENCES clients(id),
+  project_id: UUID FOREIGN KEY REFERENCES projects(id),
+  
+  -- Document Info
+  document_type: ENUM('contract', 'invoice', 'deliverable', 'mockup', 'asset', 'other'),
+  title: VARCHAR(255) NOT NULL,
+  description: TEXT,
+  
+  -- File Storage
+  file_url: VARCHAR(500) NOT NULL,
+  file_name: VARCHAR(255) NOT NULL,
+  file_size: INTEGER, -- in bytes
+  file_type: VARCHAR(50), -- MIME type
+  
+  -- Signature (for contracts)
+  requires_signature: BOOLEAN DEFAULT FALSE,
+  is_signed: BOOLEAN DEFAULT FALSE,
+  signature_data: TEXT, -- Base64 signature image or typed name
+  signature_type: ENUM('drawn', 'typed'),
+  signed_at: TIMESTAMP,
+  signed_by_ip: VARCHAR(45),
+  
+  -- Visibility
+  visible_to_client: BOOLEAN DEFAULT TRUE,
+  
+  -- Metadata
+  uploaded_by: UUID FOREIGN KEY REFERENCES users(id),
+  created_at: TIMESTAMP DEFAULT NOW(),
+  updated_at: TIMESTAMP DEFAULT NOW()
+)
+```
+
+### Messages Table (Optional but recommended)
+```sql
+messages (
+  id: UUID PRIMARY KEY,
+  client_id: UUID FOREIGN KEY REFERENCES clients(id),
+  project_id: UUID FOREIGN KEY REFERENCES projects(id),
+  
+  -- Message Content
+  sender_id: UUID FOREIGN KEY REFERENCES users(id),
+  sender_type: ENUM('admin', 'client'),
+  message_text: TEXT NOT NULL,
+  
+  -- Status
+  is_read: BOOLEAN DEFAULT FALSE,
+  read_at: TIMESTAMP,
+  
+  -- Metadata
+  created_at: TIMESTAMP DEFAULT NOW()
+)
+```
+
+### Activity Log Table (for audit trail)
+```sql
+activity_logs (
+  id: UUID PRIMARY KEY,
+  user_id: UUID FOREIGN KEY REFERENCES users(id),
+  client_id: UUID FOREIGN KEY REFERENCES clients(id),
+  
+  -- Activity Details
+  action: VARCHAR(100) NOT NULL, -- e.g., 'payment_made', 'document_signed', 'client_created'
+  description: TEXT,
+  ip_address: VARCHAR(45),
+  user_agent: TEXT,
+  
+  -- Metadata
+  created_at: TIMESTAMP DEFAULT NOW()
+)
+```
+
+---
+
+## FEATURE SPECIFICATIONS
+
+## 1. PUBLIC WEBSITE (No Authentication Required)
+
+### Homepage (`/`)
+**Purpose:** Portfolio showcase and credibility
+
+**Sections Required:**
+1. **Hero Section**
+   - Headline: "Professional Web Design for [Your Niche]"
+   - Subheadline: Brief value proposition
+   - CTA button: "View Our Work"
+   - Hero image or background
+
+2. **About Section**
+   - Brief intro about you and your partner
+   - Your experience/expertise
+   - Why clients should trust you
+
+3. **Services Section**
+   - List of services offered (keep it simple)
+   - Brief description of each service
+   - No pricing displayed (pricing varies by project)
+
+4. **Portfolio Preview**
+   - Grid of 3-6 featured projects
+   - Each shows: Screenshot, business name, brief description
+   - "View Full Portfolio" button
+
+5. **Testimonials Section** (if available)
+   - Client reviews/feedback
+   - Star ratings or quotes
+
+6. **Contact Section**
+   - Business email
+   - Business phone
+   - Note: "We work by invitation. If you're interested, reach out and let's chat!"
+   - NOT a contact form - just display info
+
+**Design Requirements:**
+- Modern, clean, professional design
+- Mobile-responsive (must look great on phones)
+- Fast loading (optimize images)
+- Smooth scrolling between sections
+
+---
+
+### Portfolio Page (`/portfolio`)
+**Purpose:** Showcase completed work
+
+**Features:**
+- Grid layout of all completed projects
+- Each project card shows:
+  - Screenshot/mockup image
+  - Business name
+  - Industry/type
+  - Key features list (bullets)
+  - "View Case Study" button (optional - can link to more details)
+- Filter by industry (optional)
+- "Back to Home" navigation
+
+**Data Source:**
+- Pull from Projects table where `status = 'completed'` AND `visible_on_portfolio = true`
+- Images stored in cloud storage, URLs in database
+
+---
+
+### About Page (`/about`) (Optional)
+- More detailed info about you and your partner
+- Your story
+- Your process
+- Why you're different
+
+---
+
+### Navigation (Public Site)
+```
+[Logo/Business Name]     Home | Portfolio | About | Contact
+```
+
+---
+
+## 2. AUTHENTICATION SYSTEM
+
+### Login Page (`/portal/login`)
+**Features:**
+- Email and password fields
+- "Remember me" checkbox (optional)
+- "Forgot password?" link
+- Login button
+- Error messages for invalid credentials
+- Redirect to appropriate dashboard based on role:
+  - If role = 'admin' → `/admin/dashboard`
+  - If role = 'client' → `/client/dashboard`
+
+### Forgot Password Flow
+1. User enters email
+2. System sends password reset link (expires in 1 hour)
+3. User clicks link, enters new password
+4. Password updated, redirect to login
+
+### First-Time Login (Clients Only)
+- If `must_change_password = true`:
+  - Force password change screen
+  - Must create new password before accessing dashboard
+  - Update `must_change_password = false` after change
+
+### Session Management
+- JWT tokens with 24-hour expiration
+- Refresh token mechanism (optional but recommended)
+- Auto-logout on token expiration
+- "Stay logged in" option extends token to 7 days
+
+---
+
+## 3. CLIENT PORTAL
+
+### Client Dashboard (`/client/dashboard`)
+**Layout:**
+- Top navigation bar:
+  - Logo/Business name
+  - Navigation links: Dashboard | Payments | Documents | Messages | Settings
+  - User menu (dropdown): Profile | Logout
+
+**Main Dashboard Content:**
+
+#### A. Project Overview Card
+```
+┌─────────────────────────────────────────┐
+│ PROJECT: [Business Name] Website        │
+│ Status: 🟡 In Progress                   │
+│ Progress: [=========>      ] 65%        │
+│ Designer: [Your Name]                   │
+│ Expected Completion: 01/30/2025         │
+└─────────────────────────────────────────┘
+```
+
+#### B. Action Items Section
+Display cards for any pending actions:
+
+**If payment pending:**
+```
+┌────────────────────────────┐
+│ 🔴 ACTION REQUIRED         │
+│ Payment Due                │
+│ Amount: $XXX.00            │
+│ Due: 12/20/2024            │
+│ [Pay Now] button           │
+└────────────────────────────┘
+```
+
+**If document needs signature:**
+```
+┌────────────────────────────┐
+│ 📝 SIGNATURE REQUIRED      │
+│ Service Agreement          │
+│ [Review & Sign] button     │
+└────────────────────────────┘
+```
+
+**If no actions pending:**
+```
+┌────────────────────────────┐
+│ ✅ All caught up!          │
+│ Your project is in         │
+│ progress. We'll notify you │
+│ when we need your input.   │
+└────────────────────────────┘
+```
+
+#### C. Recent Activity Feed
+```
+┌─────────────────────────────────────┐
+│ RECENT ACTIVITY                     │
+│                                     │
+│ 📄 Invoice #002 created - 2h ago    │
+│ 💬 New message from [Designer] - 5h│
+│ ✅ Payment received - 2 days ago    │
+│ 📝 Document signed - 3 days ago     │
+└─────────────────────────────────────┘
+```
+
+---
+
+### Payments Page (`/client/payments`)
+**Features:**
+- List of all invoices for this client
+- Each invoice shows:
+  - Invoice number
+  - Description (e.g., "Initial Deposit", "Final Payment")
+  - Amount
+  - Due date
+  - Status badge (Pending, Paid, Overdue)
+  - Action button:
+    - If unpaid: "Pay Now" button
+    - If paid: "View Receipt" button
+
+**Invoice Detail View (when clicking an invoice):**
+```
+┌─────────────────────────────────────────┐
+│ INVOICE #001                            │
+│ [Your Business Name]                    │
+│ Invoice Date: 12/14/2024                │
+│ Due Date: 12/20/2024                    │
+│                                         │
+│ Bill To:                                │
+│ [Client Business Name]                  │
+│ [Client Address]                        │
+│                                         │
+│ ─────────────────────────────────────   │
+│ Description              │ Amount       │
+│ ─────────────────────────────────────   │
+│ Initial Deposit (50%)    │ $XXX.00      │
+│ ─────────────────────────────────────   │
+│ TOTAL DUE                │ $XXX.00      │
+│ ─────────────────────────────────────   │
+│                                         │
+│ Status: 🟡 Pending Payment              │
+│                                         │
+│ [🔒 Pay with Stripe] button             │
+└─────────────────────────────────────────┘
+```
+
+**Payment Flow:**
+1. Client clicks "Pay with Stripe"
+2. Backend creates Stripe Checkout Session
+3. Client redirects to Stripe-hosted checkout
+4. Client enters card info on Stripe's site
+5. After payment:
+   - Success: Redirect to `/client/payment-success?session_id={CHECKOUT_SESSION_ID}`
+   - Cancel: Redirect to `/client/payment-cancelled`
+6. Webhook updates payment status in database
+7. Success page shows confirmation and receipt details
+
+---
+
+### Documents Page (`/client/documents`)
+**Features:**
+- Organized list of all documents for this client
+- Filter by type: All | Contracts | Invoices | Deliverables | Assets
+
+**Document List Display:**
+```
+📄 CONTRACTS & AGREEMENTS
+├─ Service Agreement.pdf ✅ Signed on 12/14/24 [View]
+└─ Terms of Service.pdf [View]
+
+💰 INVOICES
+├─ Invoice-001.pdf ✅ Paid on 12/14/24 [Download]
+└─ Invoice-002.pdf 🟡 Pending [View] [Pay]
+
+🎨 DELIVERABLES
+├─ Website Mockup v1.pdf [Download]
+├─ Logo Files.zip [Download]
+└─ Final Website Files.zip [Download]
+
+📁 PROJECT ASSETS
+└─ Brand Guidelines.pdf [Download]
+```
+
+**Document Viewer (for contracts requiring signature):**
+1. Click "Review & Sign" on unsigned document
+2. Full-screen document viewer opens
+3. Document content displayed (PDF embed or text)
+4. Must scroll to bottom to enable signature
+5. Signature section at bottom:
+   ```
+   ☐ I have read and agree to the terms above
+   
+   Sign below:
+   [Signature canvas - draw signature with mouse/touch]
+   [Clear] [Use typed signature instead]
+   
+   OR
+   
+   Type your full name: [___________________]
+   
+   Date: [Auto-filled with today's date]
+   
+   [Cancel] [Submit Signature]
+   ```
+6. Confirmation dialog: "Are you sure you want to sign?"
+7. After signing:
+   - Signature + timestamp + IP recorded in database
+   - Generate signed PDF with signature embedded
+   - Store signed PDF in cloud storage
+   - Update document status to signed
+   - Send confirmation email to client
+   - Notify admin
+   - Redirect back to documents page
+
+---
+
+### Messages Page (`/client/messages`) (Optional but recommended)
+**Features:**
+- Thread-based messaging with assigned designer
+- List of message threads (usually just one per project)
+- Click thread to view conversation
+- Message composer at bottom
+- Real-time or refresh-based updates
+- Unread message badge in navigation
+
+---
+
+### Settings Page (`/client/settings`)
+**Features:**
+- **Profile Information:**
+  - Edit contact details (name, phone, email)
+  - Cannot edit business information (admin-only)
+  
+- **Change Password:**
+  - Current password field
+  - New password field
+  - Confirm new password field
+  - [Update Password] button
+  
+- **Notifications:**
+  - Email preferences checkboxes:
+    - ☐ Payment reminders
+    - ☐ Project updates
+    - ☐ New messages
+    - ☐ Document signatures needed
+
+---
+
+## 4. ADMIN DASHBOARD
+
+### Admin Login (`/admin/login`)
+- Separate login page for admins (can be same as client login but with role check)
+- After successful admin login → `/admin/dashboard`
+
+---
+
+### Admin Dashboard (`/admin/dashboard`)
+**Layout:**
+- Sidebar navigation:
+  - Dashboard
+  - All Clients
+  - My Clients
+  - Partner's Clients
+  - Payments
+  - Documents
+  - Reports (future)
+  - Settings
+  - Logout
+
+**Dashboard Content:**
+
+#### A. Stats Overview Cards
+```
+┌──────────────┬──────────────┬──────────────┬──────────────┐
+│ TOTAL        │ ACTIVE       │ THIS MONTH   │ PENDING      │
+│ CLIENTS      │ PROJECTS     │ REVENUE      │ PAYMENTS     │
+│              │              │              │              │
+│    24        │     8        │  $4,200      │     3        │
+│ +2 this week │ 5 yours      │ +$800 today  │  $1,100 due  │
+└──────────────┴──────────────┴──────────────┴──────────────┘
+```
+
+#### B. Quick Actions
+```
+[+ Create New Client]  [View Overdue Payments]  [Upload Documents]
+```
+
+#### C. Recent Activity
+```
+Recent Activity Feed (last 10 actions):
+- 💰 Joe's Pizza made payment #2 ($400) - 2 hours ago
+- 📝 Hair Salon signed service agreement - 5 hours ago
+- 👤 New client created: Coffee Shop - 1 day ago
+- 💬 Message from Gym client - 1 day ago
+```
+
+#### D. Clients Needing Attention
+```
+⚠️ CLIENTS NEEDING ATTENTION:
+┌────────────────────────────────────────────────┐
+│ Coffee Shop                                    │
+│ 🔴 Payment overdue by 3 days ($600)            │
+│ [Send Reminder] [View Client]                  │
+├────────────────────────────────────────────────┤
+│ Pet Store                                      │
+│ 🟡 Awaiting signature on contract (5 days)     │
+│ [Send Reminder] [View Client]                  │
+└────────────────────────────────────────────────┘
+```
+
+---
+
+### All Clients Page (`/admin/clients`)
+**Features:**
+- Table view of all clients
+- Columns:
+  - Business Name
+  - Contact Person
+  - Email
+  - Assigned To (You/Partner)
+  - Project Status
+  - Payment Status (X of Y paid)
+  - Next Due Date
+  - Actions (View | Edit | Delete)
+
+**Filters:**
+- Search by business name or contact name
+- Filter by: All | My Clients | Partner's Clients
+- Filter by status: All | Active | Pending Payment | Completed | On Hold
+- Sort by: Name | Due Date | Created Date | Status
+
+**Action Buttons:**
+- [+ Create New Client] - Opens client creation form
+- [Export to CSV] - Download client list
+
+**Clicking a client row:**
+- Opens detailed client view (see below)
+
+---
+
+### Create New Client (`/admin/clients/new`)
+**CRITICAL: This is a MULTI-STEP, DETAILED form - see previous UX flow document for complete form fields**
+
+**Summary of Required Steps:**
+
+**Step 1: Business Information**
+- Legal business name *
+- DBA/Trade name
+- Business type *
+- Industry/niche *
+- Tax ID/EIN
+- Business phone *
+- Business email *
+- Business address (full) *
+- Existing website URL
+- Social media links (Facebook, Instagram, other)
+
+**Step 2: Primary Contact Information**
+- First name * Last name *
+- Title/role *
+- Email address * (will be used for portal login)
+- Phone number *
+- Preferred contact method * (email/phone/text/no preference)
+- Best time to contact
+
+**Secondary Contact (Optional):**
+- Full name
+- Relationship to business
+- Email
+- Phone
+
+**Step 3: Project Details & Pricing**
+- Project type * (dropdown: new website, redesign, landing page, e-commerce, other)
+- Services included * (multi-select checkboxes):
+  - Custom design
+  - Logo design
+  - Content writing
+  - Photography
+  - SEO setup
+  - E-commerce integration
+  - Booking system
+  - Contact forms
+  - Social media integration
+  - Google Analytics
+  - Mobile optimization
+  - Hosting setup (1 year)
+  - Domain registration
+  - SSL certificate
+  - Email setup
+  - Other: [text field]
+- Number of pages * (dropdown: 1-3, 4-7, 8-15, 15+)
+- Special requirements/notes (textarea)
+
+**PRICING STRUCTURE:**
+- Total project cost * (number input: $____.00)
+- Payment structure * (radio buttons):
+  - ○ 50/50 split (50% deposit, 50% on completion)
+    - Auto-calculates: Deposit: $XXX | Final: $XXX
+  - ○ Custom split:
+    - Payment 1: $____ Due: [date picker]
+    - Payment 2: $____ Due: [date picker]
+    - Payment 3: $____ Due: [date picker]
+    - [+ Add another payment]
+  - ○ Full payment upfront
+- First payment due date * (date picker)
+
+**TIMELINE:**
+- Project start date * (date picker)
+- Expected completion date * (date picker)
+- Estimated duration (dropdown: 1-2 weeks, 3-4 weeks, 1-2 months, 2-3 months, custom)
+
+**Step 4: Assignment & Notes**
+- Assign project to * (radio buttons):
+  - ○ [Your Name]
+  - ○ [Partner Name]
+  - ○ Both (collaborative)
+- How did they find us:
+  - ○ Referral (who: [text field])
+  - ○ Cold call/outreach
+  - ○ Social media
+  - ○ Previous client
+  - ○ Networking event
+  - ○ Other: [text field]
+- Client priority level:
+  - ○ 🔴 High priority (rush job/VIP)
+  - ○ 🟡 Normal priority
+  - ○ 🟢 Low priority (flexible timeline)
+- Internal notes (textarea - client will NOT see this):
+  - "Notes about client personality, communication preferences, payment concerns, special considerations, etc."
+
+**ACCOUNT CREDENTIALS (Auto-generated):**
+- Username: [auto-generated from business name, e.g., "joespizza2024"]
+- Temporary password: [auto-generated, e.g., "TempPass123!"]
+- Client portal URL: [yoursite.com/portal]
+
+**Checkboxes:**
+- ☑ Send welcome email with login credentials (checked by default)
+- ☑ Generate service agreement for signing (checked by default)
+- ☑ Create first invoice automatically (checked by default)
+
+**Buttons:**
+- [← Back] [Create Client Account]
+
+**After clicking "Create Client Account":**
+1. Validate all required fields
+2. Create user account with hashed password
+3. Create client record with all details
+4. Create project record
+5. Create payment records based on payment structure
+6. Generate service agreement document
+7. Generate first invoice
+8. Send welcome email to client
+9. Show success confirmation page
+10. Redirect to client detail view
+
+---
+
+### Client Detail View (`/admin/clients/[clientId]`)
+**Layout:**
+Tabbed interface with sections:
+
+**TAB 1: Overview**
+```
+CLIENT: [Business Name]
+Contact: [Name] | [Email] | [Phone]
+
+┌─ BUSINESS INFORMATION ─────────────────────┐
+│ Legal Name: [...]                          │
+│ DBA: [...]                                 │
+│ Type: [...]                                │
+│ Industry: [...]                            │
+│ Tax ID: [...]                              │
+│ Address: [...]                             │
+│ Website: [...]                             │
+│ Social: [...]                              │
+│                                            │
+│ [Edit Business Info]                       │
+└────────────────────────────────────────────┘
+
+┌─ PROJECT DETAILS ──────────────────────────┐
+│ Type: New Website                          │
+│ Services: Custom Design, SEO, Forms        │
+│ Pages: 5-7                                 │
+│ Total Cost: $1,200                         │
+│ Status: 🟡 In Progress (45% complete)      │
+│ Assigned To: [Your Name]                   │
+│ Start Date: 12/15/2024                     │
+│ Expected Completion: 01/30/2025            │
+│                                            │
+│ [Edit Project Details] [Update Status]     │
+└────────────────────────────────────────────┘
+
+┌─ INTERNAL NOTES ───────────────────────────┐
+│ [Editable textarea with notes]             │
+│                                            │
+│ [Save Notes]                               │
+└────────────────────────────────────────────┘
+```
+
+**TAB 2: Payments**
+- List all payments for this client
+- Status of each payment
+- [Create New Invoice] button
+- [Send Payment Reminder] button
+- View transaction history
+
+**TAB 3: Documents**
+- List all documents for this client
+- [Upload New Document] button
+- Options for each document:
+  - Download
+  - Delete
+  - Mark as "Requires Signature"
+  - Toggle "Visible to Client"
+
+**TAB 4: Messages**
+- Message thread with this client
+- Send new message
+- View message history
+
+**TAB 5: Activity Log**
+- Complete audit trail of all actions related to this client
+- Shows: who did what, when, from which IP
+
+---
+
+### Payments Management (`/admin/payments`)
+**Features:**
+- Table of ALL payments across all clients
+- Columns:
+  - Client Business Name
+  - Invoice #
+  - Amount
+  - Due Date
+  - Status (Paid/Pending/Overdue)
+  - Paid Date
+  - Transaction ID
+  - Actions (View | Send Reminder | Mark as Paid Manually)
+
+**Filters:**
+- Status: All | Pending | Paid | Overdue
+- Date range picker
+- Assigned to: All | My Clients | Partner's Clients
+- Sort by: Due Date | Amount | Client Name
+
+**Action Buttons:**
+- [Create New Invoice] - Select client, enter details
+- [Export Payment Report] - Generate CSV/PDF
+
+**Overdue Payments Section:**
+```
+🔴 OVERDUE PAYMENTS (3):
+- Coffee Shop: $600 (overdue by 3 days) [Send Reminder]
+- Pet Store: $300 (overdue by 7 days) [Send Reminder]
+- Gym: $500 (overdue by 1 day) [Send Reminder]
+```
+
+---
+
+### Documents Management (`/admin/documents`)
+**Features:**
+- View all documents across all clients
+- Upload new documents
+- Organize by client or by type
+- Bulk upload capability
+
+**Upload Document Form:**
+```
+┌─ UPLOAD DOCUMENT ──────────────────────────┐
+│ Select Client: * [Dropdown of all clients] │
+│ Document Type: * [Dropdown]                │
+│   - Contract                               │
+│   - Invoice                                │
+│   - Deliverable                            │
+│   - Mockup                                 │
+│   - Asset                                  │
+│   - Other                                  │
+│                                            │
+│ Document Title: * [Text field]             │
+│ Description: [Textarea]                    │
+│                                            │
+│ Upload File: * [File picker]               │
+│                                            │
+│ ☐ Requires client signature                │
+│ ☑ Visible to client                        │
+│                                            │
+│ [Cancel] [Upload Document]                 │
+└────────────────────────────────────────────┘
+```
+
+---
+
+### Settings (`/admin/settings`)
+**Sections:**
+
+**Business Settings:**
+- Business name
+- Business logo (upload)
+- Business email
+- Business phone
+- Business address
+- Website URL
+
+**Payment Settings:**
+- Stripe API keys (test & live)
+- Default payment terms
+- Late fee settings (optional)
+
+**Email Settings:**
+- Email templates for:
+  - Welcome email
+  - Payment reminder
+  - Payment received confirmation
+  - Document signed notification
+  - Project status updates
+
+**User Management:**
+- List of admin users (you & partner)
+- Add new admin
+- Change passwords
+- Assign permissions (future feature)
+
+---
+
+## 5. STRIPE INTEGRATION DETAILS
+
+### Setup Requirements
+1. Stripe account created
+2. API keys (test &
