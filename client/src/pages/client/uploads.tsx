@@ -1,0 +1,354 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { 
+  Upload, 
+  FileImage, 
+  FileText, 
+  File, 
+  Trash2, 
+  Download,
+  Loader2,
+  FolderOpen
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PortalLayout } from "@/components/portal/portal-layout";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { format } from "date-fns";
+
+const fileTypeCategories = [
+  { value: "logo", label: "Logo / Branding" },
+  { value: "content", label: "Text Content" },
+  { value: "image", label: "Images / Photos" },
+  { value: "document", label: "Documents" },
+  { value: "other", label: "Other Assets" },
+];
+
+const getFileIcon = (category: string) => {
+  switch (category) {
+    case "logo":
+    case "image":
+      return FileImage;
+    case "content":
+    case "document":
+      return FileText;
+    default:
+      return File;
+  }
+};
+
+export default function ClientUploads() {
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+
+  const { data: uploadsData, isLoading } = useQuery({
+    queryKey: ["/api/client/uploads"],
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch("/api/client/uploads", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Upload failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/uploads"] });
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setCategory("");
+      setDescription("");
+      toast({
+        title: "File Uploaded",
+        description: "Your file has been uploaded successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (uploadId: string) => {
+      return apiRequest("DELETE", `/api/client/uploads/${uploadId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/uploads"] });
+      toast({
+        title: "File Deleted",
+        description: "Your file has been removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "Could not delete the file. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploads = uploadsData?.uploads || [];
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !category) return;
+    
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("category", category);
+    formData.append("description", description);
+    
+    try {
+      await uploadMutation.mutateAsync(formData);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDelete = (uploadId: string) => {
+    if (confirm("Are you sure you want to delete this file?")) {
+      deleteMutation.mutate(uploadId);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  return (
+    <PortalLayout requiredRole="client">
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-uploads-title">
+              Uploads
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Upload logos, content, and assets for your project
+            </p>
+          </div>
+          <Button 
+            onClick={() => setUploadDialogOpen(true)} 
+            className="gap-2"
+            data-testid="button-upload-file"
+          >
+            <Upload className="w-4 h-4" />
+            Upload File
+          </Button>
+        </div>
+
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">Your Files</CardTitle>
+            <CardDescription>
+              Files you've uploaded for your web design project
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : uploads.length > 0 ? (
+              <div className="space-y-4">
+                {uploads.map((upload: any) => {
+                  const Icon = getFileIcon(upload.category);
+                  return (
+                    <div
+                      key={upload.id}
+                      className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-muted/30"
+                      data-testid={`upload-item-${upload.id}`}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="font-medium truncate">{upload.fileName}</h3>
+                            {upload.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {upload.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge variant="secondary">
+                                {fileTypeCategories.find(c => c.value === upload.category)?.label || upload.category}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {upload.fileSize ? formatFileSize(upload.fileSize) : ""}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Uploaded {format(new Date(upload.createdAt), "MMM d, yyyy")}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {upload.fileUrl && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                asChild
+                                data-testid={`button-download-${upload.id}`}
+                              >
+                                <a href={upload.fileUrl} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-4 h-4 mr-1" />
+                                  Download
+                                </a>
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(upload.id)}
+                              className="text-destructive"
+                              data-testid={`button-delete-${upload.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FolderOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">No files uploaded yet</p>
+                <Button onClick={() => setUploadDialogOpen(true)} className="gap-2">
+                  <Upload className="w-4 h-4" />
+                  Upload Your First File
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Upload File</DialogTitle>
+            <DialogDescription>
+              Upload logos, content, images, or other assets for your project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="file">Select File</Label>
+              <Input
+                id="file"
+                type="file"
+                onChange={handleFileSelect}
+                accept="image/*,.pdf,.doc,.docx,.txt,.rtf"
+                data-testid="input-file"
+              />
+              {selectedFile && (
+                <p className="text-sm text-muted-foreground">
+                  Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger data-testid="select-category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fileTypeCategories.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (optional)</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this file..."
+                rows={3}
+                data-testid="input-description"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={!selectedFile || !category || isUploading}
+              data-testid="button-submit-upload"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </PortalLayout>
+  );
+}

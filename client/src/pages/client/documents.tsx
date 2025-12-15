@@ -157,14 +157,33 @@ export default function ClientDocuments() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-4">
-                              <Button size="sm" variant="outline" data-testid={`button-view-${doc.id}`}>
-                                <Eye className="w-4 h-4 mr-1" />
-                                View
-                              </Button>
-                              <Button size="sm" variant="outline" data-testid={`button-download-${doc.id}`}>
-                                <Download className="w-4 h-4 mr-1" />
-                                Download
-                              </Button>
+                              {doc.fileUrl && (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => window.open(doc.fileUrl, "_blank")}
+                                    data-testid={`button-view-${doc.id}`}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    View
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    asChild
+                                    data-testid={`button-download-${doc.id}`}
+                                  >
+                                    <a href={doc.fileUrl} download={doc.fileName || doc.title}>
+                                      <Download className="w-4 h-4 mr-1" />
+                                      Download
+                                    </a>
+                                  </Button>
+                                </>
+                              )}
+                              {!doc.fileUrl && (
+                                <span className="text-xs text-muted-foreground">No file attached</span>
+                              )}
                               {doc.requiresSignature && !doc.isSigned && (
                                 <Button
                                   size="sm"

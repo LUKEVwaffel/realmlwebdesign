@@ -19,7 +19,7 @@ import ClientPayments from "@/pages/client/payments";
 import PaymentSuccess from "@/pages/client/payment-success";
 import PaymentCancel from "@/pages/client/payment-cancel";
 import ClientDocuments from "@/pages/client/documents";
-import ClientMessages from "@/pages/client/messages";
+import ClientUploads from "@/pages/client/uploads";
 import ClientSettings from "@/pages/client/settings";
 
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -47,7 +47,7 @@ function Router() {
       <Route path="/client/payments/success" component={PaymentSuccess} />
       <Route path="/client/payments/cancel" component={PaymentCancel} />
       <Route path="/client/documents" component={ClientDocuments} />
-      <Route path="/client/messages" component={ClientMessages} />
+      <Route path="/client/uploads" component={ClientUploads} />
       <Route path="/client/settings" component={ClientSettings} />
       
       {/* Admin Portal Routes */}

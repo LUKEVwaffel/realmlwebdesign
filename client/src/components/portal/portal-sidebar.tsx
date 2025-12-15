@@ -3,7 +3,7 @@ import {
   LayoutDashboard, 
   CreditCard, 
   FileText, 
-  MessageSquare, 
+  Upload,
   Settings, 
   LogOut,
   Sparkles,
@@ -37,7 +37,7 @@ const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
   { title: "Payments", url: "/client/payments", icon: CreditCard },
   { title: "Documents", url: "/client/documents", icon: FileText },
-  { title: "Messages", url: "/client/messages", icon: MessageSquare },
+  { title: "Uploads", url: "/client/uploads", icon: Upload },
   { title: "Settings", url: "/client/settings", icon: Settings },
 ];
 

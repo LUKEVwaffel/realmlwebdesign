@@ -218,6 +218,26 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Client Uploads Table (for client-uploaded assets)
+export const clientUploads = pgTable("client_uploads", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  
+  // File Info
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 500 }).notNull(),
+  fileSize: integer("file_size"),
+  fileType: varchar("file_type", { length: 100 }),
+  
+  // Categorization
+  category: varchar("category", { length: 50 }).notNull(),
+  description: text("description"),
+  
+  // Metadata
+  uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Activity Logs Table
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -354,6 +374,17 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   }),
 }));
 
+export const clientUploadsRelations = relations(clientUploads, ({ one }) => ({
+  client: one(clients, {
+    fields: [clientUploads.clientId],
+    references: [clients.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [clientUploads.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
 export const portfolioItemsRelations = relations(portfolioItems, ({ one }) => ({
   project: one(projects, {
     fields: [portfolioItems.projectId],
@@ -411,6 +442,11 @@ export const insertPortfolioItemSchema = createInsertSchema(portfolioItems).omit
   updatedAt: true,
 });
 
+export const insertClientUploadSchema = createInsertSchema(clientUploads).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -444,5 +480,7 @@ export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertPortfolioItem = z.infer<typeof insertPortfolioItemSchema>;
 export type PortfolioItem = typeof portfolioItems.$inferSelect;
+export type InsertClientUpload = z.infer<typeof insertClientUploadSchema>;
+export type ClientUpload = typeof clientUploads.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

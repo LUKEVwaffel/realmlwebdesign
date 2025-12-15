@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { users, clients, projects, payments, documents, messages } from "@shared/schema";
+import { users, clients, projects, payments, documents, messages, clientUploads } from "@shared/schema";
 import { loginSchema, changePasswordSchema, insertClientSchema, insertProjectSchema, insertMessageSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -1121,6 +1121,112 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Preview invoice error:", error);
       res.status(500).json({ error: "Failed to generate invoice preview" });
+    }
+  });
+
+  // ============ CLIENT UPLOADS ROUTES ============
+
+  app.get("/api/client/uploads", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const uploads = await db.select().from(clientUploads)
+        .where(eq(clientUploads.clientId, client.id))
+        .orderBy(desc(clientUploads.createdAt));
+
+      res.json({ uploads });
+    } catch (error) {
+      console.error("Get client uploads error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/client/uploads", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const { category, description, fileName, fileUrl, fileSize, fileType } = req.body;
+
+      if (!category || !fileName || !fileUrl) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const [upload] = await db.insert(clientUploads).values({
+        clientId: client.id,
+        category,
+        description: description || null,
+        fileName,
+        fileUrl,
+        fileSize: fileSize || null,
+        fileType: fileType || null,
+        uploadedBy: req.user!.id,
+      }).returning();
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "file_uploaded",
+        description: `Uploaded ${fileName}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ upload });
+    } catch (error) {
+      console.error("Create client upload error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/client/uploads/:id", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const [upload] = await db.select().from(clientUploads)
+        .where(and(eq(clientUploads.id, id), eq(clientUploads.clientId, client.id)));
+
+      if (!upload) {
+        return res.status(404).json({ error: "Upload not found" });
+      }
+
+      await db.delete(clientUploads).where(eq(clientUploads.id, id));
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "file_deleted",
+        description: `Deleted ${upload.fileName}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete client upload error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Admin route to view client uploads
+  app.get("/api/admin/clients/:id/uploads", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const uploads = await db.select().from(clientUploads)
+        .where(eq(clientUploads.clientId, id))
+        .orderBy(desc(clientUploads.createdAt));
+
+      res.json({ uploads });
+    } catch (error) {
+      console.error("Get client uploads error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
