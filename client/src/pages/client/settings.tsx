@@ -28,10 +28,7 @@ export default function ClientSettings() {
 
   const profileMutation = useMutation({
     mutationFn: async (data: typeof profileData) => {
-      return apiRequest("/api/client/profile", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PATCH", "/api/client/profile", data);
     },
     onSuccess: (response: any) => {
       if (user) {
@@ -57,10 +54,7 @@ export default function ClientSettings() {
 
   const passwordMutation = useMutation({
     mutationFn: async (data: typeof passwordData) => {
-      return apiRequest("/api/auth/change-password", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/auth/change-password", data);
     },
     onSuccess: () => {
       setPasswordData({

@@ -46,10 +46,7 @@ export default function AdminSettings() {
 
   const profileMutation = useMutation({
     mutationFn: async (data: typeof profileData) => {
-      return apiRequest("/api/admin/profile", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PATCH", "/api/admin/profile", data);
     },
     onSuccess: () => {
       if (user) {
@@ -75,10 +72,7 @@ export default function AdminSettings() {
 
   const passwordMutation = useMutation({
     mutationFn: async (data: typeof passwordData) => {
-      return apiRequest("/api/auth/change-password", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/auth/change-password", data);
     },
     onSuccess: () => {
       setPasswordData({

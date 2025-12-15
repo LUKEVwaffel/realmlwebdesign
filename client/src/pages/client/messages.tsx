@@ -23,10 +23,7 @@ export default function ClientMessages() {
 
   const sendMutation = useMutation({
     mutationFn: async (messageText: string) => {
-      return apiRequest("/api/client/messages", {
-        method: "POST",
-        body: JSON.stringify({ messageText }),
-      });
+      return apiRequest("POST", "/api/client/messages", { messageText });
     },
     onSuccess: () => {
       setNewMessage("");

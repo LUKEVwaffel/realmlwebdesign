@@ -70,10 +70,8 @@ export default function AdminClients() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof newClient) => {
-      return apiRequest("/api/admin/clients", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("POST", "/api/admin/clients", data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients"] });
