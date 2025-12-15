@@ -19,6 +19,13 @@ import {
   sendNewMessageNotificationEmail,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
+import {
+  initializeWebSocket,
+  notifyNewMessage,
+  notifyProjectStatusUpdate,
+  notifyPaymentUpdate,
+  notifyDocumentUpdate,
+} from "./websocketService";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -75,6 +82,7 @@ interface AuthRequest extends Request {
     role: "admin" | "client";
     firstName: string;
     lastName: string;
+    clientId?: string;
   };
 }
 
@@ -113,6 +121,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Initialize WebSocket server for real-time notifications
+  initializeWebSocket(httpServer);
 
   // ============ AUTH ROUTES ============
 
@@ -141,6 +152,13 @@ export async function registerRoutes(
 
       await storage.updateUser(user.id, { lastLogin: new Date() as any });
 
+      // Get clientId for client users (needed for WebSocket routing)
+      let clientId: string | undefined;
+      if (user.role === "client") {
+        const client = await storage.getClientByUserId(user.id);
+        clientId = client?.id;
+      }
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -148,6 +166,7 @@ export async function registerRoutes(
           role: user.role,
           firstName: user.firstName,
           lastName: user.lastName,
+          clientId,
         },
         JWT_SECRET,
         { expiresIn: "7d" }
@@ -162,6 +181,7 @@ export async function registerRoutes(
           firstName: user.firstName,
           lastName: user.lastName,
           mustChangePassword: user.mustChangePassword,
+          clientId,
         },
       });
     } catch (error) {
@@ -360,6 +380,13 @@ export async function registerRoutes(
         messageText,
       });
 
+      // Send real-time WebSocket notification to admins
+      notifyNewMessage(client.id, {
+        senderType: "client",
+        senderName: `${req.user!.firstName} ${req.user!.lastName}`,
+        preview: messageText.substring(0, 100),
+      });
+
       res.json(message);
     } catch (error) {
       console.error("Send message error:", error);
@@ -550,13 +577,17 @@ export async function registerRoutes(
       });
 
       const client = await storage.getClient(project.clientId);
+      const projectName = project.projectType === "other" 
+        ? project.projectTypeOther || "Custom Project" 
+        : project.projectType.replace(/_/g, " ");
+      
+      // Send real-time WebSocket notification
+      notifyProjectStatusUpdate(project.clientId, projectName, oldStatus, status);
+      
       if (client?.userId) {
         const user = await storage.getUser(client.userId);
         if (user && client.businessEmail) {
           const baseUrl = `${req.protocol}://${req.get('host')}`;
-          const projectName = project.projectType === "other" 
-            ? project.projectTypeOther || "Custom Project" 
-            : project.projectType.replace(/_/g, " ");
           sendProjectStatusUpdateEmail(
             client.businessEmail,
             user.firstName,
