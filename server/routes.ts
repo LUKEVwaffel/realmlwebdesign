@@ -540,6 +540,119 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/clients/:id/reset-password", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client || !client.userId) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      await storage.updateUser(client.userId, { passwordHash, mustChangePassword: true });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: id,
+        action: "password_reset",
+        description: "Admin reset client password",
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, tempPassword });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/payments", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { clientId, description, amount, dueDate } = req.body;
+      if (!clientId || !description || !amount) {
+        return res.status(400).json({ error: "Client ID, description, and amount are required" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const payment = await storage.createPayment({
+        clientId,
+        description,
+        amount: amount.toString(),
+        dueDate: dueDate ? new Date(dueDate) : null,
+        status: "pending",
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId,
+        action: "payment_created",
+        description: `Created payment: ${description} - $${amount}`,
+        ipAddress: req.ip,
+      });
+
+      notifyPaymentUpdate(clientId, {
+        paymentId: payment.id,
+        description,
+        amount,
+        status: "pending",
+      });
+
+      res.json(payment);
+    } catch (error) {
+      console.error("Create payment error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/documents", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { clientId, title, documentType, description, requiresSignature, visibleToClient } = req.body;
+      if (!clientId || !title) {
+        return res.status(400).json({ error: "Client ID and title are required" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const document = await storage.createDocument({
+        clientId,
+        title,
+        documentType: documentType || "other",
+        description,
+        requiresSignature: requiresSignature || false,
+        visibleToClient: visibleToClient !== false,
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId,
+        action: "document_created",
+        description: `Created document: ${title}`,
+        ipAddress: req.ip,
+      });
+
+      if (visibleToClient) {
+        notifyDocumentUpdate(clientId, {
+          documentId: document.id,
+          title,
+          requiresSignature: requiresSignature || false,
+        });
+      }
+
+      res.json(document);
+    } catch (error) {
+      console.error("Create document error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/projects", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const projectsList = await storage.getProjects();
