@@ -464,8 +464,10 @@ export async function registerRoutes(
 
   app.post("/api/admin/clients", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
+      console.log("Received client data:", JSON.stringify(req.body));
       const parsed = createClientRequestSchema.safeParse(req.body);
       if (!parsed.success) {
+        console.log("Validation errors:", JSON.stringify(parsed.error.errors));
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
       }
       const { businessLegalName, businessEmail, businessPhone, industry, firstName, lastName, email } = parsed.data;
