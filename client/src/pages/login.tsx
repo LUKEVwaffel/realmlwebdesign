@@ -37,18 +37,21 @@ export default function LoginPage() {
       if (result.token && result.user) {
         login(result.token, result.user);
         
-        if (result.user.mustChangePassword) {
-          setLocation("/portal/change-password");
-        } else if (result.user.role === "admin") {
-          setLocation("/admin/dashboard");
-        } else {
-          setLocation("/client/dashboard");
-        }
-
         toast({
           title: "Welcome back!",
           description: `Logged in as ${result.user.firstName}`,
         });
+
+        // Navigate after state updates complete
+        setTimeout(() => {
+          if (result.user.mustChangePassword) {
+            setLocation("/portal/change-password");
+          } else if (result.user.role === "admin") {
+            setLocation("/admin/dashboard");
+          } else {
+            setLocation("/client/dashboard");
+          }
+        }, 100);
       }
     } catch (error: any) {
       toast({
