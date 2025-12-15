@@ -889,6 +889,128 @@ export async function registerRoutes(
     }
   });
 
+  // Create Payment Intent for embedded payment form
+  app.post("/api/payments/:id/create-payment-intent", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || payment.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (payment.status === "paid") {
+        return res.status(400).json({ error: "Payment already completed" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(parseFloat(payment.amount) * 100),
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          payment_id: id,
+          client_id: client.id,
+        },
+        description: payment.description || `Payment #${payment.paymentNumber}`,
+        receipt_email: client.businessEmail || undefined,
+      });
+
+      await storage.updatePayment(id, {
+        stripePaymentIntentId: paymentIntent.id,
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      });
+    } catch (error) {
+      console.error("Create payment intent error:", error);
+      res.status(500).json({ error: "Failed to create payment intent" });
+    }
+  });
+
+  // Confirm Payment Intent after embedded payment
+  app.post("/api/payments/:id/confirm-payment", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID required" });
+      }
+
+      const payment = await storage.getPayment(id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || payment.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Security: Verify the payment intent ID matches what we stored
+      if (payment.stripePaymentIntentId && payment.stripePaymentIntentId !== paymentIntentId) {
+        return res.status(403).json({ error: "Payment intent ID mismatch" });
+      }
+
+      if (payment.status === "paid") {
+        return res.json({ success: true, status: "paid" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status === "succeeded" && 
+          paymentIntent.metadata?.payment_id === id &&
+          paymentIntent.metadata?.client_id === client.id) {
+        
+        await storage.updatePayment(id, {
+          status: "paid",
+          stripePaymentIntentId: paymentIntentId,
+          paidAt: new Date() as any,
+          paidAmount: (paymentIntent.amount / 100).toString(),
+        });
+
+        await storage.createActivityLog({
+          clientId: client.id,
+          action: "payment_completed",
+          description: `Payment #${payment.paymentNumber} of $${payment.amount} completed`,
+        });
+
+        const user = await storage.getUser(client.userId!);
+        if (user && client.businessEmail) {
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          sendPaymentConfirmationEmail(
+            client.businessEmail,
+            user.firstName,
+            payment.amount,
+            payment.description || `Payment #${payment.paymentNumber}`,
+            new Date().toLocaleDateString(),
+            `${baseUrl}/client/payments`
+          ).catch(console.error);
+        }
+
+        return res.json({ success: true, status: "paid" });
+      }
+
+      res.json({ success: false, status: paymentIntent.status });
+    } catch (error) {
+      console.error("Confirm payment error:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
+  // Legacy checkout session route (kept for backwards compatibility)
   app.post("/api/payments/:id/checkout", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

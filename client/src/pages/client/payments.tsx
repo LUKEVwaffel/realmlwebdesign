@@ -1,5 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, Download, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CreditCard, Download, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { EmbeddedCheckout } from "@/components/payment/embedded-checkout";
 
 function downloadInvoice(paymentId: string, token: string) {
   const url = `/api/payments/${paymentId}/invoice`;
@@ -51,35 +56,35 @@ const paymentStatusStyles: Record<string, { bg: string; icon: any }> = {
 
 export default function ClientPayments() {
   const { toast } = useToast();
-  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<{
+    id: string;
+    amount: string;
+    description: string;
+  } | null>(null);
   
   const { data: paymentsData, isLoading } = useQuery({
     queryKey: ["/api/client/payments"],
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async (paymentId: string) => {
-      const response = await apiRequest("POST", `/api/payments/${paymentId}/checkout`);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
-    },
-    onError: (error: any) => {
-      setProcessingPaymentId(null);
-      toast({
-        title: "Payment Error",
-        description: error.message || "Failed to initiate payment",
-        variant: "destructive",
-      });
-    },
-  });
+  const handlePayNow = (payment: any) => {
+    setSelectedPayment({
+      id: payment.id,
+      amount: payment.amount,
+      description: payment.description || `Payment #${payment.paymentNumber}`,
+    });
+  };
 
-  const handlePayNow = (paymentId: string) => {
-    setProcessingPaymentId(paymentId);
-    checkoutMutation.mutate(paymentId);
+  const handlePaymentSuccess = () => {
+    setSelectedPayment(null);
+    queryClient.invalidateQueries({ queryKey: ["/api/client/payments"] });
+    toast({
+      title: "Payment Successful",
+      description: "Your payment has been processed successfully.",
+    });
+  };
+
+  const handlePaymentCancel = () => {
+    setSelectedPayment(null);
   };
 
   const payments = (Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments) || [];
@@ -210,17 +215,9 @@ export default function ClientPayments() {
                                 <Button 
                                   size="sm" 
                                   data-testid={`button-pay-${payment.id}`}
-                                  onClick={() => handlePayNow(payment.id)}
-                                  disabled={processingPaymentId === payment.id}
+                                  onClick={() => handlePayNow(payment)}
                                 >
-                                  {processingPaymentId === payment.id ? (
-                                    <>
-                                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                      Processing
-                                    </>
-                                  ) : (
-                                    "Pay Now"
-                                  )}
+                                  Pay Now
                                 </Button>
                               )}
                               <Button
@@ -251,6 +248,21 @@ export default function ClientPayments() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedPayment && (
+        <Dialog open={true} onOpenChange={(open) => !open && handlePaymentCancel()}>
+          <DialogContent className="sm:max-w-lg p-0 border-0 bg-transparent shadow-none">
+            <EmbeddedCheckout
+              key={selectedPayment.id}
+              paymentId={selectedPayment.id}
+              amount={selectedPayment.amount}
+              description={selectedPayment.description}
+              onSuccess={handlePaymentSuccess}
+              onCancel={handlePaymentCancel}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </PortalLayout>
   );
 }
