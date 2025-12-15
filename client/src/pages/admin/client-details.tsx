@@ -89,6 +89,7 @@ export default function ClientDetails() {
     title: "",
     documentType: "contract",
     description: "",
+    fileUrl: "",
     requiresSignature: false,
     visibleToClient: true,
   });
@@ -138,7 +139,7 @@ export default function ClientDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
       setIsDocumentDialogOpen(false);
-      setNewDocument({ title: "", documentType: "contract", description: "", requiresSignature: false, visibleToClient: true });
+      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, visibleToClient: true });
       toast({ title: "Document created", description: "New document has been added for this client." });
     },
     onError: (error: Error) => {
@@ -604,6 +605,16 @@ export default function ClientDetails() {
                           placeholder="Document description..."
                           data-testid="input-document-description"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>PDF URL (optional)</Label>
+                        <Input
+                          value={newDocument.fileUrl}
+                          onChange={(e) => setNewDocument({ ...newDocument, fileUrl: e.target.value })}
+                          placeholder="https://example.com/document.pdf"
+                          data-testid="input-document-url"
+                        />
+                        <p className="text-xs text-muted-foreground">Link to an external PDF file</p>
                       </div>
                       <div className="flex items-center justify-between">
                         <Label htmlFor="requires-signature">Requires Signature</Label>

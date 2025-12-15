@@ -611,7 +611,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/documents", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const { clientId, title, documentType, description, requiresSignature, visibleToClient } = req.body;
+      const { clientId, title, documentType, description, fileUrl, requiresSignature, visibleToClient } = req.body;
       if (!clientId || !title) {
         return res.status(400).json({ error: "Client ID and title are required" });
       }
@@ -621,11 +621,24 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Client not found" });
       }
 
+      // Extract filename from URL if provided
+      let fileName = null;
+      if (fileUrl) {
+        try {
+          const urlObj = new URL(fileUrl);
+          fileName = urlObj.pathname.split('/').pop() || "document.pdf";
+        } catch {
+          fileName = "document.pdf";
+        }
+      }
+
       const document = await storage.createDocument({
         clientId,
         title,
         documentType: documentType || "other",
         description,
+        fileUrl: fileUrl || null,
+        fileName,
         requiresSignature: requiresSignature || false,
         visibleToClient: visibleToClient !== false,
       });
