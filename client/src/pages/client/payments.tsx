@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { CreditCard, Download, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { CreditCard, Download, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/table";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const paymentStatusStyles: Record<string, { bg: string; icon: any }> = {
   pending: { bg: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400", icon: Clock },
@@ -23,11 +26,39 @@ const paymentStatusStyles: Record<string, { bg: string; icon: any }> = {
 };
 
 export default function ClientPayments() {
+  const { toast } = useToast();
+  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
+  
   const { data: paymentsData, isLoading } = useQuery({
     queryKey: ["/api/client/payments"],
   });
 
-  const payments = paymentsData?.payments || [];
+  const checkoutMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const response = await apiRequest("POST", `/api/payments/${paymentId}/checkout`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    },
+    onError: (error: any) => {
+      setProcessingPaymentId(null);
+      toast({
+        title: "Payment Error",
+        description: error.message || "Failed to initiate payment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePayNow = (paymentId: string) => {
+    setProcessingPaymentId(paymentId);
+    checkoutMutation.mutate(paymentId);
+  };
+
+  const payments = (Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments) || [];
   const totalPaid = payments
     .filter((p: any) => p.status === "paid")
     .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
@@ -152,8 +183,20 @@ export default function ClientPayments() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               {(payment.status === "pending" || payment.status === "overdue") && (
-                                <Button size="sm" data-testid={`button-pay-${payment.id}`}>
-                                  Pay Now
+                                <Button 
+                                  size="sm" 
+                                  data-testid={`button-pay-${payment.id}`}
+                                  onClick={() => handlePayNow(payment.id)}
+                                  disabled={processingPaymentId === payment.id}
+                                >
+                                  {processingPaymentId === payment.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                      Processing
+                                    </>
+                                  ) : (
+                                    "Pay Now"
+                                  )}
                                 </Button>
                               )}
                               {payment.invoicePdfUrl && (

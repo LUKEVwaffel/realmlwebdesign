@@ -16,6 +16,8 @@ import ChangePassword from "@/pages/change-password";
 
 import ClientDashboard from "@/pages/client/dashboard";
 import ClientPayments from "@/pages/client/payments";
+import PaymentSuccess from "@/pages/client/payment-success";
+import PaymentCancel from "@/pages/client/payment-cancel";
 import ClientDocuments from "@/pages/client/documents";
 import ClientMessages from "@/pages/client/messages";
 import ClientSettings from "@/pages/client/settings";
@@ -42,6 +44,8 @@ function Router() {
       {/* Client Portal Routes */}
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/client/payments" component={ClientPayments} />
+      <Route path="/client/payments/success" component={PaymentSuccess} />
+      <Route path="/client/payments/cancel" component={PaymentCancel} />
       <Route path="/client/documents" component={ClientDocuments} />
       <Route path="/client/messages" component={ClientMessages} />
       <Route path="/client/settings" component={ClientSettings} />

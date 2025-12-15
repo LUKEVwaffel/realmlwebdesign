@@ -8,6 +8,7 @@ import { loginSchema, changePasswordSchema, insertClientSchema, insertProjectSch
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -576,6 +577,138 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update admin profile error:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ STRIPE ROUTES ============
+
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Get publishable key error:", error);
+      res.status(500).json({ error: "Stripe not configured" });
+    }
+  });
+
+  app.post("/api/payments/:id/checkout", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || payment.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (payment.status === "paid") {
+        return res.status(400).json({ error: "Payment already completed" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: payment.description || `Payment #${payment.paymentNumber}`,
+                description: `Project payment for ${client.businessLegalName}`,
+              },
+              unit_amount: Math.round(parseFloat(payment.amount) * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${baseUrl}/client/payments/success?session_id={CHECKOUT_SESSION_ID}&payment_id=${id}`,
+        cancel_url: `${baseUrl}/client/payments/cancel?payment_id=${id}`,
+        client_reference_id: client.id,
+        metadata: {
+          payment_id: id,
+          client_id: client.id,
+        },
+        customer_email: client.businessEmail || undefined,
+      });
+
+      await storage.updatePayment(id, {
+        stripeCheckoutSessionId: session.id,
+      });
+
+      res.json({ checkoutUrl: session.url });
+    } catch (error) {
+      console.error("Create checkout session error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/payments/verify-session", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { sessionId, paymentId } = req.body;
+      
+      if (!sessionId || !paymentId) {
+        return res.status(400).json({ error: "Session ID and Payment ID required" });
+      }
+
+      const payment = await storage.getPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || payment.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Security: If we already have a stored session ID, it must match
+      if (payment.stripeCheckoutSessionId && payment.stripeCheckoutSessionId !== sessionId) {
+        return res.status(403).json({ error: "Session ID mismatch" });
+      }
+
+      // Security: If no session ID is stored, the checkout was never initiated for this payment
+      if (!payment.stripeCheckoutSessionId) {
+        return res.status(403).json({ error: "No checkout session found for this payment" });
+      }
+
+      if (payment.status === "paid") {
+        return res.json({ verified: true, status: "paid" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // Security: Verify both payment_id AND client_id from session metadata
+      if (session.payment_status === "paid" && 
+          session.metadata?.payment_id === paymentId &&
+          session.metadata?.client_id === client.id) {
+        await storage.updatePayment(paymentId, {
+          status: "paid",
+          stripePaymentIntentId: session.payment_intent as string,
+          paidAt: new Date() as any,
+          paidAmount: ((session.amount_total || 0) / 100).toString(),
+        });
+
+        await storage.createActivityLog({
+          clientId: client.id,
+          action: "payment_completed",
+          description: `Payment #${payment.paymentNumber} of $${payment.amount} completed`,
+        });
+
+        return res.json({ verified: true, status: "paid" });
+      }
+
+      res.json({ verified: false, status: session.payment_status });
+    } catch (error) {
+      console.error("Verify session error:", error);
+      res.status(500).json({ error: "Failed to verify payment" });
     }
   });
 

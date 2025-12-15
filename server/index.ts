@@ -2,6 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { getStripeSync, getStripeSecretKey, getUncachableStripeClient } from "./stripeClient";
+import { handleStripeWebhook } from "./webhookHandlers";
+import Stripe from "stripe";
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,6 +14,40 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+let stripeWebhookSecret: string | null = null;
+
+async function initStripe() {
+  try {
+    const stripe = await getUncachableStripeClient();
+    await stripe.balance.retrieve();
+    log("Stripe connection verified", "stripe");
+  } catch (error) {
+    log(`Stripe init error (continuing without Stripe): ${error}`, "stripe");
+  }
+}
+
+app.post('/api/stripe/webhook/:uuid', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  
+  if (!sig || !stripeWebhookSecret) {
+    return res.status(400).send('Webhook signature required');
+  }
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      stripeWebhookSecret
+    );
+    
+    await handleStripeWebhook(event, req, res);
+  } catch (err: any) {
+    log(`Webhook signature verification failed: ${err.message}`, 'stripe');
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
 
 app.use(
   express.json({
@@ -60,6 +97,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await initStripe();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
