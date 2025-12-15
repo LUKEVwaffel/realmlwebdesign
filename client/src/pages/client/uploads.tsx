@@ -61,6 +61,8 @@ const getFileIcon = (category: string) => {
 export default function ClientUploads() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -71,22 +73,15 @@ export default function ClientUploads() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/client/uploads", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Upload failed");
-      }
-      return response.json();
+    mutationFn: async (data: { fileName: string; fileUrl: string; fileSize: number; fileType: string; category: string; description: string }) => {
+      return apiRequest("POST", "/api/client/uploads", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/uploads"] });
       setUploadDialogOpen(false);
       setSelectedFile(null);
+      setFileName("");
+      setFileUrl("");
       setCategory("");
       setDescription("");
       toast({
@@ -133,16 +128,18 @@ export default function ClientUploads() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !category) return;
+    if (!fileUrl || !category) return;
     
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("category", category);
-    formData.append("description", description);
-    
     try {
-      await uploadMutation.mutateAsync(formData);
+      await uploadMutation.mutateAsync({
+        fileName: fileName || "Uploaded File",
+        fileUrl,
+        fileSize: 0,
+        fileType: "",
+        category,
+        description,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -284,19 +281,27 @@ export default function ClientUploads() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="file">Select File</Label>
+              <Label htmlFor="fileName">File Name</Label>
               <Input
-                id="file"
-                type="file"
-                onChange={handleFileSelect}
-                accept="image/*,.pdf,.doc,.docx,.txt,.rtf"
-                data-testid="input-file"
+                id="fileName"
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                placeholder="e.g., Company Logo"
+                data-testid="input-file-name"
               />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground">
-                  Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
-              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fileUrl">File URL</Label>
+              <Input
+                id="fileUrl"
+                value={fileUrl}
+                onChange={(e) => setFileUrl(e.target.value)}
+                placeholder="https://example.com/file.pdf"
+                data-testid="input-file-url"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the URL of your file (from Google Drive, Dropbox, etc.)
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
@@ -331,7 +336,7 @@ export default function ClientUploads() {
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={!selectedFile || !category || isUploading}
+              disabled={!fileUrl || !category || isUploading}
               data-testid="button-submit-upload"
             >
               {isUploading ? (
