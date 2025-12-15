@@ -25,7 +25,6 @@ import ClientSettings from "@/pages/client/settings";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminClients from "@/pages/admin/clients";
 import AdminClientDetails from "@/pages/admin/client-details";
-import AdminProjects from "@/pages/admin/projects";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminSettings from "@/pages/admin/settings";
 
@@ -55,7 +54,6 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/clients/:id" component={AdminClientDetails} />
       <Route path="/admin/clients" component={AdminClients} />
-      <Route path="/admin/projects" component={AdminProjects} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/settings" component={AdminSettings} />
       

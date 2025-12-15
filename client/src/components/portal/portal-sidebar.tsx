@@ -8,7 +8,6 @@ import {
   LogOut,
   Sparkles,
   Users,
-  FolderKanban,
   BarChart3,
   ChevronDown
 } from "lucide-react";
@@ -45,7 +44,6 @@ const clientNavItems = [
 const adminNavItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Clients", url: "/admin/clients", icon: Users },
-  { title: "Projects", url: "/admin/projects", icon: FolderKanban },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
