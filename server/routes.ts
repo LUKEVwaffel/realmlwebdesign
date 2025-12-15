@@ -9,6 +9,15 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import {
+  isEmailConfigured,
+  sendWelcomeEmail,
+  sendPaymentReminderEmail,
+  sendDocumentSignatureRequestEmail,
+  sendProjectStatusUpdateEmail,
+  sendPaymentConfirmationEmail,
+  sendNewMessageNotificationEmail,
+} from "./emailService";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -462,6 +471,9 @@ export async function registerRoutes(
         ipAddress: req.ip,
       });
 
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      sendWelcomeEmail(email, firstName, tempPassword, `${baseUrl}/login`).catch(console.error);
+
       res.json({ ...client, user: { firstName, lastName, email }, tempPassword });
     } catch (error) {
       console.error("Create client error:", error);
@@ -517,6 +529,12 @@ export async function registerRoutes(
       }
       const { status } = parsed.data;
 
+      const existingProject = await storage.getProject(id);
+      if (!existingProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const oldStatus = existingProject.status;
+
       const project = await storage.updateProject(id, { status });
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
@@ -529,6 +547,25 @@ export async function registerRoutes(
         description: `Updated project status to ${status}`,
         ipAddress: req.ip,
       });
+
+      const client = await storage.getClient(project.clientId);
+      if (client?.userId) {
+        const user = await storage.getUser(client.userId);
+        if (user && client.businessEmail) {
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          const projectName = project.projectType === "other" 
+            ? project.projectTypeOther || "Custom Project" 
+            : project.projectType.replace(/_/g, " ");
+          sendProjectStatusUpdateEmail(
+            client.businessEmail,
+            user.firstName,
+            projectName,
+            oldStatus,
+            status,
+            `${baseUrl}/client/dashboard`
+          ).catch(console.error);
+        }
+      }
 
       res.json(project);
     } catch (error) {
@@ -578,6 +615,68 @@ export async function registerRoutes(
       console.error("Update admin profile error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
+  });
+
+  app.post("/api/admin/payments/:id/send-reminder", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      if (payment.status === "paid") {
+        return res.status(400).json({ error: "Payment already completed" });
+      }
+
+      const client = await storage.getClient(payment.clientId);
+      if (!client?.userId) {
+        return res.status(400).json({ error: "Client not found" });
+      }
+
+      const user = await storage.getUser(client.userId);
+      if (!user || !client.businessEmail) {
+        return res.status(400).json({ error: "Client email not available" });
+      }
+
+      if (!isEmailConfigured()) {
+        return res.status(400).json({ error: "Email not configured" });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const dueDate = payment.dueDate 
+        ? new Date(payment.dueDate).toLocaleDateString() 
+        : "Not specified";
+
+      const sent = await sendPaymentReminderEmail(
+        client.businessEmail,
+        user.firstName,
+        payment.amount,
+        payment.description || `Payment #${payment.paymentNumber}`,
+        dueDate,
+        `${baseUrl}/client/payments`
+      );
+
+      if (sent) {
+        await storage.createActivityLog({
+          userId: req.user!.id,
+          clientId: client.id,
+          action: "payment_reminder_sent",
+          description: `Payment reminder sent for $${payment.amount}`,
+          ipAddress: req.ip,
+        });
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ error: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Send payment reminder error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/email/status", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    res.json({ configured: isEmailConfigured() });
   });
 
   // ============ STRIPE ROUTES ============
@@ -701,6 +800,19 @@ export async function registerRoutes(
           action: "payment_completed",
           description: `Payment #${payment.paymentNumber} of $${payment.amount} completed`,
         });
+
+        const user = await storage.getUser(client.userId!);
+        if (user && client.businessEmail) {
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          sendPaymentConfirmationEmail(
+            client.businessEmail,
+            user.firstName,
+            payment.amount,
+            payment.description || `Payment #${payment.paymentNumber}`,
+            new Date().toLocaleDateString(),
+            `${baseUrl}/client/payments`
+          ).catch(console.error);
+        }
 
         return res.json({ verified: true, status: "paid" });
       }
