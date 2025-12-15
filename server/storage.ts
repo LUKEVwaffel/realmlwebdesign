@@ -1,38 +1,309 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { eq, and, desc, sql, count, sum } from "drizzle-orm";
+import {
+  users,
+  clients,
+  projects,
+  payments,
+  documents,
+  messages,
+  activityLogs,
+  portfolioItems,
+  type User,
+  type InsertUser,
+  type Client,
+  type InsertClient,
+  type Project,
+  type InsertProject,
+  type Payment,
+  type InsertPayment,
+  type Document,
+  type InsertDocument,
+  type Message,
+  type InsertMessage,
+  type ActivityLog,
+  type InsertActivityLog,
+  type PortfolioItem,
+  type InsertPortfolioItem,
+} from "@shared/schema";
 
 export interface IStorage {
+  // Users
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+
+  // Clients
+  getClient(id: string): Promise<Client | undefined>;
+  getClientByUserId(userId: string): Promise<Client | undefined>;
+  getClients(): Promise<Client[]>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
+
+  // Projects
+  getProject(id: string): Promise<Project | undefined>;
+  getProjectsByClientId(clientId: string): Promise<Project[]>;
+  getProjects(): Promise<Project[]>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: string, data: Partial<InsertProject>): Promise<Project | undefined>;
+
+  // Payments
+  getPayment(id: string): Promise<Payment | undefined>;
+  getPaymentsByClientId(clientId: string): Promise<Payment[]>;
+  getPaymentsByProjectId(projectId: string): Promise<Payment[]>;
+  getPayments(): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
+
+  // Documents
+  getDocument(id: string): Promise<Document | undefined>;
+  getDocumentsByClientId(clientId: string): Promise<Document[]>;
+  getDocuments(): Promise<Document[]>;
+  createDocument(doc: InsertDocument): Promise<Document>;
+  updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined>;
+
+  // Messages
+  getMessagesByClientId(clientId: string): Promise<Message[]>;
+  getMessages(): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markMessageAsRead(id: string): Promise<void>;
+
+  // Activity Logs
+  getActivityLogsByClientId(clientId: string): Promise<ActivityLog[]>;
+  getActivityLogs(): Promise<ActivityLog[]>;
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+
+  // Portfolio Items
+  getPortfolioItems(): Promise<PortfolioItem[]>;
+  createPortfolioItem(item: InsertPortfolioItem): Promise<PortfolioItem>;
+
+  // Analytics & Dashboard
+  getAdminStats(): Promise<{
+    totalClients: number;
+    activeProjects: number;
+    completedProjects: number;
+    totalRevenue: number;
+    pendingRevenue: number;
+    completionRate: number;
+    averageProjectValue: number;
+    averageProjectDuration: number;
+  }>;
+  getProjectsByStatus(): Promise<{ status: string; count: number }[]>;
+  getOverduePayments(): Promise<Payment[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // Users
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+
+  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  // Clients
+  async getClient(id: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client;
+  }
+
+  async getClientByUserId(userId: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.userId, userId));
+    return client;
+  }
+
+  async getClients(): Promise<Client[]> {
+    return db.select().from(clients).orderBy(desc(clients.createdAt));
+  }
+
+  async createClient(client: InsertClient): Promise<Client> {
+    const [newClient] = await db.insert(clients).values(client).returning();
+    return newClient;
+  }
+
+  async updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined> {
+    const [updated] = await db.update(clients).set({ ...data, updatedAt: new Date() }).where(eq(clients.id, id)).returning();
+    return updated;
+  }
+
+  // Projects
+  async getProject(id: string): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async getProjectsByClientId(clientId: string): Promise<Project[]> {
+    return db.select().from(projects).where(eq(projects.clientId, clientId)).orderBy(desc(projects.createdAt));
+  }
+
+  async getProjects(): Promise<Project[]> {
+    return db.select().from(projects).orderBy(desc(projects.createdAt));
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [newProject] = await db.insert(projects).values(project).returning();
+    return newProject;
+  }
+
+  async updateProject(id: string, data: Partial<InsertProject>): Promise<Project | undefined> {
+    const [updated] = await db.update(projects).set({ ...data, updatedAt: new Date() }).where(eq(projects.id, id)).returning();
+    return updated;
+  }
+
+  // Payments
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+
+  async getPaymentsByClientId(clientId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.clientId, clientId)).orderBy(desc(payments.createdAt));
+  }
+
+  async getPaymentsByProjectId(projectId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.projectId, projectId)).orderBy(payments.paymentNumber);
+  }
+
+  async getPayments(): Promise<Payment[]> {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [newPayment] = await db.insert(payments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [updated] = await db.update(payments).set({ ...data, updatedAt: new Date() }).where(eq(payments.id, id)).returning();
+    return updated;
+  }
+
+  // Documents
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+    return doc;
+  }
+
+  async getDocumentsByClientId(clientId: string): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.clientId, clientId)).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocuments(): Promise<Document[]> {
+    return db.select().from(documents).orderBy(desc(documents.createdAt));
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [newDoc] = await db.insert(documents).values(doc).returning();
+    return newDoc;
+  }
+
+  async updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined> {
+    const [updated] = await db.update(documents).set({ ...data, updatedAt: new Date() }).where(eq(documents.id, id)).returning();
+    return updated;
+  }
+
+  // Messages
+  async getMessagesByClientId(clientId: string): Promise<Message[]> {
+    return db.select().from(messages).where(eq(messages.clientId, clientId)).orderBy(messages.createdAt);
+  }
+
+  async getMessages(): Promise<Message[]> {
+    return db.select().from(messages).orderBy(desc(messages.createdAt));
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db.insert(messages).values(message).returning();
+    return newMessage;
+  }
+
+  async markMessageAsRead(id: string): Promise<void> {
+    await db.update(messages).set({ isRead: true, readAt: new Date() }).where(eq(messages.id, id));
+  }
+
+  // Activity Logs
+  async getActivityLogsByClientId(clientId: string): Promise<ActivityLog[]> {
+    return db.select().from(activityLogs).where(eq(activityLogs.clientId, clientId)).orderBy(desc(activityLogs.createdAt)).limit(20);
+  }
+
+  async getActivityLogs(): Promise<ActivityLog[]> {
+    return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(50);
+  }
+
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [newLog] = await db.insert(activityLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Portfolio Items
+  async getPortfolioItems(): Promise<PortfolioItem[]> {
+    return db.select().from(portfolioItems).where(eq(portfolioItems.isVisible, true)).orderBy(portfolioItems.displayOrder);
+  }
+
+  async createPortfolioItem(item: InsertPortfolioItem): Promise<PortfolioItem> {
+    const [newItem] = await db.insert(portfolioItems).values(item).returning();
+    return newItem;
+  }
+
+  // Dashboard aggregations
+  async getAdminStats() {
+    const [clientCount] = await db.select({ count: count() }).from(clients);
+    const [activeProjects] = await db.select({ count: count() }).from(projects).where(
+      and(
+        sql`${projects.status} NOT IN ('completed', 'cancelled')`
+      )
+    );
+    const [completedProjects] = await db.select({ count: count() }).from(projects).where(eq(projects.status, "completed"));
+    const [revenueResult] = await db.select({ total: sum(payments.paidAmount) }).from(payments).where(eq(payments.status, "paid"));
+    const [pendingResult] = await db.select({ total: sum(payments.amount) }).from(payments).where(eq(payments.status, "pending"));
+
+    const totalRevenue = parseFloat(revenueResult?.total || "0");
+    const pendingRevenue = parseFloat(pendingResult?.total || "0");
+    const totalProjects = (activeProjects?.count || 0) + (completedProjects?.count || 0);
+    const completionRate = totalProjects > 0 ? Math.round((completedProjects?.count || 0) / totalProjects * 100) : 0;
+
+    return {
+      totalClients: clientCount?.count || 0,
+      activeProjects: activeProjects?.count || 0,
+      completedProjects: completedProjects?.count || 0,
+      totalRevenue,
+      pendingRevenue,
+      completionRate,
+      averageProjectValue: totalProjects > 0 ? Math.round(totalRevenue / totalProjects) : 0,
+      averageProjectDuration: 6,
+    };
+  }
+
+  async getProjectsByStatus() {
+    const result = await db.select({
+      status: projects.status,
+      count: count(),
+    }).from(projects).groupBy(projects.status);
+    return result;
+  }
+
+  async getOverduePayments(): Promise<Payment[]> {
+    return db.select().from(payments)
+      .where(and(
+        eq(payments.status, "pending"),
+        sql`${payments.dueDate} < CURRENT_DATE`
+      ))
+      .orderBy(payments.dueDate)
+      .limit(10);
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

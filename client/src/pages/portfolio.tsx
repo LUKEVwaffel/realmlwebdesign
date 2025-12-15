@@ -1,0 +1,200 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowUpRight, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PublicNavbar } from "@/components/public/navbar";
+import { PublicFooter } from "@/components/public/footer";
+import type { PortfolioItem } from "@shared/schema";
+
+const defaultPortfolio = [
+  {
+    id: "1",
+    businessName: "Artisan Coffee Co.",
+    industry: "Food & Beverage",
+    description: "A modern e-commerce website for a specialty coffee roaster featuring online ordering, subscription services, and a wholesale portal.",
+    imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["E-commerce", "Subscription System", "Wholesale Portal", "Mobile Responsive"],
+  },
+  {
+    id: "2",
+    businessName: "Urban Fitness Studio",
+    industry: "Health & Fitness",
+    description: "A dynamic website for a boutique fitness studio with class booking, member portal, and trainer profiles.",
+    imageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["Class Booking", "Member Portal", "Trainer Profiles", "Payment Integration"],
+  },
+  {
+    id: "3",
+    businessName: "Bloom Interior Design",
+    industry: "Interior Design",
+    description: "An elegant portfolio website showcasing residential and commercial interior design projects with immersive galleries.",
+    imageUrl: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["Portfolio Gallery", "Project Showcase", "Contact Forms", "SEO Optimized"],
+  },
+  {
+    id: "4",
+    businessName: "TechFlow Solutions",
+    industry: "Technology",
+    description: "A professional B2B website for a software consulting firm featuring case studies, service offerings, and a client portal.",
+    imageUrl: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["Case Studies", "Client Portal", "Blog", "Lead Generation"],
+  },
+  {
+    id: "5",
+    businessName: "Golden Gate Law",
+    industry: "Legal Services",
+    description: "A sophisticated website for a law firm with attorney profiles, practice areas, and secure client communication.",
+    imageUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["Attorney Profiles", "Practice Areas", "Secure Messaging", "Appointment Booking"],
+  },
+  {
+    id: "6",
+    businessName: "Evergreen Landscaping",
+    industry: "Home Services",
+    description: "A lead-generating website for a landscaping company with project galleries, service calculator, and online quotes.",
+    imageUrl: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800&h=600&fit=crop",
+    websiteUrl: "#",
+    features: ["Project Gallery", "Quote Calculator", "Service Areas", "Before/After Showcase"],
+  },
+];
+
+const industries = ["All", "Food & Beverage", "Health & Fitness", "Interior Design", "Technology", "Legal Services", "Home Services"];
+
+export default function PortfolioPage() {
+  const [selectedIndustry, setSelectedIndustry] = useState("All");
+
+  const { data: portfolioItems, isLoading } = useQuery<PortfolioItem[]>({
+    queryKey: ["/api/portfolio"],
+  });
+
+  const displayItems = portfolioItems?.length ? portfolioItems : defaultPortfolio;
+  
+  const filteredItems = selectedIndustry === "All" 
+    ? displayItems 
+    : displayItems.filter(item => item.industry === selectedIndustry);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <PublicNavbar />
+
+      {/* Hero */}
+      <section className="pt-32 pb-16 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-6" data-testid="text-portfolio-hero">
+            Our Portfolio
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Explore our collection of websites we've designed for businesses across various industries.
+          </p>
+        </div>
+      </section>
+
+      {/* Filter */}
+      <section className="py-8 border-b border-border sticky top-16 bg-background/95 backdrop-blur-sm z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+            {industries.map((industry) => (
+              <Button
+                key={industry}
+                variant={selectedIndustry === industry ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedIndustry(industry)}
+                className="shrink-0"
+                data-testid={`button-filter-${industry.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                {industry}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Portfolio Grid */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-4">
+                  <Skeleton className="aspect-[4/3] rounded-xl" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredItems.map((item) => (
+                <article
+                  key={item.id}
+                  className="group bg-card border border-border/50 rounded-xl overflow-hidden hover-elevate"
+                  data-testid={`card-portfolio-item-${item.id}`}
+                >
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.businessName}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="p-6">
+                    <Badge variant="secondary" className="mb-3">
+                      {item.industry}
+                    </Badge>
+                    <h3 className="font-serif font-semibold text-xl mb-2 flex items-center gap-2">
+                      {item.businessName}
+                      {item.websiteUrl && item.websiteUrl !== "#" && (
+                        <a
+                          href={item.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </a>
+                      )}
+                    </h3>
+                    <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
+                      {item.description}
+                    </p>
+                    {item.features && (
+                      <div className="flex flex-wrap gap-2">
+                        {(item.features as string[]).slice(0, 3).map((feature, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {feature}
+                          </Badge>
+                        ))}
+                        {(item.features as string[]).length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{(item.features as string[]).length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {filteredItems.length === 0 && !isLoading && (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">No projects found in this category.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <PublicFooter />
+    </div>
+  );
+}
