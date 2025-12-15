@@ -90,10 +90,13 @@ export default function AdminClients() {
         description: "New client has been added successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      const errorMessage = error.message.includes(":") 
+        ? error.message.split(":").slice(1).join(":").trim()
+        : error.message;
       toast({
         title: "Failed to create client",
-        description: "Please try again later.",
+        description: errorMessage || "Please try again later.",
         variant: "destructive",
       });
     },
