@@ -9,7 +9,10 @@ import {
   MoreHorizontal,
   Building2,
   Phone,
-  Calendar
+  Calendar,
+  MapPin,
+  Globe,
+  Users
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +67,15 @@ export default function AdminClients() {
     firstName: "",
     lastName: "",
     email: "",
+    addressStreet: "",
+    addressCity: "",
+    addressState: "",
+    addressZip: "",
+    existingWebsite: "",
+    secondaryContactName: "",
+    secondaryContactEmail: "",
+    secondaryContactPhone: "",
+    secondaryContactRelationship: "",
   });
 
   const { data: clients = [], isLoading } = useQuery({
@@ -84,6 +98,15 @@ export default function AdminClients() {
         firstName: "",
         lastName: "",
         email: "",
+        addressStreet: "",
+        addressCity: "",
+        addressState: "",
+        addressZip: "",
+        existingWebsite: "",
+        secondaryContactName: "",
+        secondaryContactEmail: "",
+        secondaryContactPhone: "",
+        secondaryContactRelationship: "",
       });
       toast({
         title: "Client created",
@@ -137,77 +160,203 @@ export default function AdminClients() {
                 Add Client
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[85vh]">
               <DialogHeader>
                 <DialogTitle>Add New Client</DialogTitle>
                 <DialogDescription>
                   Enter the client's business and contact information
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateClient} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessLegalName">Business Name *</Label>
-                  <Input
-                    id="businessLegalName"
-                    value={newClient.businessLegalName}
-                    onChange={(e) => setNewClient({ ...newClient, businessLegalName: e.target.value })}
-                    required
-                    data-testid="input-business-name"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">Contact First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={newClient.firstName}
-                      onChange={(e) => setNewClient({ ...newClient, firstName: e.target.value })}
-                      required
-                      data-testid="input-first-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Contact Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      value={newClient.lastName}
-                      onChange={(e) => setNewClient({ ...newClient, lastName: e.target.value })}
-                      required
-                      data-testid="input-last-name"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Contact Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newClient.email}
-                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                    required
-                    data-testid="input-email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="businessPhone">Business Phone</Label>
-                  <Input
-                    id="businessPhone"
-                    value={newClient.businessPhone}
-                    onChange={(e) => setNewClient({ ...newClient, businessPhone: e.target.value })}
-                    data-testid="input-phone"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input
-                    id="industry"
-                    value={newClient.industry}
-                    onChange={(e) => setNewClient({ ...newClient, industry: e.target.value })}
-                    placeholder="e.g., Healthcare, Technology"
-                    data-testid="input-industry"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-4">
+              <form onSubmit={handleCreateClient}>
+                <Tabs defaultValue="basic" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsTrigger value="basic" className="gap-2" data-testid="tab-basic">
+                      <Building2 className="w-4 h-4" />
+                      Basic Info
+                    </TabsTrigger>
+                    <TabsTrigger value="address" className="gap-2" data-testid="tab-address">
+                      <MapPin className="w-4 h-4" />
+                      Address
+                    </TabsTrigger>
+                    <TabsTrigger value="contacts" className="gap-2" data-testid="tab-contacts">
+                      <Users className="w-4 h-4" />
+                      Contacts
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <ScrollArea className="h-[340px] pr-4">
+                    <TabsContent value="basic" className="space-y-4 mt-0">
+                      <div className="space-y-2">
+                        <Label htmlFor="businessLegalName">Business Name *</Label>
+                        <Input
+                          id="businessLegalName"
+                          value={newClient.businessLegalName}
+                          onChange={(e) => setNewClient({ ...newClient, businessLegalName: e.target.value })}
+                          required
+                          data-testid="input-business-name"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">Contact First Name *</Label>
+                          <Input
+                            id="firstName"
+                            value={newClient.firstName}
+                            onChange={(e) => setNewClient({ ...newClient, firstName: e.target.value })}
+                            required
+                            data-testid="input-first-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Contact Last Name *</Label>
+                          <Input
+                            id="lastName"
+                            value={newClient.lastName}
+                            onChange={(e) => setNewClient({ ...newClient, lastName: e.target.value })}
+                            required
+                            data-testid="input-last-name"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Contact Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newClient.email}
+                          onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                          required
+                          data-testid="input-email"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="businessPhone">Business Phone</Label>
+                          <Input
+                            id="businessPhone"
+                            value={newClient.businessPhone}
+                            onChange={(e) => setNewClient({ ...newClient, businessPhone: e.target.value })}
+                            data-testid="input-phone"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="industry">Industry</Label>
+                          <Input
+                            id="industry"
+                            value={newClient.industry}
+                            onChange={(e) => setNewClient({ ...newClient, industry: e.target.value })}
+                            placeholder="e.g., Healthcare"
+                            data-testid="input-industry"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="existingWebsite">Website URL</Label>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="existingWebsite"
+                            type="url"
+                            value={newClient.existingWebsite}
+                            onChange={(e) => setNewClient({ ...newClient, existingWebsite: e.target.value })}
+                            placeholder="https://example.com"
+                            className="pl-9"
+                            data-testid="input-website"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="address" className="space-y-4 mt-0">
+                      <div className="space-y-2">
+                        <Label htmlFor="addressStreet">Street Address</Label>
+                        <Input
+                          id="addressStreet"
+                          value={newClient.addressStreet}
+                          onChange={(e) => setNewClient({ ...newClient, addressStreet: e.target.value })}
+                          placeholder="123 Main St"
+                          data-testid="input-street"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="addressCity">City</Label>
+                          <Input
+                            id="addressCity"
+                            value={newClient.addressCity}
+                            onChange={(e) => setNewClient({ ...newClient, addressCity: e.target.value })}
+                            data-testid="input-city"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addressState">State</Label>
+                          <Input
+                            id="addressState"
+                            value={newClient.addressState}
+                            onChange={(e) => setNewClient({ ...newClient, addressState: e.target.value })}
+                            data-testid="input-state"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="addressZip">ZIP Code</Label>
+                        <Input
+                          id="addressZip"
+                          value={newClient.addressZip}
+                          onChange={(e) => setNewClient({ ...newClient, addressZip: e.target.value })}
+                          data-testid="input-zip"
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contacts" className="space-y-4 mt-0">
+                      <p className="text-sm text-muted-foreground">
+                        Add a secondary contact for this client (optional)
+                      </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="secondaryContactName">Full Name</Label>
+                        <Input
+                          id="secondaryContactName"
+                          value={newClient.secondaryContactName}
+                          onChange={(e) => setNewClient({ ...newClient, secondaryContactName: e.target.value })}
+                          placeholder="Jane Smith"
+                          data-testid="input-secondary-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="secondaryContactRelationship">Role / Relationship</Label>
+                        <Input
+                          id="secondaryContactRelationship"
+                          value={newClient.secondaryContactRelationship}
+                          onChange={(e) => setNewClient({ ...newClient, secondaryContactRelationship: e.target.value })}
+                          placeholder="e.g., Marketing Manager"
+                          data-testid="input-secondary-relationship"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="secondaryContactEmail">Email</Label>
+                        <Input
+                          id="secondaryContactEmail"
+                          type="email"
+                          value={newClient.secondaryContactEmail}
+                          onChange={(e) => setNewClient({ ...newClient, secondaryContactEmail: e.target.value })}
+                          data-testid="input-secondary-email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="secondaryContactPhone">Phone</Label>
+                        <Input
+                          id="secondaryContactPhone"
+                          value={newClient.secondaryContactPhone}
+                          onChange={(e) => setNewClient({ ...newClient, secondaryContactPhone: e.target.value })}
+                          data-testid="input-secondary-phone"
+                        />
+                      </div>
+                    </TabsContent>
+                  </ScrollArea>
+                </Tabs>
+
+                <div className="flex justify-end gap-2 pt-4 border-t mt-4">
                   <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Cancel
                   </Button>

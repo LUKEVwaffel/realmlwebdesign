@@ -40,6 +40,15 @@ const createClientRequestSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
+  addressStreet: z.string().optional(),
+  addressCity: z.string().optional(),
+  addressState: z.string().optional(),
+  addressZip: z.string().optional(),
+  existingWebsite: z.string().optional(),
+  secondaryContactName: z.string().optional(),
+  secondaryContactEmail: z.string().email().optional().or(z.literal("")),
+  secondaryContactPhone: z.string().optional(),
+  secondaryContactRelationship: z.string().optional(),
 });
 
 const createProjectRequestSchema = z.object({
@@ -470,7 +479,11 @@ export async function registerRoutes(
         console.log("Validation errors:", JSON.stringify(parsed.error.errors));
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
       }
-      const { businessLegalName, businessEmail, businessPhone, industry, firstName, lastName, email } = parsed.data;
+      const { 
+        businessLegalName, businessEmail, businessPhone, industry, firstName, lastName, email,
+        addressStreet, addressCity, addressState, addressZip, existingWebsite,
+        secondaryContactName, secondaryContactEmail, secondaryContactPhone, secondaryContactRelationship
+      } = parsed.data;
 
       const tempPassword = Math.random().toString(36).slice(-8);
       const passwordHash = await bcrypt.hash(tempPassword, 10);
@@ -490,6 +503,15 @@ export async function registerRoutes(
         businessEmail: (businessEmail && businessEmail.trim()) ? businessEmail : email,
         businessPhone,
         industry,
+        addressStreet,
+        addressCity,
+        addressState,
+        addressZip,
+        existingWebsite,
+        secondaryContactName,
+        secondaryContactEmail: (secondaryContactEmail && secondaryContactEmail.trim()) ? secondaryContactEmail : undefined,
+        secondaryContactPhone,
+        secondaryContactRelationship,
         createdBy: req.user!.id,
       });
 
