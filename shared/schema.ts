@@ -16,6 +16,11 @@ export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "o
 export const documentTypeEnum = pgEnum("document_type", ["contract", "invoice", "deliverable", "mockup", "asset", "other"]);
 export const signatureTypeEnum = pgEnum("signature_type", ["drawn", "typed"]);
 export const senderTypeEnum = pgEnum("sender_type", ["admin", "client"]);
+export const siteTypeEnum = pgEnum("site_type", ["business", "portfolio", "ecommerce", "blog", "landing_page", "nonprofit", "restaurant", "real_estate", "other"]);
+export const designStyleEnum = pgEnum("design_style", ["modern", "minimal", "bold", "elegant", "playful", "corporate", "creative", "classic"]);
+export const uploadCategoryEnum = pgEnum("upload_category", ["logo", "brand_assets", "photos", "content", "documents", "inspiration", "other"]);
+export const questionnaireStatusEnum = pgEnum("questionnaire_status", ["not_started", "in_progress", "completed"]);
+export const documentStatusEnum = pgEnum("document_status", ["draft", "ready_for_signature", "pending_signature", "signed"]);
 
 // Users Table
 export const users = pgTable("users", {
@@ -101,6 +106,49 @@ export const projects = pgTable("projects", {
   projectType: projectTypeEnum("project_type").notNull(),
   projectTypeOther: varchar("project_type_other", { length: 255 }),
   
+  // Site Settings (filled from questionnaire or admin)
+  siteType: siteTypeEnum("site_type"),
+  designStyle: designStyleEnum("design_style"),
+  primaryColor: varchar("primary_color", { length: 7 }),
+  secondaryColor: varchar("secondary_color", { length: 7 }),
+  targetAudience: text("target_audience"),
+  mainGoals: text("main_goals"),
+  competitors: text("competitors"),
+  uniqueSellingPoints: text("unique_selling_points"),
+  
+  // Content Settings
+  hasExistingContent: boolean("has_existing_content").default(false),
+  needsCopywriting: boolean("needs_copywriting").default(false),
+  needsPhotography: boolean("needs_photography").default(false),
+  
+  // Technical Settings
+  needsHosting: boolean("needs_hosting").default(true),
+  needsDomain: boolean("needs_domain").default(false),
+  domainName: varchar("domain_name", { length: 255 }),
+  needsEmail: boolean("needs_email").default(false),
+  needsSsl: boolean("needs_ssl").default(true),
+  
+  // Features Needed
+  needsContactForm: boolean("needs_contact_form").default(true),
+  needsBlog: boolean("needs_blog").default(false),
+  needsGallery: boolean("needs_gallery").default(false),
+  needsBooking: boolean("needs_booking").default(false),
+  needsPayments: boolean("needs_payments").default(false),
+  needsSocialIntegration: boolean("needs_social_integration").default(false),
+  additionalFeatures: text("additional_features"),
+  
+  // SEO & Marketing
+  needsSeo: boolean("needs_seo").default(true),
+  needsAnalytics: boolean("needs_analytics").default(true),
+  existingGoogleAnalytics: varchar("existing_google_analytics", { length: 50 }),
+  
+  // Maintenance Settings
+  maintenancePlan: varchar("maintenance_plan", { length: 50 }),
+  maintenanceStartDate: date("maintenance_start_date"),
+  
+  // Questionnaire Status
+  questionnaireStatus: questionnaireStatusEnum("questionnaire_status").default("not_started"),
+  
   // Services (stored as JSON array)
   servicesIncluded: text("services_included").array(),
   
@@ -182,6 +230,12 @@ export const documents = pgTable("documents", {
   fileSize: integer("file_size"),
   fileType: varchar("file_type", { length: 50 }),
   
+  // Document Status for workflow
+  documentStatus: documentStatusEnum("document_status").default("draft"),
+  
+  // Signature Fields Configuration (JSON for field positions in PDF)
+  signatureFields: text("signature_fields"),
+  
   // Signature (for contracts)
   requiresSignature: boolean("requires_signature").default(false),
   isSigned: boolean("is_signed").default(false),
@@ -195,6 +249,58 @@ export const documents = pgTable("documents", {
   
   // Metadata
   uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Questionnaire Responses Table
+export const questionnaireResponses = pgTable("questionnaire_responses", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  
+  // Business Description
+  businessDescription: text("business_description"),
+  productsServices: text("products_services"),
+  uniqueValue: text("unique_value"),
+  
+  // Target Audience
+  targetAudienceDescription: text("target_audience_description"),
+  targetAgeRange: varchar("target_age_range", { length: 50 }),
+  targetLocation: varchar("target_location", { length: 255 }),
+  
+  // Design Preferences
+  preferredColors: text("preferred_colors"),
+  avoidColors: text("avoid_colors"),
+  stylePreference: designStyleEnum("style_preference"),
+  inspirationWebsites: text("inspiration_websites"),
+  competitorWebsites: text("competitor_websites"),
+  
+  // Content
+  hasLogo: boolean("has_logo").default(false),
+  hasPhotos: boolean("has_photos").default(false),
+  hasWrittenContent: boolean("has_written_content").default(false),
+  contentNotes: text("content_notes"),
+  
+  // Functionality
+  requiredPages: text("required_pages"),
+  specialFeatures: text("special_features"),
+  integrations: text("integrations"),
+  
+  // Goals
+  primaryGoal: text("primary_goal"),
+  successMetrics: text("success_metrics"),
+  callToAction: text("call_to_action"),
+  
+  // Timeline & Budget
+  preferredLaunchDate: date("preferred_launch_date"),
+  budgetRange: varchar("budget_range", { length: 50 }),
+  additionalNotes: text("additional_notes"),
+  
+  // Status
+  submittedAt: timestamp("submitted_at"),
+  
+  // Metadata
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -222,6 +328,7 @@ export const messages = pgTable("messages", {
 export const clientUploads = pgTable("client_uploads", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
   
   // File Info
   fileName: varchar("file_name", { length: 255 }).notNull(),
@@ -230,8 +337,13 @@ export const clientUploads = pgTable("client_uploads", {
   fileType: varchar("file_type", { length: 100 }),
   
   // Categorization
-  category: varchar("category", { length: 50 }).notNull(),
+  category: uploadCategoryEnum("category").notNull(),
+  subcategory: varchar("subcategory", { length: 50 }),
   description: text("description"),
+  
+  // Admin Notes
+  adminNotes: text("admin_notes"),
+  isApproved: boolean("is_approved").default(false),
   
   // Metadata
   uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => users.id),
@@ -316,9 +428,25 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   payments: many(payments),
   documents: many(documents),
   messages: many(messages),
+  clientUploads: many(clientUploads),
+  questionnaire: one(questionnaireResponses, {
+    fields: [projects.id],
+    references: [questionnaireResponses.projectId],
+  }),
   portfolioItem: one(portfolioItems, {
     fields: [projects.id],
     references: [portfolioItems.projectId],
+  }),
+}));
+
+export const questionnaireResponsesRelations = relations(questionnaireResponses, ({ one }) => ({
+  client: one(clients, {
+    fields: [questionnaireResponses.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [questionnaireResponses.projectId],
+    references: [projects.id],
   }),
 }));
 
@@ -447,6 +575,12 @@ export const insertClientUploadSchema = createInsertSchema(clientUploads).omit({
   createdAt: true,
 });
 
+export const insertQuestionnaireResponseSchema = createInsertSchema(questionnaireResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -482,5 +616,7 @@ export type InsertPortfolioItem = z.infer<typeof insertPortfolioItemSchema>;
 export type PortfolioItem = typeof portfolioItems.$inferSelect;
 export type InsertClientUpload = z.infer<typeof insertClientUploadSchema>;
 export type ClientUpload = typeof clientUploads.$inferSelect;
+export type InsertQuestionnaireResponse = z.infer<typeof insertQuestionnaireResponseSchema>;
+export type QuestionnaireResponse = typeof questionnaireResponses.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

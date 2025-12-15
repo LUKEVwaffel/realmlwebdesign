@@ -68,7 +68,7 @@ export default function ClientUploads() {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const { data: uploadsData, isLoading } = useQuery({
+  const { data: uploadsData, isLoading } = useQuery<{ uploads: any[] }>({
     queryKey: ["/api/client/uploads"],
   });
 

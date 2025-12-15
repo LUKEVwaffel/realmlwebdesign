@@ -9,6 +9,8 @@ import {
   messages,
   activityLogs,
   portfolioItems,
+  questionnaireResponses,
+  clientUploads,
   type User,
   type InsertUser,
   type Client,
@@ -25,6 +27,10 @@ import {
   type InsertActivityLog,
   type PortfolioItem,
   type InsertPortfolioItem,
+  type QuestionnaireResponse,
+  type InsertQuestionnaireResponse,
+  type ClientUpload,
+  type InsertClientUpload,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -78,6 +84,20 @@ export interface IStorage {
   getPortfolioItems(): Promise<PortfolioItem[]>;
   createPortfolioItem(item: InsertPortfolioItem): Promise<PortfolioItem>;
 
+  // Questionnaire
+  getQuestionnaireByProjectId(projectId: string): Promise<QuestionnaireResponse | undefined>;
+  getQuestionnaireByClientId(clientId: string): Promise<QuestionnaireResponse | undefined>;
+  createQuestionnaire(data: InsertQuestionnaireResponse): Promise<QuestionnaireResponse>;
+  updateQuestionnaire(id: string, data: Partial<InsertQuestionnaireResponse>): Promise<QuestionnaireResponse | undefined>;
+
+  // Client Uploads
+  getClientUploadsByClientId(clientId: string): Promise<ClientUpload[]>;
+  getClientUploadsByProjectId(projectId: string): Promise<ClientUpload[]>;
+  getClientUploads(): Promise<ClientUpload[]>;
+  createClientUpload(upload: InsertClientUpload): Promise<ClientUpload>;
+  updateClientUpload(id: string, data: Partial<InsertClientUpload>): Promise<ClientUpload | undefined>;
+  deleteClientUpload(id: string): Promise<void>;
+
   // Analytics & Dashboard
   getAdminStats(): Promise<{
     totalClients: number;
@@ -89,7 +109,7 @@ export interface IStorage {
     averageProjectValue: number;
     averageProjectDuration: number;
   }>;
-  getProjectsByStatus(): Promise<{ status: string; count: number }[]>;
+  getProjectsByStatus(): Promise<{ status: string | null; count: number }[]>;
   getOverduePayments(): Promise<Payment[]>;
 }
 
@@ -372,6 +392,54 @@ export class DatabaseStorage implements IStorage {
       projectsByType: projectsByType.map(p => ({ type: p.type, count: p.count })),
       completionRateByMonth,
     };
+  }
+
+  // Questionnaire
+  async getQuestionnaireByProjectId(projectId: string): Promise<QuestionnaireResponse | undefined> {
+    const [response] = await db.select().from(questionnaireResponses).where(eq(questionnaireResponses.projectId, projectId));
+    return response;
+  }
+
+  async getQuestionnaireByClientId(clientId: string): Promise<QuestionnaireResponse | undefined> {
+    const [response] = await db.select().from(questionnaireResponses).where(eq(questionnaireResponses.clientId, clientId));
+    return response;
+  }
+
+  async createQuestionnaire(data: InsertQuestionnaireResponse): Promise<QuestionnaireResponse> {
+    const [response] = await db.insert(questionnaireResponses).values(data).returning();
+    return response;
+  }
+
+  async updateQuestionnaire(id: string, data: Partial<InsertQuestionnaireResponse>): Promise<QuestionnaireResponse | undefined> {
+    const [updated] = await db.update(questionnaireResponses).set({ ...data, updatedAt: new Date() }).where(eq(questionnaireResponses.id, id)).returning();
+    return updated;
+  }
+
+  // Client Uploads
+  async getClientUploadsByClientId(clientId: string): Promise<ClientUpload[]> {
+    return db.select().from(clientUploads).where(eq(clientUploads.clientId, clientId)).orderBy(desc(clientUploads.createdAt));
+  }
+
+  async getClientUploadsByProjectId(projectId: string): Promise<ClientUpload[]> {
+    return db.select().from(clientUploads).where(eq(clientUploads.projectId, projectId)).orderBy(desc(clientUploads.createdAt));
+  }
+
+  async getClientUploads(): Promise<ClientUpload[]> {
+    return db.select().from(clientUploads).orderBy(desc(clientUploads.createdAt));
+  }
+
+  async createClientUpload(upload: InsertClientUpload): Promise<ClientUpload> {
+    const [newUpload] = await db.insert(clientUploads).values(upload).returning();
+    return newUpload;
+  }
+
+  async updateClientUpload(id: string, data: Partial<InsertClientUpload>): Promise<ClientUpload | undefined> {
+    const [updated] = await db.update(clientUploads).set(data).where(eq(clientUploads.id, id)).returning();
+    return updated;
+  }
+
+  async deleteClientUpload(id: string): Promise<void> {
+    await db.delete(clientUploads).where(eq(clientUploads.id, id));
   }
 }
 

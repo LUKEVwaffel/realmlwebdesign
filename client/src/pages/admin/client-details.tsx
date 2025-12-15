@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { 
@@ -16,7 +16,17 @@ import {
   Key,
   Upload,
   Copy,
-  Check
+  Check,
+  Settings,
+  Palette,
+  Layout,
+  Type,
+  Image as ImageIcon,
+  ClipboardList,
+  Save,
+  ExternalLink,
+  Trash2,
+  FileSignature
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +47,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -92,6 +103,21 @@ export default function ClientDetails() {
     fileUrl: "",
     requiresSignature: false,
     visibleToClient: true,
+    signatureFields: [] as SignatureField[],
+  });
+
+  const [projectSettings, setProjectSettings] = useState({
+    projectType: "new_website",
+    status: "pending_payment",
+    totalCost: "0.00",
+    paymentStructure: "50_50",
+    domain: "",
+    hosting: "",
+    primaryColor: "#3B82F6",
+    secondaryColor: "#10B981",
+    fontFamily: "Inter",
+    layoutStyle: "modern",
+    specialRequirements: "",
   });
 
   const { data: client, isLoading } = useQuery<any>({
@@ -139,7 +165,7 @@ export default function ClientDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
       setIsDocumentDialogOpen(false);
-      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, visibleToClient: true });
+      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, visibleToClient: true, signatureFields: [] });
       toast({ title: "Document created", description: "New document has been added for this client." });
     },
     onError: (error: Error) => {
@@ -160,6 +186,49 @@ export default function ClientDetails() {
       toast({ title: "Failed to reset password", description: error.message, variant: "destructive" });
     },
   });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ projectId, data }: { projectId: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/admin/projects/${projectId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Settings saved", description: "Project settings have been updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to save settings", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Sync project settings when client data loads
+  useEffect(() => {
+    if (client?.projects?.[0]) {
+      const project = client.projects[0];
+      setProjectSettings({
+        projectType: project.projectType || "new_website",
+        status: project.status || "pending_payment",
+        totalCost: project.totalCost || "0.00",
+        paymentStructure: project.paymentStructure || "50_50",
+        domain: project.domain || "",
+        hosting: project.hosting || "",
+        primaryColor: project.primaryColor || "#3B82F6",
+        secondaryColor: project.secondaryColor || "#10B981",
+        fontFamily: project.fontFamily || "Inter",
+        layoutStyle: project.layoutStyle || "modern",
+        specialRequirements: project.specialRequirements || "",
+      });
+    }
+  }, [client]);
+
+  const handleSaveProjectSettings = () => {
+    const project = client?.projects?.[0];
+    if (!project) {
+      toast({ title: "No project found", description: "This client doesn't have a project yet.", variant: "destructive" });
+      return;
+    }
+    updateProjectMutation.mutate({ projectId: project.id, data: projectSettings });
+  };
 
   const handleCreateProject = (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,13 +404,295 @@ export default function ClientDetails() {
           </Card>
         </div>
 
-        <Tabs defaultValue="projects" className="w-full">
-          <TabsList>
+        <Tabs defaultValue="settings" className="w-full">
+          <TabsList className="flex-wrap gap-1">
+            <TabsTrigger value="settings" data-testid="tab-project-settings">Project Settings</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
             <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
             <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
+            <TabsTrigger value="uploads" data-testid="tab-uploads">Client Uploads</TabsTrigger>
             <TabsTrigger value="activity" data-testid="tab-activity">Activity</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="settings" className="mt-4">
+            <div className="space-y-6">
+              {client.projects?.length > 0 ? (
+                <>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle className="font-serif text-lg flex items-center gap-2">
+                          <Settings className="w-4 h-4" />
+                          Project Overview
+                        </CardTitle>
+                        <CardDescription>Core project configuration and status</CardDescription>
+                      </div>
+                      <Button 
+                        onClick={handleSaveProjectSettings} 
+                        disabled={updateProjectMutation.isPending}
+                        className="gap-2"
+                        data-testid="button-save-settings"
+                      >
+                        <Save className="w-4 h-4" />
+                        {updateProjectMutation.isPending ? "Saving..." : "Save Settings"}
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Project Type</Label>
+                          <Select 
+                            value={projectSettings.projectType} 
+                            onValueChange={(v) => setProjectSettings({ ...projectSettings, projectType: v })}
+                          >
+                            <SelectTrigger data-testid="select-settings-project-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new_website">New Website</SelectItem>
+                              <SelectItem value="redesign">Website Redesign</SelectItem>
+                              <SelectItem value="landing_page">Landing Page</SelectItem>
+                              <SelectItem value="ecommerce">E-commerce</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Project Status</Label>
+                          <Select 
+                            value={projectSettings.status} 
+                            onValueChange={(v) => setProjectSettings({ ...projectSettings, status: v })}
+                          >
+                            <SelectTrigger data-testid="select-settings-status">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="design_review">Design Review</SelectItem>
+                              <SelectItem value="development">Development</SelectItem>
+                              <SelectItem value="client_review">Client Review</SelectItem>
+                              <SelectItem value="revisions">Revisions</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="on_hold">On Hold</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Total Cost ($)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={projectSettings.totalCost}
+                            onChange={(e) => setProjectSettings({ ...projectSettings, totalCost: e.target.value })}
+                            placeholder="5000.00"
+                            data-testid="input-settings-total-cost"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Payment Structure</Label>
+                          <Select 
+                            value={projectSettings.paymentStructure} 
+                            onValueChange={(v) => setProjectSettings({ ...projectSettings, paymentStructure: v })}
+                          >
+                            <SelectTrigger data-testid="select-settings-payment-structure">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="50_50">50% Deposit / 50% Completion</SelectItem>
+                              <SelectItem value="full_upfront">Full Payment Upfront</SelectItem>
+                              <SelectItem value="custom">Custom Schedule</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="font-serif text-lg flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        Website Configuration
+                      </CardTitle>
+                      <CardDescription>Domain and hosting settings</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Domain Name</Label>
+                          <Input
+                            value={projectSettings.domain}
+                            onChange={(e) => setProjectSettings({ ...projectSettings, domain: e.target.value })}
+                            placeholder="example.com"
+                            data-testid="input-settings-domain"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Hosting Provider</Label>
+                          <Input
+                            value={projectSettings.hosting}
+                            onChange={(e) => setProjectSettings({ ...projectSettings, hosting: e.target.value })}
+                            placeholder="Vercel, Netlify, etc."
+                            data-testid="input-settings-hosting"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="font-serif text-lg flex items-center gap-2">
+                        <Palette className="w-4 h-4" />
+                        Design Preferences
+                      </CardTitle>
+                      <CardDescription>Colors, fonts, and layout style</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <Label>Primary Color</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="color"
+                              value={projectSettings.primaryColor}
+                              onChange={(e) => setProjectSettings({ ...projectSettings, primaryColor: e.target.value })}
+                              className="w-12 h-9 p-1 cursor-pointer"
+                              data-testid="input-settings-primary-color"
+                            />
+                            <Input
+                              value={projectSettings.primaryColor}
+                              onChange={(e) => setProjectSettings({ ...projectSettings, primaryColor: e.target.value })}
+                              className="flex-1"
+                              placeholder="#3B82F6"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Secondary Color</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="color"
+                              value={projectSettings.secondaryColor}
+                              onChange={(e) => setProjectSettings({ ...projectSettings, secondaryColor: e.target.value })}
+                              className="w-12 h-9 p-1 cursor-pointer"
+                              data-testid="input-settings-secondary-color"
+                            />
+                            <Input
+                              value={projectSettings.secondaryColor}
+                              onChange={(e) => setProjectSettings({ ...projectSettings, secondaryColor: e.target.value })}
+                              className="flex-1"
+                              placeholder="#10B981"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Font Family</Label>
+                          <Select 
+                            value={projectSettings.fontFamily} 
+                            onValueChange={(v) => setProjectSettings({ ...projectSettings, fontFamily: v })}
+                          >
+                            <SelectTrigger data-testid="select-settings-font">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Inter">Inter</SelectItem>
+                              <SelectItem value="Roboto">Roboto</SelectItem>
+                              <SelectItem value="Open Sans">Open Sans</SelectItem>
+                              <SelectItem value="Poppins">Poppins</SelectItem>
+                              <SelectItem value="Montserrat">Montserrat</SelectItem>
+                              <SelectItem value="Lato">Lato</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Layout Style</Label>
+                          <Select 
+                            value={projectSettings.layoutStyle} 
+                            onValueChange={(v) => setProjectSettings({ ...projectSettings, layoutStyle: v })}
+                          >
+                            <SelectTrigger data-testid="select-settings-layout">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="modern">Modern</SelectItem>
+                              <SelectItem value="classic">Classic</SelectItem>
+                              <SelectItem value="minimal">Minimal</SelectItem>
+                              <SelectItem value="bold">Bold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="font-serif text-lg flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4" />
+                        Client Questionnaire
+                      </CardTitle>
+                      <CardDescription>Track client questionnaire completion status</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between p-4 rounded-lg border">
+                        <div>
+                          <p className="font-medium">Questionnaire Status</p>
+                          <p className="text-sm text-muted-foreground">
+                            {client.projects[0]?.questionnaireStatus === "completed" 
+                              ? "Client has completed the questionnaire" 
+                              : client.projects[0]?.questionnaireStatus === "in_progress"
+                              ? "Client is working on the questionnaire"
+                              : "Client has not started the questionnaire"}
+                          </p>
+                        </div>
+                        <Badge className={
+                          client.projects[0]?.questionnaireStatus === "completed" 
+                            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                            : client.projects[0]?.questionnaireStatus === "in_progress"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                        }>
+                          {client.projects[0]?.questionnaireStatus?.replace(/_/g, " ") || "Not Started"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="font-serif text-lg flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Special Requirements
+                      </CardTitle>
+                      <CardDescription>Additional notes and requirements for this project</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Textarea
+                        value={projectSettings.specialRequirements}
+                        onChange={(e) => setProjectSettings({ ...projectSettings, specialRequirements: e.target.value })}
+                        placeholder="Enter any special requirements, notes, or client-specific instructions..."
+                        className="min-h-24"
+                        data-testid="textarea-settings-requirements"
+                      />
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center">
+                      <Settings className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                      <p className="text-muted-foreground">No project found for this client.</p>
+                      <p className="text-sm text-muted-foreground mt-2">Create a project first to configure settings.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="projects" className="mt-4">
             <Card>
@@ -566,7 +917,7 @@ export default function ClientDetails() {
                       Add Document
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className={newDocument.requiresSignature && newDocument.fileUrl ? "max-w-4xl" : undefined}>
                     <DialogHeader>
                       <DialogTitle>Create New Document</DialogTitle>
                       <DialogDescription>Add a document for this client to view/sign in their portal</DialogDescription>
@@ -621,10 +972,17 @@ export default function ClientDetails() {
                         <Switch
                           id="requires-signature"
                           checked={newDocument.requiresSignature}
-                          onCheckedChange={(checked) => setNewDocument({ ...newDocument, requiresSignature: checked })}
+                          onCheckedChange={(checked) => setNewDocument({ ...newDocument, requiresSignature: checked, signatureFields: checked ? newDocument.signatureFields : [] })}
                           data-testid="switch-requires-signature"
                         />
                       </div>
+                      {newDocument.requiresSignature && (
+                        <PDFSignatureEditor
+                          pdfUrl={newDocument.fileUrl || null}
+                          signatureFields={newDocument.signatureFields}
+                          onFieldsChange={(fields) => setNewDocument({ ...newDocument, signatureFields: fields })}
+                        />
+                      )}
                       <div className="flex items-center justify-between">
                         <Label htmlFor="visible-to-client">Visible to Client</Label>
                         <Switch
@@ -666,6 +1024,51 @@ export default function ClientDetails() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">No documents yet. Click "Add Document" to create one.</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="uploads" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Client Uploaded Files
+                </CardTitle>
+                <CardDescription>Files uploaded by the client for their project</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {client.uploads?.length > 0 ? (
+                  <div className="space-y-4">
+                    {client.uploads.map((upload: any) => (
+                      <div key={upload.id} className="flex items-center justify-between p-4 rounded-lg border" data-testid={`upload-${upload.id}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <Upload className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{upload.fileName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {upload.category} {upload.description && `- ${upload.description}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{upload.category}</Badge>
+                          {upload.fileUrl && (
+                            <Button variant="ghost" size="icon" asChild>
+                              <a href={upload.fileUrl} target="_blank" rel="noopener noreferrer" data-testid={`link-upload-${upload.id}`}>
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No files uploaded by client yet</p>
                 )}
               </CardContent>
             </Card>

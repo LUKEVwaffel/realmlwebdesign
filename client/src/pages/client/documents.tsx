@@ -66,7 +66,7 @@ export default function ClientDocuments() {
     },
   });
 
-  const documents = documentsData?.documents || [];
+  const documents = Array.isArray(documentsData) ? documentsData : [];
   const unsignedDocs = documents.filter((d: any) => d.requiresSignature && !d.isSigned);
   const signedDocs = documents.filter((d: any) => d.requiresSignature && d.isSigned);
   const otherDocs = documents.filter((d: any) => !d.requiresSignature);

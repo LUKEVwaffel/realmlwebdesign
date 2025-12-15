@@ -418,6 +418,72 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/client/questionnaire", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const questionnaire = await storage.getQuestionnaireByClientId(client.id);
+      if (!questionnaire) {
+        return res.json({ status: "not_started", responses: {} });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      console.error("Get questionnaire error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/client/questionnaire", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const projects = await storage.getProjectsByClientId(client.id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "No project found for this client" });
+      }
+      
+      const project = projects[0];
+      const { responses, status } = req.body;
+      
+      let questionnaire = await storage.getQuestionnaireByClientId(client.id);
+      
+      if (questionnaire) {
+        questionnaire = await storage.updateQuestionnaire(questionnaire.id, {
+          responses,
+          status,
+        });
+      } else {
+        questionnaire = await storage.createQuestionnaire({
+          projectId: project.id,
+          clientId: client.id,
+          responses,
+          status,
+        });
+      }
+
+      if (status === "completed" && responses) {
+        const projectUpdates: any = {};
+        if (responses.preferredColors) projectUpdates.primaryColor = responses.preferredColors;
+        if (responses.preferredFonts) projectUpdates.fontPreference = responses.preferredFonts;
+        if (responses.layoutPreference) projectUpdates.layoutPreference = responses.layoutPreference;
+        
+        if (Object.keys(projectUpdates).length > 0) {
+          await storage.updateProject(project.id, projectUpdates);
+        }
+      }
+
+      res.json(questionnaire);
+    } catch (error) {
+      console.error("Update questionnaire error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ ADMIN ROUTES ============
 
   app.get("/api/admin/dashboard", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
@@ -515,11 +581,26 @@ export async function registerRoutes(
         createdBy: req.user!.id,
       });
 
+      // Auto-create project for this client (1 client = 1 website)
+      const project = await storage.createProject({
+        clientId: client.id,
+        projectType: "new_website",
+        totalCost: "0.00",
+        status: "pending_payment",
+        questionnaireStatus: "not_started",
+      });
+
+      // Auto-create questionnaire placeholder for the project
+      await storage.createQuestionnaire({
+        clientId: client.id,
+        projectId: project.id,
+      });
+
       await storage.createActivityLog({
         userId: req.user!.id,
         clientId: client.id,
         action: "client_created",
-        description: `Created client: ${businessLegalName}`,
+        description: `Created client: ${businessLegalName} with project`,
         ipAddress: req.ip,
       });
 
@@ -546,6 +627,7 @@ export async function registerRoutes(
       const documents = await storage.getDocumentsByClientId(id);
       const messages = await storage.getMessagesByClientId(id);
       const activity = await storage.getActivityLogsByClientId(id);
+      const uploads = await storage.getClientUploadsByClientId(id);
       
       res.json({
         ...client,
@@ -555,6 +637,7 @@ export async function registerRoutes(
         documents,
         messages,
         activity,
+        uploads,
       });
     } catch (error) {
       console.error("Get client error:", error);
@@ -633,7 +716,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/documents", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const { clientId, title, documentType, description, fileUrl, requiresSignature, visibleToClient } = req.body;
+      const { clientId, title, documentType, description, fileUrl, requiresSignature, visibleToClient, signatureFields } = req.body;
       if (!clientId || !title) {
         return res.status(400).json({ error: "Client ID and title are required" });
       }
@@ -663,6 +746,7 @@ export async function registerRoutes(
         fileName,
         requiresSignature: requiresSignature || false,
         visibleToClient: visibleToClient !== false,
+        signatureFields: signatureFields ? JSON.stringify(signatureFields) : null,
       });
 
       await storage.createActivityLog({
@@ -723,6 +807,35 @@ export async function registerRoutes(
       res.json(project);
     } catch (error) {
       console.error("Create project error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // General project update endpoint
+  app.patch("/api/admin/projects/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const existingProject = await storage.getProject(id);
+      if (!existingProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = await storage.updateProject(id, req.body);
+      if (!project) {
+        return res.status(404).json({ error: "Failed to update project" });
+      }
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: project.clientId,
+        action: "project_updated",
+        description: `Updated project settings`,
+        ipAddress: req.ip,
+      });
+
+      res.json(project);
+    } catch (error) {
+      console.error("Update project error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
