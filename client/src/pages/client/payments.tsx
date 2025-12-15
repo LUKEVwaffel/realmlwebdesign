@@ -18,6 +18,30 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
+function downloadInvoice(paymentId: string, token: string) {
+  const url = `/api/payments/${paymentId}/invoice`;
+  fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to download invoice");
+      return res.blob();
+    })
+    .then((blob) => {
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `invoice-${paymentId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    })
+    .catch((err) => console.error("Download error:", err));
+}
+
 const paymentStatusStyles: Record<string, { bg: string; icon: any }> = {
   pending: { bg: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400", icon: Clock },
   paid: { bg: "bg-green-500/10 text-green-600 dark:text-green-400", icon: CheckCircle2 },
@@ -199,15 +223,17 @@ export default function ClientPayments() {
                                   )}
                                 </Button>
                               )}
-                              {payment.invoicePdfUrl && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  data-testid={`button-download-${payment.id}`}
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                data-testid={`button-download-${payment.id}`}
+                                onClick={() => {
+                                  const token = localStorage.getItem("token");
+                                  if (token) downloadInvoice(payment.id, token);
+                                }}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

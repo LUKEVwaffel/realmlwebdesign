@@ -18,6 +18,7 @@ import {
   sendPaymentConfirmationEmail,
   sendNewMessageNotificationEmail,
 } from "./emailService";
+import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -821,6 +822,108 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Verify session error:", error);
       res.status(500).json({ error: "Failed to verify payment" });
+    }
+  });
+
+  // ============ INVOICE ROUTES ============
+
+  app.get("/api/payments/:id/invoice", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      if (req.user!.role === "client") {
+        const client = await storage.getClientByUserId(req.user!.id);
+        if (!client || payment.clientId !== client.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
+      const client = await storage.getClient(payment.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const project = await storage.getProject(payment.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (!payment.invoiceNumber) {
+        const invoiceNumber = generateInvoiceNumber(payment.id, payment.createdAt);
+        await storage.updatePayment(id, { invoiceNumber });
+        payment.invoiceNumber = invoiceNumber;
+      }
+
+      const pdfBuffer = await generateInvoicePdf({
+        payment,
+        client,
+        project,
+        companyInfo: {
+          name: process.env.COMPANY_NAME || "Web Design Studio",
+          address: process.env.COMPANY_ADDRESS || "123 Design Street, Creative City, ST 12345",
+          phone: process.env.COMPANY_PHONE || "(555) 123-4567",
+          email: process.env.COMPANY_EMAIL || "hello@webdesignstudio.com",
+          website: process.env.COMPANY_WEBSITE || "www.webdesignstudio.com",
+        },
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${payment.invoiceNumber}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Generate invoice error:", error);
+      res.status(500).json({ error: "Failed to generate invoice" });
+    }
+  });
+
+  app.get("/api/admin/payments/:id/invoice/preview", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const client = await storage.getClient(payment.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const project = await storage.getProject(payment.projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const invoiceNumber = payment.invoiceNumber || generateInvoiceNumber(payment.id, payment.createdAt);
+
+      const pdfBuffer = await generateInvoicePdf({
+        payment: { ...payment, invoiceNumber },
+        client,
+        project,
+        companyInfo: {
+          name: process.env.COMPANY_NAME || "Web Design Studio",
+          address: process.env.COMPANY_ADDRESS || "123 Design Street, Creative City, ST 12345",
+          phone: process.env.COMPANY_PHONE || "(555) 123-4567",
+          email: process.env.COMPANY_EMAIL || "hello@webdesignstudio.com",
+          website: process.env.COMPANY_WEBSITE || "www.webdesignstudio.com",
+        },
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${invoiceNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Preview invoice error:", error);
+      res.status(500).json({ error: "Failed to generate invoice preview" });
     }
   });
 
