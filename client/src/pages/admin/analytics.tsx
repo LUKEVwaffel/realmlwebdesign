@@ -10,21 +10,34 @@ import {
   XCircle
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 const statusColors: Record<string, string> = {
-  pending_payment: "bg-yellow-500",
-  in_progress: "bg-blue-500",
-  design_review: "bg-purple-500",
-  development: "bg-cyan-500",
-  client_review: "bg-orange-500",
-  revisions: "bg-pink-500",
-  completed: "bg-green-500",
-  on_hold: "bg-gray-500",
-  cancelled: "bg-red-500",
+  pending_payment: "#eab308",
+  in_progress: "#3b82f6",
+  design_review: "#a855f7",
+  development: "#06b6d4",
+  client_review: "#f97316",
+  revisions: "#ec4899",
+  completed: "#22c55e",
+  on_hold: "#6b7280",
+  cancelled: "#ef4444",
 };
 
 const statusLabels: Record<string, string> = {
@@ -38,6 +51,16 @@ const statusLabels: Record<string, string> = {
   on_hold: "On Hold",
   cancelled: "Cancelled",
 };
+
+const projectTypeLabels: Record<string, string> = {
+  new_website: "New Website",
+  redesign: "Redesign",
+  landing_page: "Landing Page",
+  ecommerce: "E-Commerce",
+  other: "Other",
+};
+
+const CHART_COLORS = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308"];
 
 export default function AdminAnalytics() {
   const { data: analyticsData, isLoading } = useQuery({
@@ -57,7 +80,56 @@ export default function AdminAnalytics() {
 
   const projectsByStatus = analyticsData?.projectsByStatus || [];
   const revenueByMonth = analyticsData?.revenueByMonth || [];
+  const clientAcquisition = analyticsData?.clientAcquisition || [];
+  const projectMetrics = analyticsData?.projectMetrics || { projectsByType: [] };
   const topClients = analyticsData?.topClients || [];
+
+  const formattedRevenueData = [...revenueByMonth]
+    .reverse()
+    .slice(-12)
+    .map((item: any) => ({
+      month: item.month?.substring(5) || item.month,
+      revenue: parseFloat(item.revenue) || 0,
+    }));
+
+  const formattedClientData = [...clientAcquisition]
+    .reverse()
+    .slice(-12)
+    .map((item: any) => ({
+      month: item.month?.substring(5) || item.month,
+      clients: parseInt(item.count) || 0,
+    }));
+
+  const formattedProjectTypeData = (projectMetrics.projectsByType || []).map((item: any) => ({
+    name: projectTypeLabels[item.type] || item.type,
+    value: parseInt(item.count) || 0,
+  }));
+
+  const projectTypeTotal = formattedProjectTypeData.reduce((sum: number, item: any) => sum + item.value, 0);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card border border-border rounded-md p-2 shadow-md">
+          <p className="text-foreground text-sm font-medium">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm text-muted-foreground">
+              {entry.name}: {typeof entry.value === 'number' && entry.name === 'Revenue' 
+                ? `$${entry.value.toLocaleString()}`
+                : entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const formattedStatusData = projectsByStatus.map((item: any) => ({
+    name: statusLabels[item.status] || item.status,
+    value: parseInt(item.count) || 0,
+    fill: statusColors[item.status] || "#6b7280",
+  }));
 
   const metricCards = [
     {
@@ -178,49 +250,206 @@ export default function AdminAnalytics() {
           ))}
         </div>
 
+        {/* Revenue Over Time Chart */}
+        <Card className="border-border/50" data-testid="card-revenue-chart">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">Revenue Over Time</CardTitle>
+            <CardDescription>Monthly revenue for the past year</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-80 w-full" />
+            ) : formattedRevenueData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={formattedRevenueData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12 }}
+                    className="fill-muted-foreground"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    className="fill-muted-foreground"
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    contentStyle={{ 
+                      backgroundColor: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "var(--radius)",
+                    }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Bar 
+                    dataKey="revenue" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-80 flex items-center justify-center">
+                <div className="text-center">
+                  <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground">No revenue data yet</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Client Acquisition Trends */}
+          <Card className="border-border/50" data-testid="card-client-acquisition">
+            <CardHeader>
+              <CardTitle className="font-serif text-lg">Client Acquisition</CardTitle>
+              <CardDescription>New clients added each month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : formattedClientData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={256}>
+                  <LineChart data={formattedClientData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12 }}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      className="fill-muted-foreground"
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [value, "New Clients"]}
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                      }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="clients" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      dot={{ fill: "#3b82f6", strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                    <p className="text-muted-foreground">No client data yet</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Projects by Type */}
+          <Card className="border-border/50" data-testid="card-projects-by-type">
+            <CardHeader>
+              <CardTitle className="font-serif text-lg">Projects by Type</CardTitle>
+              <CardDescription>Distribution of project categories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : formattedProjectTypeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={256}>
+                  <PieChart>
+                    <Pie
+                      data={formattedProjectTypeData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {formattedProjectTypeData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [value, "Projects"]}
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                    <p className="text-muted-foreground">No project data yet</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Projects by Status */}
           <Card className="border-border/50" data-testid="card-projects-by-status">
             <CardHeader>
               <CardTitle className="font-serif text-lg">Projects by Status</CardTitle>
-              <CardDescription>Distribution of project statuses</CardDescription>
+              <CardDescription>Current project status distribution</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
-                  ))}
-                </div>
-              ) : projectsByStatus.length > 0 ? (
-                <div className="space-y-4">
-                  {projectsByStatus.map((item: any) => {
-                    const total = projectsByStatus.reduce((sum: number, s: any) => sum + s.count, 0);
-                    const percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
-                    return (
-                      <div key={item.status} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">
-                            {statusLabels[item.status] || item.status}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {item.count} ({percentage}%)
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${statusColors[item.status] || "bg-gray-500"} rounded-full transition-all`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <Skeleton className="h-64 w-full" />
+              ) : formattedStatusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={256}>
+                  <BarChart 
+                    data={formattedStatusData} 
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      tick={{ fontSize: 11 }}
+                      className="fill-muted-foreground"
+                      width={90}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [value, "Projects"]}
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {formattedStatusData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               ) : (
-                <div className="text-center py-8">
-                  <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-muted-foreground">No project data yet</p>
+                <div className="h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                    <p className="text-muted-foreground">No project data yet</p>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -277,46 +506,6 @@ export default function AdminAnalytics() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Revenue Over Time */}
-        <Card className="border-border/50" data-testid="card-revenue-chart">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Revenue Over Time</CardTitle>
-            <CardDescription>Monthly revenue for the past year</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : revenueByMonth.length > 0 ? (
-              <div className="h-64 flex items-end gap-2">
-                {revenueByMonth.map((item: any, index: number) => {
-                  const maxRevenue = Math.max(...revenueByMonth.map((r: any) => r.revenue));
-                  const heightPercent = maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
-                  return (
-                    <div
-                      key={index}
-                      className="flex-1 flex flex-col items-center gap-2"
-                    >
-                      <div 
-                        className="w-full bg-primary/80 rounded-t-md transition-all hover:bg-primary"
-                        style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                        title={`$${item.revenue.toLocaleString()}`}
-                      />
-                      <span className="text-xs text-muted-foreground">{item.month}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center">
-                <div className="text-center">
-                  <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-muted-foreground">No revenue data yet</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </PortalLayout>
   );

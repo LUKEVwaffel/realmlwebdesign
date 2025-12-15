@@ -608,8 +608,13 @@ export async function registerRoutes(
 
   app.get("/api/admin/analytics", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const stats = await storage.getAdminStats();
-      const projectsByStatus = await storage.getProjectsByStatus();
+      const [stats, projectsByStatus, revenueByMonth, clientAcquisition, projectMetrics] = await Promise.all([
+        storage.getAdminStats(),
+        storage.getProjectsByStatus(),
+        storage.getRevenueByMonth(),
+        storage.getClientAcquisitionByMonth(),
+        storage.getProjectCompletionMetrics(),
+      ]);
 
       const clientsList = await storage.getClients();
       const topClients = await Promise.all(
@@ -621,12 +626,16 @@ export async function registerRoutes(
       );
       topClients.sort((a, b) => b.totalValue - a.totalValue);
 
+      const cancelledCount = projectsByStatus.find(p => p.status === "cancelled")?.count || 0;
+
       res.json({
         stats,
         projectsByStatus,
         topClients,
-        revenueByMonth: [],
-        cancelledProjects: 0,
+        revenueByMonth,
+        clientAcquisition,
+        projectMetrics,
+        cancelledProjects: cancelledCount,
       });
     } catch (error) {
       console.error("Analytics error:", error);

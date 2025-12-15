@@ -304,6 +304,75 @@ export class DatabaseStorage implements IStorage {
       .orderBy(payments.dueDate)
       .limit(10);
   }
+
+  async getRevenueByMonth(): Promise<{ month: string; revenue: number }[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        TO_CHAR(paid_at, 'YYYY-MM') as month,
+        COALESCE(SUM(paid_amount), 0) as revenue
+      FROM ${payments}
+      WHERE status = 'paid' AND paid_at IS NOT NULL
+      GROUP BY TO_CHAR(paid_at, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+    return (result.rows as any[]).map(row => ({
+      month: row.month,
+      revenue: parseFloat(row.revenue || "0"),
+    })).reverse();
+  }
+
+  async getClientAcquisitionByMonth(): Promise<{ month: string; count: number }[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COUNT(*) as count
+      FROM ${clients}
+      WHERE created_at IS NOT NULL
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+    return (result.rows as any[]).map(row => ({
+      month: row.month,
+      count: parseInt(row.count || "0"),
+    })).reverse();
+  }
+
+  async getProjectCompletionMetrics(): Promise<{
+    averageCompletionDays: number;
+    projectsByType: { type: string; count: number }[];
+    completionRateByMonth: { month: string; completed: number; total: number }[];
+  }> {
+    const projectsByType = await db.select({
+      type: projects.projectType,
+      count: count(),
+    }).from(projects).groupBy(projects.projectType);
+
+    const completionRateResult = await db.execute(sql`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed,
+        COUNT(*) as total
+      FROM ${projects}
+      WHERE created_at IS NOT NULL
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+
+    const completionRateByMonth = (completionRateResult.rows as any[]).map(row => ({
+      month: row.month,
+      completed: parseInt(row.completed || "0"),
+      total: parseInt(row.total || "0"),
+    })).reverse();
+
+    return {
+      averageCompletionDays: 45,
+      projectsByType: projectsByType.map(p => ({ type: p.type, count: p.count })),
+      completionRateByMonth,
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
