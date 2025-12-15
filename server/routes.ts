@@ -672,6 +672,23 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/clients/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      await storage.deleteClient(id);
+
+      res.json({ success: true, message: "Client and all associated data deleted successfully" });
+    } catch (error) {
+      console.error("Delete client error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/admin/payments", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { clientId, description, amount, dueDate } = req.body;

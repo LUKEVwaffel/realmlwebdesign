@@ -12,7 +12,8 @@ import {
   Calendar,
   MapPin,
   Globe,
-  Users
+  Users,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,6 +70,7 @@ export default function AdminClients() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
   const [newClient, setNewClient] = useState({
     businessLegalName: "",
     businessEmail: "",
@@ -120,6 +132,28 @@ export default function AdminClients() {
       toast({
         title: "Failed to create client",
         description: errorMessage || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/clients/${clientId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients"] });
+      setClientToDelete(null);
+      toast({
+        title: "Client deleted",
+        description: "Client and all associated data have been removed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete client",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     },
@@ -465,6 +499,17 @@ export default function AdminClients() {
                                 <Phone className="w-4 h-4 mr-2" />
                                 Call Client
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setClientToDelete({ 
+                                  id: client.id, 
+                                  name: client.businessLegalName 
+                                })}
+                                data-testid={`button-delete-client-${client.id}`}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Client
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -494,6 +539,36 @@ export default function AdminClients() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                Are you sure you want to delete "{clientToDelete?.name}"? This action cannot be undone and will permanently remove:
+                <ul className="list-disc ml-6 mt-2 space-y-1 text-sm text-muted-foreground">
+                  <li>All project data</li>
+                  <li>All payment records</li>
+                  <li>All documents and uploads</li>
+                  <li>All messages and activity history</li>
+                  <li>The client's user account</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => clientToDelete && deleteMutation.mutate(clientToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Client"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalLayout>
   );
 }

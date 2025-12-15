@@ -46,6 +46,7 @@ export interface IStorage {
   getClients(): Promise<Client[]>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<void>;
 
   // Projects
   getProject(id: string): Promise<Project | undefined>;
@@ -158,6 +159,24 @@ export class DatabaseStorage implements IStorage {
   async updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined> {
     const [updated] = await db.update(clients).set({ ...data, updatedAt: new Date() }).where(eq(clients.id, id)).returning();
     return updated;
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    const client = await this.getClient(id);
+    if (!client) return;
+
+    await db.delete(clientUploads).where(eq(clientUploads.clientId, id));
+    await db.delete(activityLogs).where(eq(activityLogs.clientId, id));
+    await db.delete(messages).where(eq(messages.clientId, id));
+    await db.delete(documents).where(eq(documents.clientId, id));
+    await db.delete(payments).where(eq(payments.clientId, id));
+    await db.delete(questionnaireResponses).where(eq(questionnaireResponses.clientId, id));
+    await db.delete(projects).where(eq(projects.clientId, id));
+    await db.delete(clients).where(eq(clients.id, id));
+    
+    if (client.userId) {
+      await db.delete(users).where(eq(users.id, client.userId));
+    }
   }
 
   // Projects
