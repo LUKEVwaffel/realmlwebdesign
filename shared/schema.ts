@@ -135,11 +135,11 @@ export const projects = pgTable("projects", {
 // Payments Table
 export const payments = pgTable("payments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
   clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
   
   // Payment Details
-  paymentNumber: integer("payment_number").notNull(),
+  paymentNumber: integer("payment_number"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   description: varchar("description", { length: 255 }),
   dueDate: date("due_date"),
@@ -177,8 +177,8 @@ export const documents = pgTable("documents", {
   description: text("description"),
   
   // File Storage
-  fileUrl: varchar("file_url", { length: 500 }).notNull(),
-  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 500 }),
+  fileName: varchar("file_name", { length: 255 }),
   fileSize: integer("file_size"),
   fileType: varchar("file_type", { length: 50 }),
   
