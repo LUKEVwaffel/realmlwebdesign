@@ -34,7 +34,7 @@ if (!JWT_SECRET) {
 
 const createClientRequestSchema = z.object({
   businessLegalName: z.string().min(1, "Business name is required"),
-  businessEmail: z.string().email().optional(),
+  businessEmail: z.string().email().optional().or(z.literal("")),
   businessPhone: z.string().optional(),
   industry: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
@@ -487,7 +487,7 @@ export async function registerRoutes(
       const client = await storage.createClient({
         userId: user.id,
         businessLegalName,
-        businessEmail: businessEmail || email,
+        businessEmail: (businessEmail && businessEmail.trim()) ? businessEmail : email,
         businessPhone,
         industry,
         createdBy: req.user!.id,
