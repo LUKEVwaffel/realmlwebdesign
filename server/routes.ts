@@ -551,6 +551,12 @@ export async function registerRoutes(
         secondaryContactName, secondaryContactEmail, secondaryContactPhone, secondaryContactRelationship
       } = parsed.data;
 
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "A user with this email address already exists. Please use a different email." });
+      }
+
       const tempPassword = Math.random().toString(36).slice(-8);
       const passwordHash = await bcrypt.hash(tempPassword, 10);
 
