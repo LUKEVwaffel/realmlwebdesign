@@ -511,6 +511,35 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/clients/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const projects = await storage.getProjectsByClientId(id);
+      const payments = await storage.getPaymentsByClientId(id);
+      const documents = await storage.getDocumentsByClientId(id);
+      const messages = await storage.getMessagesByClientId(id);
+      const activity = await storage.getActivityLogsByClientId(id);
+      
+      res.json({
+        ...client,
+        user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone } : null,
+        projects,
+        payments,
+        documents,
+        messages,
+        activity,
+      });
+    } catch (error) {
+      console.error("Get client error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/projects", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const projectsList = await storage.getProjects();
