@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { FileText, Download, FileSignature, Eye, Check, X, Loader2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Download, FileSignature, Eye, Check, X, Loader2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Upload, Image } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import { FileUploader } from "@/components/FileUploader";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -55,6 +57,12 @@ export default function ClientDocuments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [pdfDimensions, setPdfDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadedFileUrl, setUploadedFileUrl] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const { data: documentsData, isLoading } = useQuery({
@@ -109,6 +117,49 @@ export default function ClientDocuments() {
       });
     },
   });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (data: { title: string; fileUrl: string; description?: string }) => {
+      const res = await apiRequest("POST", "/api/client/documents/upload", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      setUploadDialogOpen(false);
+      setUploadTitle("");
+      setUploadDescription("");
+      setUploadedFileUrl("");
+      setUploadedFileName(null);
+      toast({
+        title: "Document Uploaded",
+        description: "Your file has been uploaded successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadSubmit = () => {
+    if (!uploadTitle.trim() || !uploadedFileUrl) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a title and upload a file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    uploadMutation.mutate({
+      title: uploadTitle,
+      fileUrl: uploadedFileUrl,
+      description: uploadDescription || undefined,
+    });
+  };
 
   const documents = Array.isArray(documentsData) ? documentsData : [];
   const unsignedDocs = documents.filter((d: any) => d.requiresSignature && !d.isSigned);
@@ -171,13 +222,19 @@ export default function ClientDocuments() {
   return (
     <PortalLayout requiredRole="client">
       <div className="p-6 space-y-6">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-documents-title">
-            Documents
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            View and sign your project documents
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-documents-title">
+              Documents
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              View and sign your project documents
+            </p>
+          </div>
+          <Button onClick={() => setUploadDialogOpen(true)} data-testid="button-upload-document">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload File
+          </Button>
         </div>
 
         <Tabs defaultValue="all" className="space-y-6">
@@ -725,6 +782,116 @@ export default function ClientDocuments() {
                 </>
               ) : (
                 "Sign Document"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Document Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Upload File</DialogTitle>
+            <DialogDescription>
+              Upload documents, images, or other files for your project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="upload-title">Title</Label>
+              <Input
+                id="upload-title"
+                placeholder="Enter a title for this file"
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+                data-testid="input-upload-title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload-description">Description (optional)</Label>
+              <Textarea
+                id="upload-description"
+                placeholder="Add any notes or description..."
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                rows={3}
+                data-testid="input-upload-description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>File</Label>
+              <FileUploader
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"
+                maxSize={52428800}
+                buttonLabel={uploadedFileName ? `Replace: ${uploadedFileName}` : "Choose File"}
+                disabled={isUploading}
+                onUpload={async (file) => {
+                  setIsUploading(true);
+                  try {
+                    const res = await apiRequest("POST", "/api/client/documents/upload-url", {
+                      filename: file.name,
+                    });
+                    const { uploadURL, objectPath } = await res.json();
+
+                    await fetch(uploadURL, {
+                      method: "PUT",
+                      body: file,
+                      headers: {
+                        "Content-Type": file.type || "application/octet-stream",
+                      },
+                    });
+
+                    return { url: objectPath, objectPath };
+                  } finally {
+                    setIsUploading(false);
+                  }
+                }}
+                onComplete={(result) => {
+                  setUploadedFileUrl(result.objectPath);
+                  setUploadedFileName(result.file.name);
+                  if (!uploadTitle) {
+                    setUploadTitle(result.file.name.replace(/\.[^/.]+$/, ""));
+                  }
+                  toast({
+                    title: "File Ready",
+                    description: `${result.file.name} is ready to upload.`,
+                  });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Supported formats: PDF, DOC, DOCX, PNG, JPG, JPEG, GIF, WEBP (max 50MB)
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUploadDialogOpen(false);
+                setUploadTitle("");
+                setUploadDescription("");
+                setUploadedFileUrl("");
+                setUploadedFileName(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={!uploadTitle.trim() || !uploadedFileUrl || uploadMutation.isPending}
+              data-testid="button-submit-upload"
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload File
+                </>
               )}
             </Button>
           </DialogFooter>

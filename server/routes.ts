@@ -387,12 +387,22 @@ export async function registerRoutes(
   app.post("/api/client/documents/upload-url", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const { filename } = req.body;
-      if (!filename) {
+      if (!filename || typeof filename !== 'string') {
         return res.status(400).json({ error: "Filename is required" });
       }
+
+      // Security: validate filename and extension
+      const allowedExtensions = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+      const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 255);
+      const ext = sanitizedFilename.toLowerCase().slice(sanitizedFilename.lastIndexOf('.'));
+      
+      if (!allowedExtensions.includes(ext)) {
+        return res.status(400).json({ error: "Invalid file type. Allowed: PDF, DOC, DOCX, PNG, JPG, JPEG, GIF, WEBP" });
+      }
+
       const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
-      const { uploadURL, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename);
+      const { uploadURL, objectPath } = await objectStorageService.getObjectEntityUploadURL(sanitizedFilename);
       res.json({ uploadURL, objectPath });
     } catch (error) {
       console.error("Get client upload URL error:", error);
@@ -404,8 +414,13 @@ export async function registerRoutes(
   app.post("/api/client/documents/upload", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const { title, fileUrl, description } = req.body;
-      if (!title || !fileUrl) {
+      if (!title || typeof title !== 'string' || !fileUrl || typeof fileUrl !== 'string') {
         return res.status(400).json({ error: "Title and file are required" });
+      }
+
+      // Security: validate fileUrl is from our object storage
+      if (!fileUrl.startsWith('/objects/')) {
+        return res.status(400).json({ error: "Invalid file URL" });
       }
 
       const client = await storage.getClientByUserId(req.user!.id);
@@ -419,9 +434,9 @@ export async function registerRoutes(
       const document = await storage.createDocument({
         clientId: client.id,
         projectId: projectId || null,
-        title,
+        title: title.slice(0, 255),
         documentType: "upload",
-        description: description || `Uploaded by client: ${req.user!.firstName} ${req.user!.lastName}`,
+        description: (description || `Uploaded by client: ${req.user!.firstName} ${req.user!.lastName}`).slice(0, 1000),
         fileUrl,
         requiresSignature: false,
         requiresAcknowledgment: false,
