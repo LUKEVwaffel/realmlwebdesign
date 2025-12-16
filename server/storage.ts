@@ -11,6 +11,9 @@ import {
   portfolioItems,
   questionnaireResponses,
   clientUploads,
+  closingQuestionnaires,
+  emailNotifications,
+  hostingCredentials,
   type User,
   type InsertUser,
   type Client,
@@ -31,6 +34,12 @@ import {
   type InsertQuestionnaireResponse,
   type ClientUpload,
   type InsertClientUpload,
+  type ClosingQuestionnaire,
+  type InsertClosingQuestionnaire,
+  type EmailNotification,
+  type InsertEmailNotification,
+  type HostingCredentials,
+  type InsertHostingCredentials,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -98,6 +107,20 @@ export interface IStorage {
   createClientUpload(upload: InsertClientUpload): Promise<ClientUpload>;
   updateClientUpload(id: string, data: Partial<InsertClientUpload>): Promise<ClientUpload | undefined>;
   deleteClientUpload(id: string): Promise<void>;
+
+  // Closing Questionnaires
+  getClosingQuestionnaireByProjectId(projectId: string): Promise<ClosingQuestionnaire | undefined>;
+  createClosingQuestionnaire(data: InsertClosingQuestionnaire): Promise<ClosingQuestionnaire>;
+  updateClosingQuestionnaire(id: string, data: Partial<InsertClosingQuestionnaire>): Promise<ClosingQuestionnaire | undefined>;
+
+  // Email Notifications
+  createEmailNotification(data: InsertEmailNotification): Promise<EmailNotification>;
+  getEmailNotificationsByClientId(clientId: string): Promise<EmailNotification[]>;
+
+  // Hosting Credentials
+  getHostingCredentialsByProjectId(projectId: string): Promise<HostingCredentials | undefined>;
+  createHostingCredentials(data: InsertHostingCredentials): Promise<HostingCredentials>;
+  updateHostingCredentials(id: string, data: Partial<InsertHostingCredentials>): Promise<HostingCredentials | undefined>;
 
   // Analytics & Dashboard
   getAdminStats(): Promise<{
@@ -459,6 +482,48 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClientUpload(id: string): Promise<void> {
     await db.delete(clientUploads).where(eq(clientUploads.id, id));
+  }
+
+  // Closing Questionnaires
+  async getClosingQuestionnaireByProjectId(projectId: string): Promise<ClosingQuestionnaire | undefined> {
+    const [response] = await db.select().from(closingQuestionnaires).where(eq(closingQuestionnaires.projectId, projectId));
+    return response;
+  }
+
+  async createClosingQuestionnaire(data: InsertClosingQuestionnaire): Promise<ClosingQuestionnaire> {
+    const [response] = await db.insert(closingQuestionnaires).values(data).returning();
+    return response;
+  }
+
+  async updateClosingQuestionnaire(id: string, data: Partial<InsertClosingQuestionnaire>): Promise<ClosingQuestionnaire | undefined> {
+    const [updated] = await db.update(closingQuestionnaires).set(data).where(eq(closingQuestionnaires.id, id)).returning();
+    return updated;
+  }
+
+  // Email Notifications
+  async createEmailNotification(data: InsertEmailNotification): Promise<EmailNotification> {
+    const [notification] = await db.insert(emailNotifications).values(data).returning();
+    return notification;
+  }
+
+  async getEmailNotificationsByClientId(clientId: string): Promise<EmailNotification[]> {
+    return db.select().from(emailNotifications).where(eq(emailNotifications.clientId, clientId)).orderBy(desc(emailNotifications.createdAt));
+  }
+
+  // Hosting Credentials
+  async getHostingCredentialsByProjectId(projectId: string): Promise<HostingCredentials | undefined> {
+    const [credentials] = await db.select().from(hostingCredentials).where(eq(hostingCredentials.projectId, projectId));
+    return credentials;
+  }
+
+  async createHostingCredentials(data: InsertHostingCredentials): Promise<HostingCredentials> {
+    const [credentials] = await db.insert(hostingCredentials).values(data).returning();
+    return credentials;
+  }
+
+  async updateHostingCredentials(id: string, data: Partial<InsertHostingCredentials>): Promise<HostingCredentials | undefined> {
+    const [updated] = await db.update(hostingCredentials).set({ ...data, updatedAt: new Date() }).where(eq(hostingCredentials.id, id)).returning();
+    return updated;
   }
 }
 

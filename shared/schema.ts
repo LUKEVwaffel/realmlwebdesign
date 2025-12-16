@@ -11,9 +11,38 @@ export const clientSourceEnum = pgEnum("client_source", ["referral", "cold_call"
 export const priorityEnum = pgEnum("priority", ["high", "normal", "low"]);
 export const projectTypeEnum = pgEnum("project_type", ["new_website", "redesign", "landing_page", "ecommerce", "other"]);
 export const paymentStructureEnum = pgEnum("payment_structure", ["50_50", "custom", "full_upfront"]);
-export const projectStatusEnum = pgEnum("project_status", ["pending_payment", "in_progress", "design_review", "development", "client_review", "revisions", "completed", "on_hold", "cancelled"]);
+export const projectStatusEnum = pgEnum("project_status", [
+  "created",                    // Phase 1: Client created, awaiting questionnaire
+  "questionnaire_pending",      // Phase 2: Awaiting client questionnaire
+  "questionnaire_complete",     // Phase 2 complete: Questionnaire submitted
+  "tos_pending",               // Phase 3: Terms of Service awaiting signature
+  "tos_signed",                // Phase 3 complete: TOS signed
+  "design_pending",            // Phase 4: Design consultation pending
+  "design_approved",           // Phase 4 complete: Design requirements approved
+  "in_development",            // Phase 5: Website being built
+  "hosting_setup",             // Phase 6: Hosting account setup
+  "deployed",                  // Phase 6 complete: Website deployed
+  "client_review",             // Phase 7: Final review by client
+  "approved",                  // Phase 7 complete: Client approved
+  "closing",                   // Phase 8: Project closure in progress
+  "closed",                    // Phase 8 complete: Project closed
+  "on_hold",                   // Paused
+  "cancelled"                  // Cancelled
+]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]);
-export const documentTypeEnum = pgEnum("document_type", ["contract", "invoice", "deliverable", "mockup", "asset", "upload", "other"]);
+export const documentTypeEnum = pgEnum("document_type", [
+  "contract",
+  "invoice", 
+  "deliverable",
+  "mockup",
+  "asset",
+  "upload",
+  "terms_of_service",      // Auto-generated TOS
+  "design_requirements",   // Design consultation document
+  "hosting_instructions",  // Hosting setup guide
+  "completion_document",   // Final project completion doc
+  "other"
+]);
 export const signatureTypeEnum = pgEnum("signature_type", ["drawn", "typed"]);
 export const senderTypeEnum = pgEnum("sender_type", ["admin", "client"]);
 export const siteTypeEnum = pgEnum("site_type", ["business", "portfolio", "ecommerce", "blog", "landing_page", "nonprofit", "restaurant", "real_estate", "other"]);
@@ -172,8 +201,18 @@ export const projects = pgTable("projects", {
   actualCompletionDate: date("actual_completion_date"),
   
   // Status
-  status: projectStatusEnum("status").default("pending_payment"),
+  status: projectStatusEnum("status").default("created"),
   progressPercentage: integer("progress_percentage").default(0),
+  
+  // Phase Timestamps (for workflow tracking)
+  questionnaireCompletedAt: timestamp("questionnaire_completed_at"),
+  tosSignedAt: timestamp("tos_signed_at"),
+  designApprovedAt: timestamp("design_approved_at"),
+  developmentStartedAt: timestamp("development_started_at"),
+  hostingSetupAt: timestamp("hosting_setup_at"),
+  deployedAt: timestamp("deployed_at"),
+  clientApprovedAt: timestamp("client_approved_at"),
+  closedAt: timestamp("closed_at"),
   
   // Portfolio display
   visibleOnPortfolio: boolean("visible_on_portfolio").default(false),
@@ -399,6 +438,93 @@ export const portfolioItems = pgTable("portfolio_items", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Closing Questionnaire (Phase 8 feedback)
+export const closingQuestionnaires = pgTable("closing_questionnaires", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  
+  // Satisfaction Ratings (1-5)
+  overallSatisfaction: integer("overall_satisfaction"),
+  designSatisfaction: integer("design_satisfaction"),
+  functionalitySatisfaction: integer("functionality_satisfaction"),
+  communicationSatisfaction: integer("communication_satisfaction"),
+  timelineSatisfaction: integer("timeline_satisfaction"),
+  
+  // Feedback
+  whatWorkedWell: text("what_worked_well"),
+  whatCouldImprove: text("what_could_improve"),
+  testimonial: text("testimonial"),
+  canUseTestimonial: boolean("can_use_testimonial").default(false),
+  
+  // Referral
+  wouldRefer: boolean("would_refer"),
+  referralNotes: text("referral_notes"),
+  
+  // Additional
+  additionalComments: text("additional_comments"),
+  
+  // Status
+  isSkipped: boolean("is_skipped").default(false),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Email Notifications Log
+export const emailNotifications = pgTable("email_notifications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id),
+  
+  // Email Details
+  templateType: varchar("template_type", { length: 100 }).notNull(),
+  recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  
+  // Status
+  sentAt: timestamp("sent_at"),
+  failedAt: timestamp("failed_at"),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Hosting Credentials (secure storage for Phase 6)
+export const hostingCredentials = pgTable("hosting_credentials", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  
+  // Hosting Info
+  hostingProvider: varchar("hosting_provider", { length: 100 }),
+  accountEmail: varchar("account_email", { length: 255 }),
+  temporaryPassword: varchar("temporary_password", { length: 255 }),
+  adminUrl: varchar("admin_url", { length: 500 }),
+  
+  // Domain Info
+  domainName: varchar("domain_name", { length: 255 }),
+  domainRegistrar: varchar("domain_registrar", { length: 100 }),
+  domainExpiryDate: date("domain_expiry_date"),
+  
+  // Status
+  credentialsReceived: boolean("credentials_received").default(false),
+  configurationComplete: boolean("configuration_complete").default(false),
+  accessReturned: boolean("access_returned").default(false),
+  
+  // Notes
+  adminNotes: text("admin_notes"),
+  
+  // Metadata
+  receivedAt: timestamp("received_at"),
+  configuredAt: timestamp("configured_at"),
+  returnedAt: timestamp("returned_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   clients: many(clients, { relationName: "userClient" }),
@@ -591,6 +717,22 @@ export const insertQuestionnaireResponseSchema = createInsertSchema(questionnair
   updatedAt: true,
 });
 
+export const insertClosingQuestionnaireSchema = createInsertSchema(closingQuestionnaires).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEmailNotificationSchema = createInsertSchema(emailNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertHostingCredentialsSchema = createInsertSchema(hostingCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -628,5 +770,11 @@ export type InsertClientUpload = z.infer<typeof insertClientUploadSchema>;
 export type ClientUpload = typeof clientUploads.$inferSelect;
 export type InsertQuestionnaireResponse = z.infer<typeof insertQuestionnaireResponseSchema>;
 export type QuestionnaireResponse = typeof questionnaireResponses.$inferSelect;
+export type InsertClosingQuestionnaire = z.infer<typeof insertClosingQuestionnaireSchema>;
+export type ClosingQuestionnaire = typeof closingQuestionnaires.$inferSelect;
+export type InsertEmailNotification = z.infer<typeof insertEmailNotificationSchema>;
+export type EmailNotification = typeof emailNotifications.$inferSelect;
+export type InsertHostingCredentials = z.infer<typeof insertHostingCredentialsSchema>;
+export type HostingCredentials = typeof hostingCredentials.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
