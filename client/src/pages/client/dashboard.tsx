@@ -19,28 +19,44 @@ import { useAuth } from "@/lib/auth-context";
 import { formatDistanceToNow, format } from "date-fns";
 
 const statusColors: Record<string, string> = {
-  pending_payment: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  in_progress: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  design_review: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  development: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  created: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+  questionnaire_pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  questionnaire_complete: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  tos_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  tos_signed: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  design_pending: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  design_approved: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  in_development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  hosting_setup: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  deployed: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  delivery: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   client_review: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  revisions: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   completed: "bg-green-500/10 text-green-600 dark:text-green-400",
   on_hold: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
   cancelled: "bg-red-500/10 text-red-600 dark:text-red-400",
 };
 
-const statusLabels: Record<string, string> = {
-  pending_payment: "Pending Payment",
-  in_progress: "In Progress",
-  design_review: "Design Review",
-  development: "Development",
-  client_review: "Client Review",
-  revisions: "Revisions",
-  completed: "Completed",
-  on_hold: "On Hold",
-  cancelled: "Cancelled",
+const phaseInfo: Record<string, { label: string; phase: number; action: string; description: string }> = {
+  created: { label: "Getting Started", phase: 1, action: "Complete your profile", description: "Your account is set up! Complete the questionnaire to help us understand your vision." },
+  questionnaire_pending: { label: "Questionnaire", phase: 2, action: "Complete questionnaire", description: "Please fill out the project questionnaire so we can understand your needs." },
+  questionnaire_complete: { label: "Questionnaire Complete", phase: 2, action: "Awaiting review", description: "Thank you! We're reviewing your questionnaire responses." },
+  tos_pending: { label: "Terms of Service", phase: 3, action: "Sign terms", description: "Please review and sign the Terms of Service to proceed with your project." },
+  tos_signed: { label: "TOS Complete", phase: 3, action: "Awaiting design phase", description: "Great! We're preparing your design requirements document." },
+  design_pending: { label: "Design Review", phase: 4, action: "Review design", description: "Please review and approve your design requirements document." },
+  design_approved: { label: "Design Approved", phase: 4, action: "Development starting", description: "Excellent! Your design has been approved and development is beginning." },
+  in_development: { label: "In Development", phase: 5, action: "Building your site", description: "Our team is actively building your website. We'll notify you when it's ready for review." },
+  hosting_setup: { label: "Hosting Setup", phase: 6, action: "Setting up hosting", description: "We're configuring your hosting and domain settings." },
+  deployed: { label: "Deployed", phase: 6, action: "Site is live", description: "Your website has been deployed to the hosting server." },
+  delivery: { label: "Final Delivery", phase: 7, action: "Review final site", description: "Your website is ready for final review before handoff." },
+  client_review: { label: "Your Review", phase: 7, action: "Approve final delivery", description: "Please review your completed website and let us know of any final changes." },
+  completed: { label: "Project Complete", phase: 8, action: "Site is yours!", description: "Congratulations! Your project is complete and your website is live." },
+  on_hold: { label: "On Hold", phase: 0, action: "Contact us", description: "Your project is currently on hold. Please contact us for more information." },
+  cancelled: { label: "Cancelled", phase: 0, action: "Contact us", description: "This project has been cancelled. Please contact us if you have questions." },
 };
+
+const statusLabels: Record<string, string> = Object.fromEntries(
+  Object.entries(phaseInfo).map(([key, val]) => [key, val.label])
+);
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -127,6 +143,46 @@ export default function ClientDashboard() {
                   </div>
                 )}
               </div>
+
+              {phaseInfo[project.status] && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Current Phase:</span>
+                      <Badge variant="outline" className="font-medium">
+                        Phase {phaseInfo[project.status]?.phase || 0} of 8
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Next Action:</span>
+                      <span className="text-sm font-medium">{phaseInfo[project.status]?.action}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {phaseInfo[project.status]?.description}
+                  </p>
+                  <div className="flex gap-1 mt-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((phase) => {
+                      const currentPhase = phaseInfo[project.status]?.phase || 0;
+                      const isComplete = currentPhase > phase;
+                      const isCurrent = currentPhase === phase;
+                      return (
+                        <div
+                          key={phase}
+                          className={`flex-1 h-2 rounded-full transition-all ${
+                            isCurrent 
+                              ? "bg-primary" 
+                              : isComplete 
+                                ? "bg-green-500" 
+                                : "bg-muted"
+                          }`}
+                          data-testid={`phase-bar-${phase}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (

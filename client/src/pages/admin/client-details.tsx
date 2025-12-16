@@ -54,15 +54,39 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 const statusColors: Record<string, string> = {
-  pending_payment: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  in_progress: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  design_review: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  development: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  created: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+  questionnaire_pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  questionnaire_complete: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  tos_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  tos_signed: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  design_pending: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  design_approved: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  in_development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  hosting_setup: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  deployed: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  delivery: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   client_review: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  revisions: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   completed: "bg-green-500/10 text-green-600 dark:text-green-400",
   on_hold: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
   cancelled: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+const phaseLabels: Record<string, { label: string; phase: number; description: string }> = {
+  created: { label: "Client Setup", phase: 1, description: "Client account created and ready for onboarding" },
+  questionnaire_pending: { label: "Questionnaire", phase: 2, description: "Waiting for client to complete questionnaire" },
+  questionnaire_complete: { label: "Questionnaire Complete", phase: 2, description: "Client has completed the questionnaire" },
+  tos_pending: { label: "Terms of Service", phase: 3, description: "Waiting for client to sign Terms of Service" },
+  tos_signed: { label: "TOS Signed", phase: 3, description: "Client has signed Terms of Service" },
+  design_pending: { label: "Design Review", phase: 4, description: "Waiting for design requirements approval" },
+  design_approved: { label: "Design Approved", phase: 4, description: "Design requirements have been approved" },
+  in_development: { label: "Development", phase: 5, description: "Website is being built" },
+  hosting_setup: { label: "Hosting Setup", phase: 6, description: "Setting up hosting and domain configuration" },
+  deployed: { label: "Deployed", phase: 6, description: "Website has been deployed to hosting" },
+  delivery: { label: "Final Delivery", phase: 7, description: "Final review and handoff to client" },
+  client_review: { label: "Client Review", phase: 7, description: "Client is reviewing the final delivery" },
+  completed: { label: "Project Complete", phase: 8, description: "Project has been successfully completed" },
+  on_hold: { label: "On Hold", phase: 0, description: "Project is temporarily paused" },
+  cancelled: { label: "Cancelled", phase: 0, description: "Project has been cancelled" },
 };
 
 const paymentStatusColors: Record<string, string> = {
@@ -112,7 +136,7 @@ export default function ClientDetails() {
 
   const [projectSettings, setProjectSettings] = useState({
     projectType: "new_website",
-    status: "pending_payment",
+    status: "questionnaire_pending",
     totalCost: "0.00",
     paymentStructure: "50_50",
     domain: "",
@@ -437,6 +461,54 @@ export default function ClientDetails() {
             <div className="space-y-6">
               {client.projects?.length > 0 ? (
                 <>
+                  <Card data-testid="card-workflow-phases">
+                    <CardHeader>
+                      <CardTitle className="font-serif text-lg flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4" />
+                        Project Workflow
+                      </CardTitle>
+                      <CardDescription>
+                        {phaseLabels[projectSettings.status]?.description || "Current project phase"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((phase) => {
+                          const currentPhase = phaseLabels[projectSettings.status]?.phase || 0;
+                          const isComplete = currentPhase > phase;
+                          const isCurrent = currentPhase === phase;
+                          const phaseNames = ["Setup", "Questionnaire", "Terms", "Design", "Development", "Hosting", "Delivery", "Complete"];
+                          
+                          return (
+                            <div 
+                              key={phase}
+                              className={`flex-1 min-w-[100px] text-center p-3 rounded-lg border transition-all ${
+                                isCurrent 
+                                  ? "bg-primary/10 border-primary text-primary font-medium" 
+                                  : isComplete 
+                                    ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400" 
+                                    : "bg-muted/50 border-transparent text-muted-foreground"
+                              }`}
+                              data-testid={`phase-indicator-${phase}`}
+                            >
+                              <div className={`text-xs mb-1 ${isCurrent ? "text-primary" : ""}`}>Phase {phase}</div>
+                              <div className="text-sm font-medium">{phaseNames[phase - 1]}</div>
+                              {isComplete && <Check className="w-4 h-4 mx-auto mt-1 text-green-600 dark:text-green-400" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 p-3 bg-muted/30 rounded-lg flex items-center gap-3">
+                        <Badge className={statusColors[projectSettings.status] || ""}>
+                          {phaseLabels[projectSettings.status]?.label || projectSettings.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {phaseLabels[projectSettings.status]?.description}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                       <div>
@@ -486,13 +558,19 @@ export default function ClientDetails() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending_payment">Pending Payment</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="design_review">Design Review</SelectItem>
-                              <SelectItem value="development">Development</SelectItem>
-                              <SelectItem value="client_review">Client Review</SelectItem>
-                              <SelectItem value="revisions">Revisions</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="created">Phase 1: Client Setup</SelectItem>
+                              <SelectItem value="questionnaire_pending">Phase 2: Questionnaire Pending</SelectItem>
+                              <SelectItem value="questionnaire_complete">Phase 2: Questionnaire Complete</SelectItem>
+                              <SelectItem value="tos_pending">Phase 3: TOS Pending</SelectItem>
+                              <SelectItem value="tos_signed">Phase 3: TOS Signed</SelectItem>
+                              <SelectItem value="design_pending">Phase 4: Design Pending</SelectItem>
+                              <SelectItem value="design_approved">Phase 4: Design Approved</SelectItem>
+                              <SelectItem value="in_development">Phase 5: In Development</SelectItem>
+                              <SelectItem value="hosting_setup">Phase 6: Hosting Setup</SelectItem>
+                              <SelectItem value="deployed">Phase 6: Deployed</SelectItem>
+                              <SelectItem value="delivery">Phase 7: Final Delivery</SelectItem>
+                              <SelectItem value="client_review">Phase 7: Client Review</SelectItem>
+                              <SelectItem value="completed">Phase 8: Completed</SelectItem>
                               <SelectItem value="on_hold">On Hold</SelectItem>
                               <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
