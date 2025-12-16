@@ -557,7 +557,8 @@ export async function sendWorkflowEmail(
     }
 
     const project = projectId ? await storage.getProject(projectId) : null;
-    const firstName = client.contactName?.split(" ")[0] || client.businessName || "Client";
+    const firstName = user.firstName || client.businessLegalName?.split(" ")[0] || "Client";
+    const projectName = project ? `${client.businessLegalName} ${project.projectType.replace(/_/g, " ")}` : "Your Project";
     const baseUrl = process.env.APP_URL || "https://your-app.replit.app";
     const portalUrl = `${baseUrl}/client`;
 
@@ -574,10 +575,10 @@ export async function sendWorkflowEmail(
         success = await sendTosSignedConfirmationEmail(user.email, firstName, portalUrl);
         break;
       case "design_requirements_ready":
-        success = await sendDesignRequirementsReadyEmail(user.email, firstName, project?.name || "Your Project", portalUrl);
+        success = await sendDesignRequirementsReadyEmail(user.email, firstName, projectName, portalUrl);
         break;
       case "design_approved":
-        success = await sendDesignApprovedEmail(user.email, firstName, project?.name || "Your Project", portalUrl);
+        success = await sendDesignApprovedEmail(user.email, firstName, projectName, portalUrl);
         break;
       case "hosting_setup_instructions":
         success = await sendHostingSetupEmail(user.email, firstName, portalUrl);
@@ -586,8 +587,8 @@ export async function sendWorkflowEmail(
         success = await sendProjectReadyForReviewEmail(
           user.email,
           firstName,
-          project?.name || "Your Project",
-          additionalData?.websiteUrl || project?.websiteUrl || null,
+          projectName,
+          additionalData?.websiteUrl || (project?.domainName ? `https://${project.domainName}` : null),
           portalUrl
         );
         break;
@@ -598,8 +599,8 @@ export async function sendWorkflowEmail(
         success = await sendProjectCompletedEmail(
           user.email,
           firstName,
-          project?.name || "Your Project",
-          additionalData?.websiteUrl || project?.websiteUrl || null,
+          projectName,
+          additionalData?.websiteUrl || (project?.domainName ? `https://${project.domainName}` : null),
           portalUrl
         );
         break;
@@ -611,11 +612,11 @@ export async function sendWorkflowEmail(
     await storage.createEmailNotification({
       clientId,
       projectId,
-      emailType,
+      templateType: emailType,
       subject: emailType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
       recipientEmail: user.email,
-      status: success ? "sent" : "failed",
-      sentAt: success ? new Date() : null,
+      sentAt: success ? new Date() : undefined,
+      failedAt: success ? undefined : new Date(),
     });
 
     return success;

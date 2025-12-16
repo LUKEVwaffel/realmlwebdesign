@@ -17,6 +17,7 @@ import {
   sendProjectStatusUpdateEmail,
   sendPaymentConfirmationEmail,
   sendNewMessageNotificationEmail,
+  sendWorkflowEmail,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import {
@@ -66,7 +67,23 @@ const createProjectRequestSchema = z.object({
 });
 
 const updateProjectStatusSchema = z.object({
-  status: z.enum(["pending_payment", "in_progress", "design_review", "development", "client_review", "revisions", "completed", "on_hold", "cancelled"]),
+  status: z.enum([
+    "created",
+    "questionnaire_pending",
+    "questionnaire_complete",
+    "tos_pending",
+    "tos_signed",
+    "design_pending",
+    "design_approved",
+    "in_development",
+    "hosting_setup",
+    "deployed",
+    "delivery",
+    "client_review",
+    "completed",
+    "on_hold",
+    "cancelled"
+  ]),
 });
 
 const sendMessageSchema = z.object({
@@ -341,6 +358,34 @@ export async function registerRoutes(
         ipAddress: req.ip,
       });
 
+      if (doc.documentType === "terms_of_service" && doc.projectId) {
+        const project = await storage.getProject(doc.projectId);
+        if (project && project.status === "tos_pending") {
+          await storage.updateProject(doc.projectId, {
+            status: "design_pending",
+            tosSignedAt: new Date(),
+          });
+          
+          sendWorkflowEmail(client.id, doc.projectId, "tos_signed_confirmation").catch(err => 
+            console.error("Failed to send TOS signed confirmation email:", err)
+          );
+        }
+      }
+      
+      if (doc.documentType === "design_requirements" && doc.projectId) {
+        const project = await storage.getProject(doc.projectId);
+        if (project && project.status === "design_pending") {
+          await storage.updateProject(doc.projectId, {
+            status: "in_development",
+            designApprovedAt: new Date(),
+          });
+          
+          sendWorkflowEmail(client.id, doc.projectId, "design_approved").catch(err => 
+            console.error("Failed to send design approved email:", err)
+          );
+        }
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error("Sign document error:", error);
@@ -559,32 +604,51 @@ export async function registerRoutes(
       }
       
       const project = projects[0];
-      const { responses, status } = req.body;
+      const { status, ...questionnaireFields } = req.body;
       
       let questionnaire = await storage.getQuestionnaireByClientId(client.id);
       
+      const updateData: any = {
+        ...questionnaireFields,
+      };
+      if (status === "completed") {
+        updateData.submittedAt = new Date();
+      }
+      
       if (questionnaire) {
-        questionnaire = await storage.updateQuestionnaire(questionnaire.id, {
-          responses,
-          status,
-        });
+        questionnaire = await storage.updateQuestionnaire(questionnaire.id, updateData);
       } else {
         questionnaire = await storage.createQuestionnaire({
           projectId: project.id,
           clientId: client.id,
-          responses,
-          status,
+          ...updateData,
         });
       }
 
-      if (status === "completed" && responses) {
-        const projectUpdates: any = {};
-        if (responses.preferredColors) projectUpdates.primaryColor = responses.preferredColors;
-        if (responses.preferredFonts) projectUpdates.fontPreference = responses.preferredFonts;
-        if (responses.layoutPreference) projectUpdates.layoutPreference = responses.layoutPreference;
+      if (status === "completed") {
+        const projectUpdates: any = {
+          questionnaireStatus: "completed",
+          questionnaireCompletedAt: new Date(),
+        };
+        if (questionnaireFields.preferredColors) projectUpdates.primaryColor = questionnaireFields.preferredColors;
         
-        if (Object.keys(projectUpdates).length > 0) {
-          await storage.updateProject(project.id, projectUpdates);
+        if (project.status === "created" || project.status === "questionnaire_pending") {
+          projectUpdates.status = "tos_pending";
+        }
+        
+        await storage.updateProject(project.id, projectUpdates);
+        
+        await storage.createActivityLog({
+          clientId: client.id,
+          userId: req.user!.id,
+          action: "questionnaire_completed",
+          description: "Client completed project questionnaire",
+        });
+        
+        if (project.status === "created" || project.status === "questionnaire_pending") {
+          sendWorkflowEmail(client.id, project.id, "tos_ready").catch(err => 
+            console.error("Failed to send TOS ready email:", err)
+          );
         }
       }
 
@@ -703,7 +767,7 @@ export async function registerRoutes(
         clientId: client.id,
         projectType: "new_website",
         totalCost: "0.00",
-        status: "pending_payment",
+        status: "questionnaire_pending",
         questionnaireStatus: "not_started",
       });
 
