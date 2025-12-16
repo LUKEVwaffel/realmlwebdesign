@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { storage } from "./storage";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : undefined;
@@ -279,4 +280,347 @@ export async function sendNewMessageNotificationEmail(
     subject: `New message from ${senderName}`,
     html: baseTemplate(content),
   });
+}
+
+export type WorkflowEmailType = 
+  | "questionnaire_reminder"
+  | "tos_ready"
+  | "tos_signed_confirmation"
+  | "design_requirements_ready"
+  | "design_approved"
+  | "development_started"
+  | "development_milestone"
+  | "hosting_setup_instructions"
+  | "project_ready_for_review"
+  | "closing_questionnaire_request"
+  | "project_completed";
+
+export async function sendQuestionnaireReminderEmail(
+  email: string,
+  firstName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Reminder: Complete Your Questionnaire</h2>
+    <p>Hi ${firstName},</p>
+    <p>We noticed you haven't completed your project questionnaire yet. This is an essential step to help us understand your needs and move forward with your project.</p>
+    <p>Please take a few minutes to complete it at your earliest convenience.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/questionnaire" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Questionnaire</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Reminder: Complete Your Project Questionnaire",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendTosReadyEmail(
+  email: string,
+  firstName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Terms of Service Ready</h2>
+    <p>Hi ${firstName},</p>
+    <p>Thank you for completing your project questionnaire! We've prepared your Terms of Service agreement based on your requirements.</p>
+    <p>Please review and sign the document to proceed with your project.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/documents" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Sign</a>
+    </div>
+    <p style="color: #666; font-size: 14px;">Once signed, we'll prepare your design requirements document.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Terms of Service Ready for Review",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendTosSignedConfirmationEmail(
+  email: string,
+  firstName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Terms of Service Signed</h2>
+    <p>Hi ${firstName},</p>
+    <p>Thank you for signing your Terms of Service agreement! Your project is now officially underway.</p>
+    <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Next steps:</strong></p>
+      <ol style="margin: 10px 0;">
+        <li>We'll prepare your Design Requirements document</li>
+        <li>You'll receive a notification when it's ready for review</li>
+        <li>Once approved, development will begin</li>
+      </ol>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/dashboard" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Terms of Service Signed - Thank You!",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendDesignRequirementsReadyEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Design Requirements Ready</h2>
+    <p>Hi ${firstName},</p>
+    <p>Based on our discussions and your questionnaire responses, we've prepared your Design Requirements document for <strong>${projectName}</strong>.</p>
+    <p>Please review the document and approve it to begin development.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/documents" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Review Design Requirements</a>
+    </div>
+    <p style="color: #666; font-size: 14px;">If you have any questions or need changes, please let us know through the portal.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Design Requirements Document Ready for Review",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendDesignApprovedEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Development Starting!</h2>
+    <p>Hi ${firstName},</p>
+    <p>Thank you for approving your design requirements! We're now beginning development on <strong>${projectName}</strong>.</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>What to expect:</strong></p>
+      <ul style="margin: 10px 0;">
+        <li>Regular progress updates through your dashboard</li>
+        <li>Milestone notifications as we complete key features</li>
+        <li>Opportunity to provide feedback during development</li>
+      </ul>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/dashboard" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Track Progress</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Design Approved - Development Starting!",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendHostingSetupEmail(
+  email: string,
+  firstName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Action Required: Hosting Setup</h2>
+    <p>Hi ${firstName},</p>
+    <p>Your website is nearly complete! Before we can make it live, we need you to set up your hosting account.</p>
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>What's needed:</strong></p>
+      <ul style="margin: 10px 0;">
+        <li>Domain registration or transfer instructions</li>
+        <li>Hosting account setup steps</li>
+        <li>Required credentials to share with us</li>
+      </ul>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/documents" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Instructions</a>
+    </div>
+    <p style="color: #666; font-size: 14px;">Once you've completed the setup, please submit your hosting credentials through the secure form in your portal.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Action Required: Hosting Account Setup",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendProjectReadyForReviewEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  websiteUrl: string | null,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Your Website is Ready!</h2>
+    <p>Hi ${firstName},</p>
+    <p>Congratulations! Your website <strong>${projectName}</strong> is now ready for your final review!</p>
+    ${websiteUrl ? `
+    <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;">Preview your site: <a href="${websiteUrl}" style="color: #1a1a2e;">${websiteUrl}</a></p>
+    </div>` : ""}
+    <p>Please review everything carefully and let us know if you need any final adjustments.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/dashboard" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Review Your Project</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Your Website is Ready for Final Review!",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendClosingQuestionnaireEmail(
+  email: string,
+  firstName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Please Share Your Feedback</h2>
+    <p>Hi ${firstName},</p>
+    <p>As we finalize your project, we'd love to hear your feedback! Please take a moment to complete our closing questionnaire.</p>
+    <p>Your feedback helps us improve our services and serve you better in the future.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/questionnaire/closing" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Complete Questionnaire</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Please Share Your Feedback",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendProjectCompletedEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  websiteUrl: string | null,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Project Completed!</h2>
+    <p>Hi ${firstName},</p>
+    <p>Your project <strong>${projectName}</strong> has been successfully completed!</p>
+    ${websiteUrl ? `
+    <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;">Your live website: <a href="${websiteUrl}" style="color: #1a1a2e;">${websiteUrl}</a></p>
+    </div>` : ""}
+    <p>A completion document has been added to your portal with all the important details about your project, including:</p>
+    <ul>
+      <li>Project summary and deliverables</li>
+      <li>Support information</li>
+      <li>Maintenance recommendations</li>
+    </ul>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/documents" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Documents</a>
+    </div>
+    <p>It's been a pleasure working with you. If you need any future assistance, we're just a message away!</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Project Completed - Thank You!",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendWorkflowEmail(
+  clientId: string,
+  projectId: string | null,
+  emailType: WorkflowEmailType,
+  additionalData?: { milestoneTitle?: string; websiteUrl?: string }
+): Promise<boolean> {
+  try {
+    const client = await storage.getClient(clientId);
+    if (!client?.userId) {
+      console.error(`[Email] Cannot send ${emailType}: client not found`);
+      return false;
+    }
+
+    const user = await storage.getUser(client.userId);
+    if (!user?.email) {
+      console.error(`[Email] Cannot send ${emailType}: user email not found`);
+      return false;
+    }
+
+    const project = projectId ? await storage.getProject(projectId) : null;
+    const firstName = client.contactName?.split(" ")[0] || client.businessName || "Client";
+    const baseUrl = process.env.APP_URL || "https://your-app.replit.app";
+    const portalUrl = `${baseUrl}/client`;
+
+    let success = false;
+
+    switch (emailType) {
+      case "questionnaire_reminder":
+        success = await sendQuestionnaireReminderEmail(user.email, firstName, portalUrl);
+        break;
+      case "tos_ready":
+        success = await sendTosReadyEmail(user.email, firstName, portalUrl);
+        break;
+      case "tos_signed_confirmation":
+        success = await sendTosSignedConfirmationEmail(user.email, firstName, portalUrl);
+        break;
+      case "design_requirements_ready":
+        success = await sendDesignRequirementsReadyEmail(user.email, firstName, project?.name || "Your Project", portalUrl);
+        break;
+      case "design_approved":
+        success = await sendDesignApprovedEmail(user.email, firstName, project?.name || "Your Project", portalUrl);
+        break;
+      case "hosting_setup_instructions":
+        success = await sendHostingSetupEmail(user.email, firstName, portalUrl);
+        break;
+      case "project_ready_for_review":
+        success = await sendProjectReadyForReviewEmail(
+          user.email,
+          firstName,
+          project?.name || "Your Project",
+          additionalData?.websiteUrl || project?.websiteUrl || null,
+          portalUrl
+        );
+        break;
+      case "closing_questionnaire_request":
+        success = await sendClosingQuestionnaireEmail(user.email, firstName, portalUrl);
+        break;
+      case "project_completed":
+        success = await sendProjectCompletedEmail(
+          user.email,
+          firstName,
+          project?.name || "Your Project",
+          additionalData?.websiteUrl || project?.websiteUrl || null,
+          portalUrl
+        );
+        break;
+      default:
+        console.log(`[Email] Unknown email type: ${emailType}`);
+        return false;
+    }
+
+    await storage.createEmailNotification({
+      clientId,
+      projectId,
+      emailType,
+      subject: emailType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+      recipientEmail: user.email,
+      status: success ? "sent" : "failed",
+      sentAt: success ? new Date() : null,
+    });
+
+    return success;
+  } catch (error) {
+    console.error(`[Email] Error sending ${emailType}:`, error);
+    return false;
+  }
 }
