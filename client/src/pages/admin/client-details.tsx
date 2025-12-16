@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
+import { FileUploader } from "@/components/FileUploader";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -105,6 +106,8 @@ export default function ClientDetails() {
     visibleToClient: true,
     signatureFields: [] as SignatureField[],
   });
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [projectSettings, setProjectSettings] = useState({
     projectType: "new_website",
@@ -166,6 +169,7 @@ export default function ClientDetails() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
       setIsDocumentDialogOpen(false);
       setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, visibleToClient: true, signatureFields: [] });
+      setUploadedFileName(null);
       toast({ title: "Document created", description: "New document has been added for this client." });
     },
     onError: (error: Error) => {
@@ -958,14 +962,45 @@ export default function ClientDetails() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>PDF URL (optional)</Label>
-                        <Input
-                          value={newDocument.fileUrl}
-                          onChange={(e) => setNewDocument({ ...newDocument, fileUrl: e.target.value })}
-                          placeholder="https://example.com/document.pdf"
-                          data-testid="input-document-url"
+                        <Label>Upload Document (PDF, DOC, DOCX)</Label>
+                        <FileUploader
+                          accept=".pdf,.doc,.docx"
+                          maxSize={52428800}
+                          buttonLabel={uploadedFileName ? `Replace: ${uploadedFileName}` : "Choose File"}
+                          disabled={isUploading}
+                          onUpload={async (file) => {
+                            setIsUploading(true);
+                            try {
+                              const res = await apiRequest("POST", "/api/admin/documents/upload-url", { 
+                                filename: file.name 
+                              });
+                              const { uploadURL, objectPath } = await res.json();
+                              
+                              await fetch(uploadURL, {
+                                method: "PUT",
+                                body: file,
+                                headers: {
+                                  "Content-Type": file.type || "application/octet-stream",
+                                },
+                              });
+                              
+                              return { url: objectPath, objectPath };
+                            } finally {
+                              setIsUploading(false);
+                            }
+                          }}
+                          onComplete={(result) => {
+                            setNewDocument({ ...newDocument, fileUrl: result.objectPath });
+                            setUploadedFileName(result.file.name);
+                            toast({ title: "File uploaded", description: `${result.file.name} uploaded successfully` });
+                          }}
                         />
-                        <p className="text-xs text-muted-foreground">Link to an external PDF file</p>
+                        {uploadedFileName && (
+                          <p className="text-xs text-green-600 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            Uploaded: {uploadedFileName}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center justify-between">
                         <Label htmlFor="requires-signature">Requires Signature</Label>

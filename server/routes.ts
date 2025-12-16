@@ -1510,6 +1510,39 @@ export async function registerRoutes(
     }
   });
 
+  // ============ OBJECT STORAGE ROUTES ============
+
+  // Get upload URL for document files (admin only)
+  app.post("/api/admin/documents/upload-url", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { filename } = req.body;
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const { uploadURL, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename);
+      res.json({ uploadURL, objectPath });
+    } catch (error) {
+      console.error("Get upload URL error:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Serve uploaded objects
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    try {
+      const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving object:", error);
+      const { ObjectNotFoundError } = await import("./objectStorage");
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ PUBLIC ROUTES ============
 
   app.get("/api/portfolio", async (req, res) => {
