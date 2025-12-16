@@ -22,10 +22,9 @@ export const projectStatusEnum = pgEnum("project_status", [
   "in_development",            // Phase 5: Website being built
   "hosting_setup",             // Phase 6: Hosting account setup
   "deployed",                  // Phase 6 complete: Website deployed
+  "delivery",                  // Phase 7: Final delivery and handoff
   "client_review",             // Phase 7: Final review by client
-  "approved",                  // Phase 7 complete: Client approved
-  "closing",                   // Phase 8: Project closure in progress
-  "closed",                    // Phase 8 complete: Project closed
+  "completed",                 // Phase 8: Project completed
   "on_hold",                   // Paused
   "cancelled"                  // Cancelled
 ]);
@@ -211,8 +210,8 @@ export const projects = pgTable("projects", {
   developmentStartedAt: timestamp("development_started_at"),
   hostingSetupAt: timestamp("hosting_setup_at"),
   deployedAt: timestamp("deployed_at"),
-  clientApprovedAt: timestamp("client_approved_at"),
-  closedAt: timestamp("closed_at"),
+  deliveryStartedAt: timestamp("delivery_started_at"),
+  completedAt: timestamp("completed_at"),
   
   // Portfolio display
   visibleOnPortfolio: boolean("visible_on_portfolio").default(false),
