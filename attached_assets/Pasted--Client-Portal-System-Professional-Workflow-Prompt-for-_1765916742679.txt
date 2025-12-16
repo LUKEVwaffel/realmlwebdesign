@@ -1,0 +1,353 @@
+# Client Portal System - Professional Workflow Prompt for Replit
+
+## System Overview
+You are building a professional client portal system for a web design and development agency. This system manages the complete client lifecycle from onboarding through project completion and closure. The system must enforce strict workflow gates to ensure quality, professionalism, and comprehensive documentation at every stage.
+
+## Core Workflow Requirements
+
+### Phase 1: Client Creation & Initial Setup
+**Admin Actions:**
+1. Admin logs into portal at `/portal/login`
+2. Navigates to "Clients" page
+3. Clicks "Add Client" button
+4. Fills out client intake form with three tabs:
+   - **Basic Info:** Business name, contact first/last name, email, phone, industry, existing website (if any)
+   - **Address:** Street, city, state, zip code
+   - **Contacts:** Optional secondary contact details
+5. Submits form
+
+**Automated System Actions:**
+- Create user account with temporary password
+- Generate client record and default project
+- Create placeholder for client questionnaire
+- Send welcome email with login credentials to client email
+
+**Gating Rule:** No further progress until client credentials are created and welcome email is sent.
+
+---
+
+### Phase 2: Client Questionnaire Completion
+**Client Actions:**
+1. Client receives welcome email with temporary password
+2. Client logs in at `/portal/login` using email and temporary password
+3. Client is prompted to change password on first login (security requirement)
+4. Client accesses their personalized dashboard
+5. Client completes comprehensive project questionnaire
+
+**Admin View:**
+- Admin dashboard shows "Awaiting Questionnaire" status for this client
+- Admin **CANNOT** proceed to next phase until questionnaire is submitted
+- System displays notification: "Client questionnaire pending - no further action available"
+
+**Gating Rule:** Questionnaire must be 100% completed and submitted before Terms of Service phase unlocks.
+
+---
+
+### Phase 3: Terms of Service Agreement
+**Automated System Actions (After Questionnaire Submission):**
+- System automatically generates Terms of Service document
+- Pre-populates with business name and current date
+- Sends TOS document to client with electronic signature requirement
+- System sends automated email notification to client: "Your Terms of Service is ready for review and signature"
+
+**Admin View:**
+- Admin dashboard shows "Terms of Service Pending Signature" status
+- Admin **CANNOT** proceed to design/communication phase
+- All other workflow steps are locked until signature is received
+
+**Client Actions:**
+- Client receives email notification
+- Client reviews Terms of Service in portal
+- Client signs electronically via integrated signature tool (e.g., DocuSign integration or custom signature capture)
+- System timestamps and stores signed document
+
+**Automated Email Notification:**
+- Send confirmation email to client: "Terms of Service signed successfully"
+- Send notification to admin: "Client [Name] has signed Terms of Service - ready for design consultation"
+
+**Gating Rule:** Terms of Service MUST be signed before any design work, communication, or meetings can be scheduled.
+
+---
+
+### Phase 4: Design Consultation & Requirements Gathering
+**Admin Actions (After TOS Signed):**
+1. Schedule meeting/call with client (phone, video, or in-person)
+2. Conduct design consultation covering:
+   - Color preferences and brand colors
+   - Design style preferences (modern, classic, minimalist, etc.)
+   - Layout preferences
+   - Specific features or functionality requirements
+   - Content structure and navigation needs
+   - Any specific inspiration or competitor websites
+3. Admin creates comprehensive "Design Requirements Document" in portal
+4. Document includes all discussed elements, preferences, and specifications
+5. Admin sends document to client for review and approval
+
+**Client Actions:**
+- Client receives automated email: "Your Design Requirements Document is ready for review"
+- Client reviews document in portal
+- Client can request changes or approve as-is
+- Client provides final approval signature/confirmation
+
+**Automated Email Notifications:**
+- Client approval triggers email to admin: "Design document approved - ready to begin development"
+- Email to client: "Design approved - development phase beginning"
+
+**Skip Option:** 
+- If client doesn't have specific preferences for certain elements, allow "Skip" button
+- Skipped items are noted as "Client preference: Designer's discretion"
+- Document still requires final approval even with skipped items
+
+**Gating Rule:** Design Requirements Document must be approved and signed off before development work begins.
+
+---
+
+### Phase 5: Website Development
+**Admin Actions:**
+1. Admin begins website development based on approved design document
+2. System status updates to "In Development"
+3. Estimated timeline: 1-3 business days (or as specified in project agreement)
+4. Admin has no direct client communication during this phase (professional boundary)
+
+**Client View:**
+- Client dashboard shows "Website in Development" status
+- Optional: Progress indicator or milestone updates
+- No action required from client during this phase
+
+**Automated Email System:**
+- Any document uploads, status changes, or activities related to this client automatically trigger email notifications to client
+- Examples: "New document uploaded," "Project status update," "Development milestone reached"
+
+**Gating Rule:** Development continues until website is complete and ready for client review.
+
+---
+
+### Phase 6: Hosting Account Setup
+**Admin Actions (Concurrent with Development):**
+1. System generates detailed hosting account setup instructions
+2. Instructions specify recommended hosting provider
+3. Document includes step-by-step guide for:
+   - Creating account in client's own name
+   - Selecting appropriate hosting plan
+   - Providing temporary credentials to admin team
+4. Admin sends "Hosting Setup Instructions" document to client
+
+**Automated Email:**
+- Client receives: "Action Required: Create Your Hosting Account"
+- Includes link to instruction document
+- Emphasizes that account must be in their name for ownership and control
+
+**Client Actions:**
+1. Client creates hosting account following provided instructions
+2. Client provides temporary admin credentials through secure portal form
+3. System notifies admin when credentials are received
+
+**Admin Actions (After Credentials Received):**
+1. Admin logs into client's hosting account using temporary credentials
+2. Admin purchases domain name (1 year included in project fee)
+3. Admin configures hosting settings, DNS, SSL certificate
+4. Admin deploys completed website to hosting environment
+5. Admin documents all configurations for client records
+6. Admin removes own access and returns full administrative control to client
+
+**Automated Email:**
+- Client receives: "Your website is now live! Access credentials and documentation attached"
+- Includes documentation of all hosting settings and configurations
+- Reminder: Client responsible for renewals after first year
+
+**Gating Rule:** Website cannot be delivered until hosting is properly configured and live.
+
+---
+
+### Phase 7: Final Website Delivery & Review
+**Admin Actions:**
+1. Admin sends final website delivery notification
+2. Includes:
+   - Live website URL
+   - All access credentials
+   - Complete documentation
+   - User guide/training materials
+   - Hosting renewal reminders
+3. Request client final review and approval
+
+**Client Actions:**
+1. Client receives automated email: "Your website is complete and ready for review"
+2. Client reviews live website
+3. Client provides final approval or requests minor adjustments (within revision limits)
+4. Once satisfied, client provides final sign-off
+
+**Automated Email:**
+- Final approval triggers: "Thank you for your business! Please complete closing questionnaire"
+
+**Gating Rule:** Final approval must be received before project closure process begins.
+
+---
+
+### Phase 8: Project Closure Process
+**Automated System Actions (After Final Approval):**
+1. System automatically sends "Project Closing Questionnaire" to client
+2. Questionnaire includes:
+   - Overall satisfaction rating
+   - Specific feedback on design, functionality, communication
+   - Testimonial request
+   - Referral interest
+   - Any additional comments or suggestions
+3. Skip option available - not mandatory but encouraged
+
+**Client Actions:**
+- Client completes feedback questionnaire (optional)
+- System accepts submission or skip
+
+**Admin Actions (Required for Closure):**
+1. Admin must complete "Project Completion Document" covering:
+   - Summary of all deliverables provided
+   - List of all pages and features built
+   - Technologies and tools used
+   - Hosting and domain details
+   - Any special configurations or customizations
+   - Final project timeline and any notable milestones
+   - Recommendations for future maintenance
+2. Admin submits Project Completion Document
+3. Admin officially closes project in system
+
+**Automated System Actions (Upon Closure):**
+- Client portal credentials are deactivated
+- Client receives final email: "Project closed - Thank you for your business"
+- Email includes emergency contact information if needed
+- All project files archived in system
+- Client record marked as "Completed"
+- Admin dashboard updates to show closed status
+
+**Automated Email System:**
+- Comprehensive recap email sent to client including:
+  - Final invoice confirmation
+  - Website URL and credentials (for reference)
+  - Hosting renewal reminders
+  - Support contact information
+  - Invitation to return for future projects
+
+**Gating Rule:** Project cannot be marked as closed until admin completes Project Completion Document and submits final closure.
+
+---
+
+## Critical System Requirements
+
+### Email Automation
+**Trigger-Based Emails:**
+- Every document upload → Email to client
+- Every status change → Email to client
+- Every signature/approval required → Email to client
+- Every completed milestone → Email to both client and admin
+- Every gating condition met → Email to next responsible party
+
+**Email Templates Needed:**
+1. Welcome & credentials email
+2. Questionnaire reminder email
+3. Terms of Service ready email
+4. TOS signed confirmation email
+5. Design document ready email
+6. Design approved email
+7. Development started email
+8. Hosting setup instructions email
+9. Website live notification email
+10. Final delivery email
+11. Closing questionnaire email
+12. Project closed final email
+
+### Document Gating System
+**Enforcement Rules:**
+- Each phase must be 100% complete before next phase unlocks
+- Admin cannot skip ahead or bypass gates
+- Client cannot access later phases until earlier ones complete
+- System displays clear status indicators for both admin and client
+- Locked phases show "Requirements not met" with specific details
+
+### User Interface Requirements
+**Admin Dashboard Must Show:**
+- Current phase for each client
+- Which clients are awaiting action
+- Which phases are locked/unlocked
+- Document signature status
+- Questionnaire completion status
+- Clear visual indicators (traffic light system: red/yellow/green)
+
+**Client Dashboard Must Show:**
+- Current project phase
+- What action (if any) is required from them
+- All documents accessible for review
+- Signature/approval buttons where needed
+- Project timeline and status updates
+- Clear instructions for next steps
+
+### Security & Access Control
+- Client credentials must expire upon project closure
+- Admin maintains access to archived projects
+- Secure credential transmission for hosting setup
+- Electronic signature validation and timestamping
+- Document version control and audit trail
+
+### Professional Standards
+- All automated emails must be professionally worded
+- Clear, concise instructions in every communication
+- No jargon or technical terminology in client-facing content
+- Consistent branding and formatting
+- Mobile-responsive design for all portal pages
+
+---
+
+## Technical Implementation Notes
+
+### Database Schema Considerations
+**Client Record:**
+- Basic info, contact details, addresses
+- Project status (enum: created, questionnaire_pending, questionnaire_complete, tos_pending, tos_signed, design_pending, design_approved, in_development, hosting_setup, deployed, review, approved, closing, closed)
+- Timestamps for each phase completion
+- Document IDs and signature records
+
+**Document System:**
+- Version control for all documents
+- Signature capture and validation
+- Automatic email trigger on document events
+- Secure storage and retrieval
+
+**Email Queue:**
+- Asynchronous email sending
+- Retry logic for failed sends
+- Email template management
+- Tracking for sent/opened/clicked
+
+### API Endpoints Needed
+- `POST /api/clients` - Create new client
+- `POST /api/questionnaire/:clientId` - Submit questionnaire
+- `POST /api/documents/:documentId/sign` - Sign document
+- `GET /api/clients/:clientId/status` - Get current status
+- `POST /api/projects/:projectId/close` - Close project
+- `POST /api/hosting-credentials` - Submit hosting credentials
+
+---
+
+## Success Criteria
+✅ Zero clients can bypass workflow gates  
+✅ Every phase transition triggers appropriate notifications  
+✅ All documents are signed and timestamped  
+✅ Complete audit trail for every project  
+✅ Professional, clear communication at every step  
+✅ Client credentials properly deactivated on closure  
+✅ Admin cannot skip or bypass any required steps  
+✅ System enforces data completeness before progression  
+
+---
+
+## Important Notes for AI Development
+- This is a production system requiring high reliability
+- Every gate must be enforced - no exceptions
+- Email system must be robust and never miss notifications
+- User experience must be intuitive for non-technical clients
+- Admin interface must be efficient for managing multiple clients
+- Security must be paramount, especially for credential handling
+- All client data must be handled with strict confidentiality
+- System must scale to handle multiple concurrent projects
+
+---
+
+**Use this prompt as the foundation for building the complete client portal system in Replit. Every feature, workflow, and gate described here must be implemented exactly as specified to ensure professional, reliable operation.**
