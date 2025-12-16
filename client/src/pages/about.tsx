@@ -2,6 +2,7 @@ import { Users, Award, Clock, Heart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PublicNavbar } from "@/components/public/navbar";
 import { PublicFooter } from "@/components/public/footer";
+import { motion } from "framer-motion";
 
 const stats = [
   { icon: Users, label: "Happy Clients", value: "50+" },
@@ -53,38 +54,104 @@ const process = [
   },
 ];
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const slideInLeft = {
+  hidden: { opacity: 0, x: -50 },
+  visible: { opacity: 1, x: 0 },
+};
+
+const slideInRight = {
+  hidden: { opacity: 0, x: 50 },
+  visible: { opacity: 1, x: 0 },
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <PublicNavbar />
 
       {/* Hero */}
       <section className="pt-32 pb-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-6" data-testid="text-about-hero">
+          <motion.h1 
+            className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold mb-6" 
+            data-testid="text-about-hero"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             About Us
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          </motion.h1>
+          <motion.p 
+            className="text-lg text-muted-foreground max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             We're a passionate team of designers and developers dedicated to creating 
             exceptional web experiences for businesses.
-          </p>
+          </motion.p>
         </div>
       </section>
 
       {/* Stats */}
       <section className="py-16 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-4 gap-8"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             {stats.map((stat, index) => (
-              <div key={index} className="text-center" data-testid={`stat-${index}`}>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <motion.div 
+                key={index} 
+                className="text-center" 
+                data-testid={`stat-${index}`}
+                variants={scaleIn}
+                transition={{ duration: 0.5 }}
+              >
+                <motion.div 
+                  className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ duration: 0.2 }}
+                >
                   <stat.icon className="w-6 h-6 text-primary" />
-                </div>
-                <div className="font-serif text-3xl font-bold mb-1">{stat.value}</div>
+                </motion.div>
+                <motion.div 
+                  className="font-serif text-3xl font-bold mb-1"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  {stat.value}
+                </motion.div>
                 <div className="text-muted-foreground text-sm">{stat.label}</div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -92,37 +159,64 @@ export default function AboutPage() {
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="relative">
-              <div className="aspect-[4/3] rounded-2xl overflow-hidden border border-border/50">
+            <motion.div 
+              className="relative"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideInLeft}
+              transition={{ duration: 0.7 }}
+            >
+              <motion.div 
+                className="aspect-[4/3] rounded-2xl overflow-hidden border border-border/50"
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.3 }}
+              >
                 <img
                   src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=600&fit=crop"
                   alt="Our workspace"
                   className="w-full h-full object-cover"
                 />
-              </div>
-            </div>
-            <div>
-              <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-6" data-testid="text-story-title">
+              </motion.div>
+            </motion.div>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideInRight}
+              transition={{ duration: 0.7 }}
+            >
+              <motion.h2 
+                className="font-serif text-3xl sm:text-4xl font-bold mb-6" 
+                data-testid="text-story-title"
+                variants={fadeInUp}
+              >
                 Our Story
-              </h2>
-              <div className="space-y-4 text-muted-foreground">
-                <p>
+              </motion.h2>
+              <motion.div 
+                className="space-y-4 text-muted-foreground"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+              >
+                <motion.p variants={fadeInUp} transition={{ duration: 0.5 }}>
                   PixelCraft was founded with a simple mission: to help businesses 
                   thrive online through beautiful, functional websites.
-                </p>
-                <p>
+                </motion.p>
+                <motion.p variants={fadeInUp} transition={{ duration: 0.5 }}>
                   What started as a two-person operation has grown into a trusted 
                   web design studio serving clients across various industries. We've 
                   maintained our commitment to quality and personal attention that 
                   made us successful from day one.
-                </p>
-                <p>
+                </motion.p>
+                <motion.p variants={fadeInUp} transition={{ duration: 0.5 }}>
                   We believe in building long-term relationships with our clients. 
                   When you work with us, you're not just getting a website — you're 
                   gaining a partner invested in your success.
-                </p>
-              </div>
-            </div>
+                </motion.p>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -130,63 +224,112 @@ export default function AboutPage() {
       {/* Team */}
       <section className="py-24 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <motion.div 
+            className="text-center mb-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
+            transition={{ duration: 0.6 }}
+          >
             <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-4" data-testid="text-team-title">
               Meet the Team
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               The talented people behind your next great website.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             {team.map((member, index) => (
-              <Card key={index} className="border-border/50" data-testid={`card-team-${index}`}>
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-6">
-                    <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-primary/20">
-                      <img
-                        src={member.image}
-                        alt={member.name}
-                        className="w-full h-full object-cover"
-                      />
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                transition={{ duration: 0.5 }}
+                whileHover={{ y: -8, transition: { duration: 0.2 } }}
+              >
+                <Card className="border-border/50 h-full" data-testid={`card-team-${index}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-6">
+                      <motion.div 
+                        className="w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-primary/20"
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </motion.div>
+                      <div>
+                        <h3 className="font-serif font-semibold text-lg">{member.name}</h3>
+                        <p className="text-primary text-sm mb-2">{member.role}</p>
+                        <p className="text-muted-foreground text-sm">{member.bio}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-serif font-semibold text-lg">{member.name}</h3>
-                      <p className="text-primary text-sm mb-2">{member.role}</p>
-                      <p className="text-muted-foreground text-sm">{member.bio}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Process */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <motion.div 
+            className="text-center mb-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
+            transition={{ duration: 0.6 }}
+          >
             <h2 className="font-serif text-3xl sm:text-4xl font-bold mb-4" data-testid="text-process-title">
               Our Process
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               A proven approach to delivering exceptional results.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             {process.map((step, index) => (
-              <div key={index} className="text-center" data-testid={`process-step-${index}`}>
-                <div className="font-serif text-5xl font-bold text-primary/20 mb-4">
+              <motion.div 
+                key={index} 
+                className="text-center" 
+                data-testid={`process-step-${index}`}
+                variants={fadeInUp}
+                transition={{ duration: 0.5 }}
+              >
+                <motion.div 
+                  className="font-serif text-5xl font-bold text-primary/20 mb-4"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
                   {step.step}
-                </div>
+                </motion.div>
                 <h3 className="font-serif font-semibold text-lg mb-2">{step.title}</h3>
                 <p className="text-muted-foreground text-sm">{step.description}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
