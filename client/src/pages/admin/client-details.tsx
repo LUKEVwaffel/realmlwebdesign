@@ -206,6 +206,20 @@ export default function ClientDetails() {
     },
   });
 
+  const saveSignatureMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const res = await apiRequest("POST", `/api/admin/documents/${documentId}/save-signature`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Signature saved", description: "The signature has been saved to the client's profile permanently." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to save signature", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Sync project settings when client data loads
   useEffect(() => {
     if (client?.projects?.[0]) {
@@ -1067,6 +1081,48 @@ export default function ClientDetails() {
                             <Badge variant={doc.isSigned ? "default" : "secondary"}>
                               {doc.isSigned ? "Signed" : "Pending Signature"}
                             </Badge>
+                          )}
+                          {doc.isSigned && doc.signatureData && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" data-testid={`button-view-signature-${doc.id}`}>
+                                  <FileSignature className="w-4 h-4 mr-2" />
+                                  View Signature
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-lg">
+                                <DialogHeader>
+                                  <DialogTitle className="font-serif">Signature for {doc.title}</DialogTitle>
+                                  <DialogDescription>
+                                    Signed on {doc.signedAt ? format(new Date(doc.signedAt), "MMM d, yyyy 'at' h:mm a") : "Unknown date"}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="border rounded-lg p-4 bg-white">
+                                    {doc.signatureType === "drawn" ? (
+                                      <img src={doc.signatureData} alt="Signature" className="max-w-full h-auto" />
+                                    ) : (
+                                      <p className="text-2xl font-signature text-center" style={{ fontFamily: "cursive" }}>
+                                        {doc.signatureData}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    <p>Type: {doc.signatureType === "drawn" ? "Hand-drawn" : "Typed"}</p>
+                                    {doc.signedByIp && <p>IP Address: {doc.signedByIp}</p>}
+                                  </div>
+                                  <Button 
+                                    onClick={() => saveSignatureMutation.mutate(doc.id)}
+                                    disabled={saveSignatureMutation.isPending}
+                                    className="w-full"
+                                    data-testid={`button-save-signature-${doc.id}`}
+                                  >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    {saveSignatureMutation.isPending ? "Saving..." : "Save to Client Profile"}
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
                         </div>
                       </div>

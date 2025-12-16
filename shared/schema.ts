@@ -91,6 +91,11 @@ export const clients = pgTable("clients", {
   // Internal Notes
   internalNotes: text("internal_notes"),
   
+  // Saved Signature (from signed documents)
+  savedSignature: text("saved_signature"),
+  savedSignatureType: signatureTypeEnum("saved_signature_type"),
+  signatureSavedAt: timestamp("signature_saved_at"),
+  
   // Metadata
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

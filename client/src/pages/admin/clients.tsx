@@ -5,10 +5,8 @@ import {
   Plus, 
   Search, 
   Eye, 
-  Mail, 
   MoreHorizontal,
   Building2,
-  Phone,
   Calendar,
   MapPin,
   Globe,
@@ -490,14 +488,6 @@ export default function AdminClients() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Mail className="w-4 h-4 mr-2" />
-                                Send Message
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Phone className="w-4 h-4 mr-2" />
-                                Call Client
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 className="text-destructive focus:text-destructive"

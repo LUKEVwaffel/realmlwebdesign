@@ -830,6 +830,41 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Save signature from document to client profile
+  app.post("/api/admin/documents/:id/save-signature", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const doc = await storage.getDocument(id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (!doc.isSigned || !doc.signatureData) {
+        return res.status(400).json({ error: "Document is not signed" });
+      }
+
+      await storage.updateClient(doc.clientId, {
+        savedSignature: doc.signatureData,
+        savedSignatureType: doc.signatureType,
+        signatureSavedAt: new Date() as any,
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: doc.clientId,
+        action: "signature_saved",
+        description: `Saved signature from document: ${doc.title} to client profile`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, message: "Signature saved to client profile" });
+    } catch (error) {
+      console.error("Save signature error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/projects", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const projectsList = await storage.getProjects();
