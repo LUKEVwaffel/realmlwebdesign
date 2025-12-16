@@ -103,6 +103,7 @@ export default function ClientDetails() {
     description: "",
     fileUrl: "",
     requiresSignature: false,
+    requiresAcknowledgment: false,
     visibleToClient: true,
     signatureFields: [] as SignatureField[],
   });
@@ -168,7 +169,7 @@ export default function ClientDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
       setIsDocumentDialogOpen(false);
-      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, visibleToClient: true, signatureFields: [] });
+      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, requiresAcknowledgment: false, visibleToClient: true, signatureFields: [] });
       setUploadedFileName(null);
       toast({ title: "Document created", description: "New document has been added for this client." });
     },
@@ -944,8 +945,8 @@ export default function ClientDetails() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="contract">Contract</SelectItem>
-                            <SelectItem value="proposal">Proposal</SelectItem>
+                            <SelectItem value="contract">Contract (requires signature)</SelectItem>
+                            <SelectItem value="upload">Upload (for review)</SelectItem>
                             <SelectItem value="invoice">Invoice</SelectItem>
                             <SelectItem value="deliverable">Deliverable</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
@@ -1017,6 +1018,20 @@ export default function ClientDetails() {
                           signatureFields={newDocument.signatureFields}
                           onFieldsChange={(fields) => setNewDocument({ ...newDocument, signatureFields: fields })}
                         />
+                      )}
+                      {newDocument.documentType === "upload" && !newDocument.requiresSignature && (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="requires-acknowledgment">Requires Acknowledgment</Label>
+                            <p className="text-xs text-muted-foreground">Client must confirm they reviewed the document</p>
+                          </div>
+                          <Switch
+                            id="requires-acknowledgment"
+                            checked={newDocument.requiresAcknowledgment}
+                            onCheckedChange={(checked) => setNewDocument({ ...newDocument, requiresAcknowledgment: checked })}
+                            data-testid="switch-requires-acknowledgment"
+                          />
+                        </div>
                       )}
                       <div className="flex items-center justify-between">
                         <Label htmlFor="visible-to-client">Visible to Client</Label>

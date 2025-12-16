@@ -13,7 +13,7 @@ export const projectTypeEnum = pgEnum("project_type", ["new_website", "redesign"
 export const paymentStructureEnum = pgEnum("payment_structure", ["50_50", "custom", "full_upfront"]);
 export const projectStatusEnum = pgEnum("project_status", ["pending_payment", "in_progress", "design_review", "development", "client_review", "revisions", "completed", "on_hold", "cancelled"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]);
-export const documentTypeEnum = pgEnum("document_type", ["contract", "invoice", "deliverable", "mockup", "asset", "other"]);
+export const documentTypeEnum = pgEnum("document_type", ["contract", "invoice", "deliverable", "mockup", "asset", "upload", "other"]);
 export const signatureTypeEnum = pgEnum("signature_type", ["drawn", "typed"]);
 export const senderTypeEnum = pgEnum("sender_type", ["admin", "client"]);
 export const siteTypeEnum = pgEnum("site_type", ["business", "portfolio", "ecommerce", "blog", "landing_page", "nonprofit", "restaurant", "real_estate", "other"]);
@@ -243,6 +243,11 @@ export const documents = pgTable("documents", {
   signatureType: signatureTypeEnum("signature_type"),
   signedAt: timestamp("signed_at"),
   signedByIp: varchar("signed_by_ip", { length: 45 }),
+  
+  // Acknowledgment (for upload documents that just need yes/no confirmation)
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
+  isAcknowledged: boolean("is_acknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
   
   // Visibility
   visibleToClient: boolean("visible_to_client").default(true),

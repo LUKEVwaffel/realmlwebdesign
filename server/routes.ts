@@ -348,6 +348,41 @@ export async function registerRoutes(
     }
   });
 
+  // Acknowledge document (for upload documents that just need yes/no confirmation)
+  app.post("/api/client/documents/:id/acknowledge", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+
+      const doc = await storage.getDocument(id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || doc.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      await storage.updateDocument(id, {
+        isAcknowledged: true,
+        acknowledgedAt: new Date() as any,
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "document_acknowledged",
+        description: `Acknowledged document: ${doc.title}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Acknowledge document error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/client/messages", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const client = await storage.getClientByUserId(req.user!.id);

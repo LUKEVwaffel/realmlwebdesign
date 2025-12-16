@@ -28,6 +28,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 const documentTypeIcons: Record<string, any> = {
   contract: FileSignature,
+  upload: Eye,
   invoice: FileText,
   deliverable: FileText,
   mockup: FileText,
@@ -62,7 +63,7 @@ export default function ClientDocuments() {
 
   const signMutation = useMutation({
     mutationFn: async ({ documentId, signature }: { documentId: string; signature: string }) => {
-      return apiRequest("POST", `/api/documents/${documentId}/sign`, {
+      return apiRequest("POST", `/api/client/documents/${documentId}/sign`, {
         signatureData: signature,
         signatureType: "typed",
       });
@@ -87,10 +88,34 @@ export default function ClientDocuments() {
     },
   });
 
+  const acknowledgeMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      return apiRequest("POST", `/api/client/documents/${documentId}/acknowledge`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      setReviewDialogOpen(false);
+      toast({
+        title: "Document Acknowledged",
+        description: "Your acknowledgment has been recorded successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to acknowledge document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const documents = Array.isArray(documentsData) ? documentsData : [];
   const unsignedDocs = documents.filter((d: any) => d.requiresSignature && !d.isSigned);
+  const unacknowledgedDocs = documents.filter((d: any) => d.requiresAcknowledgment && !d.isAcknowledged);
+  const pendingDocs = [...unsignedDocs, ...unacknowledgedDocs];
   const signedDocs = documents.filter((d: any) => d.requiresSignature && d.isSigned);
-  const otherDocs = documents.filter((d: any) => !d.requiresSignature);
+  const otherDocs = documents.filter((d: any) => !d.requiresSignature && !d.requiresAcknowledgment);
 
   const handleReviewAndSign = (doc: any) => {
     setSelectedDocument(doc);
@@ -159,10 +184,10 @@ export default function ClientDocuments() {
           <TabsList>
             <TabsTrigger value="all" data-testid="tab-all">All Documents</TabsTrigger>
             <TabsTrigger value="pending" data-testid="tab-pending">
-              Pending Signature
-              {unsignedDocs.length > 0 && (
+              Pending Action
+              {pendingDocs.length > 0 && (
                 <Badge variant="destructive" className="ml-2">
-                  {unsignedDocs.length}
+                  {pendingDocs.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -213,6 +238,21 @@ export default function ClientDocuments() {
                                     )}
                                   </Badge>
                                 )}
+                                {doc.requiresAcknowledgment && (
+                                  <Badge variant={doc.isAcknowledged ? "secondary" : "destructive"}>
+                                    {doc.isAcknowledged ? (
+                                      <>
+                                        <Check className="w-3 h-3 mr-1" />
+                                        Acknowledged
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="w-3 h-3 mr-1" />
+                                        Needs Review
+                                      </>
+                                    )}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-4 flex-wrap">
@@ -253,6 +293,16 @@ export default function ClientDocuments() {
                                   Review & Sign
                                 </Button>
                               )}
+                              {doc.requiresAcknowledgment && !doc.isAcknowledged && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleReviewAndSign(doc)}
+                                  data-testid={`button-acknowledge-${doc.id}`}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Review & Acknowledge
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -272,44 +322,66 @@ export default function ClientDocuments() {
           </TabsContent>
 
           <TabsContent value="pending" className="space-y-4">
-            {unsignedDocs.length > 0 ? (
+            {pendingDocs.length > 0 ? (
               <div className="grid gap-4">
-                {unsignedDocs.map((doc: any) => (
-                  <Card
-                    key={doc.id}
-                    className="border-destructive/30 bg-destructive/5"
-                    data-testid={`card-pending-doc-${doc.id}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                          <FileSignature className="w-5 h-5 text-destructive" />
+                {pendingDocs.map((doc: any) => {
+                  const needsSignature = doc.requiresSignature && !doc.isSigned;
+                  const needsAcknowledgment = doc.requiresAcknowledgment && !doc.isAcknowledged;
+                  return (
+                    <Card
+                      key={doc.id}
+                      className="border-destructive/30 bg-destructive/5"
+                      data-testid={`card-pending-doc-${doc.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                            {needsSignature ? (
+                              <FileSignature className="w-5 h-5 text-destructive" />
+                            ) : (
+                              <Eye className="w-5 h-5 text-destructive" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{doc.title}</h3>
+                              <Badge variant="outline" className="text-xs">
+                                {needsSignature ? "Needs Signature" : "Needs Review"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {doc.description}
+                            </p>
+                            <Button
+                              size="sm"
+                              className="mt-4"
+                              onClick={() => handleReviewAndSign(doc)}
+                              data-testid={`button-pending-${doc.id}`}
+                            >
+                              {needsSignature ? (
+                                <>
+                                  <FileSignature className="w-4 h-4 mr-1" />
+                                  Review & Sign
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Review & Acknowledge
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{doc.title}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {doc.description}
-                          </p>
-                          <Button
-                            size="sm"
-                            className="mt-4"
-                            onClick={() => handleReviewAndSign(doc)}
-                            data-testid={`button-sign-pending-${doc.id}`}
-                          >
-                            <FileSignature className="w-4 h-4 mr-1" />
-                            Review & Sign
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card className="border-border/50">
                 <CardContent className="p-12 text-center">
                   <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                  <p className="text-muted-foreground">All documents have been signed</p>
+                  <p className="text-muted-foreground">All documents have been reviewed</p>
                 </CardContent>
               </Card>
             )}
@@ -536,6 +608,59 @@ export default function ClientDocuments() {
                       <>
                         <Check className="w-4 h-4 mr-2" />
                         Sign Document
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setReviewDialogOpen(false)}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Acknowledgment Panel - Only show if document requires acknowledgment and is not acknowledged */}
+            {selectedDocument?.requiresAcknowledgment && !selectedDocument?.isAcknowledged && (
+              <div className="w-80 border-l bg-background flex flex-col shrink-0">
+                <div className="p-4 border-b">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    Review Document
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-auto p-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Please review this document carefully. Once you have read and understood the contents, click the button below to confirm your acknowledgment.
+                  </p>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm font-medium">{selectedDocument?.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedDocument?.description || "No description provided"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    By acknowledging, you confirm that you have reviewed this document.
+                  </p>
+                </div>
+                <div className="p-4 border-t flex flex-col gap-2">
+                  <Button
+                    onClick={() => acknowledgeMutation.mutate(selectedDocument.id)}
+                    disabled={acknowledgeMutation.isPending}
+                    className="w-full"
+                    data-testid="button-submit-acknowledgment"
+                  >
+                    {acknowledgeMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Confirming...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        I Have Reviewed This
                       </>
                     )}
                   </Button>
