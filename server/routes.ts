@@ -383,6 +383,67 @@ export async function registerRoutes(
     }
   });
 
+  // Get upload URL for client file uploads
+  app.post("/api/client/documents/upload-url", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { filename } = req.body;
+      if (!filename) {
+        return res.status(400).json({ error: "Filename is required" });
+      }
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const { uploadURL, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename);
+      res.json({ uploadURL, objectPath });
+    } catch (error) {
+      console.error("Get client upload URL error:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Save client uploaded document
+  app.post("/api/client/documents/upload", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { title, fileUrl, description } = req.body;
+      if (!title || !fileUrl) {
+        return res.status(400).json({ error: "Title and file are required" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const project = await storage.getProjectsByClientId(client.id);
+      const projectId = project[0]?.id;
+
+      const document = await storage.createDocument({
+        clientId: client.id,
+        projectId: projectId || null,
+        title,
+        documentType: "upload",
+        description: description || `Uploaded by client: ${req.user!.firstName} ${req.user!.lastName}`,
+        fileUrl,
+        requiresSignature: false,
+        requiresAcknowledgment: false,
+        visibleToClient: true,
+        signatureFields: [],
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "client_document_upload",
+        description: `Client uploaded document: ${title}`,
+        ipAddress: req.ip,
+      });
+
+      res.json(document);
+    } catch (error) {
+      console.error("Client document upload error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/client/messages", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const client = await storage.getClientByUserId(req.user!.id);
