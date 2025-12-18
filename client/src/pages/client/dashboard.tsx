@@ -24,8 +24,6 @@ const statusColors: Record<string, string> = {
   questionnaire_complete: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   tos_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   tos_signed: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  design_pending: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  design_approved: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   in_development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
   hosting_setup: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   deployed: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
@@ -42,8 +40,6 @@ const phaseInfo: Record<string, { label: string; phase: number; action: string; 
   questionnaire_complete: { label: "Questionnaire Complete", phase: 2, action: "Awaiting review", description: "Thank you! We're reviewing your questionnaire responses." },
   tos_pending: { label: "Terms of Service", phase: 3, action: "Sign terms", description: "Please review and sign the Terms of Service to proceed with your project." },
   tos_signed: { label: "TOS Complete", phase: 3, action: "Development starting", description: "Great! Development will begin shortly." },
-  design_pending: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website." },
-  design_approved: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website." },
   in_development: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website. We'll notify you when it's ready for review." },
   hosting_setup: { label: "Hosting Setup", phase: 5, action: "Setting up hosting", description: "We're configuring your hosting and domain settings." },
   deployed: { label: "Deployed", phase: 5, action: "Site is live", description: "Your website has been deployed to the hosting server." },
@@ -162,7 +158,7 @@ export default function ClientDashboard() {
                     {phaseInfo[project.status]?.description}
                   </p>
                   <div className="flex gap-1 mt-3">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((phase) => {
+                    {[1, 2, 3, 4, 5, 6, 7].map((phase) => {
                       const currentPhase = phaseInfo[project.status]?.phase || 0;
                       const isComplete = currentPhase > phase;
                       const isCurrent = currentPhase === phase;

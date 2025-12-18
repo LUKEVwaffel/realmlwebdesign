@@ -21,6 +21,7 @@ import {
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import { generateQuestionnairePdf } from "./questionnairePdfService";
+import { generateTosPdf, TosGenerationResult } from "./tosPdfService";
 import {
   initializeWebSocket,
   notifyNewMessage,
@@ -74,8 +75,6 @@ const updateProjectStatusSchema = z.object({
     "questionnaire_complete",
     "tos_pending",
     "tos_signed",
-    "design_pending",
-    "design_approved",
     "in_development",
     "hosting_setup",
     "deployed",
@@ -363,26 +362,12 @@ export async function registerRoutes(
         const project = await storage.getProject(doc.projectId);
         if (project && project.status === "tos_pending") {
           await storage.updateProject(doc.projectId, {
-            status: "design_pending",
+            status: "in_development",
             tosSignedAt: new Date(),
           });
           
           sendWorkflowEmail(client.id, doc.projectId, "tos_signed_confirmation").catch(err => 
             console.error("Failed to send TOS signed confirmation email:", err)
-          );
-        }
-      }
-      
-      if (doc.documentType === "design_requirements" && doc.projectId) {
-        const project = await storage.getProject(doc.projectId);
-        if (project && project.status === "design_pending") {
-          await storage.updateProject(doc.projectId, {
-            status: "in_development",
-            designApprovedAt: new Date(),
-          });
-          
-          sendWorkflowEmail(client.id, doc.projectId, "design_approved").catch(err => 
-            console.error("Failed to send design approved email:", err)
           );
         }
       }
@@ -864,6 +849,120 @@ export async function registerRoutes(
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Download questionnaire PDF error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Generate and preview TOS PDF for a client
+  app.get("/api/admin/clients/:id/tos/pdf", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
+
+      const tosResult = await generateTosPdf({
+        client,
+        project: projects[0],
+        contactName,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="tos-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`
+      );
+      res.send(tosResult.buffer);
+    } catch (error) {
+      console.error("Generate TOS PDF error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create TOS document from generated PDF and send to client
+  app.post("/api/admin/clients/:id/tos/send", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = projects[0];
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
+
+      const tosResult = await generateTosPdf({
+        client,
+        project,
+        contactName,
+      });
+
+      const base64Pdf = tosResult.buffer.toString("base64");
+      const dataUrl = `data:application/pdf;base64,${base64Pdf}`;
+
+      const signatureFields = [
+        {
+          id: "client-signature",
+          page: tosResult.signatureField.page,
+          x: tosResult.signatureField.x,
+          y: tosResult.signatureField.y,
+          width: tosResult.signatureField.width,
+          height: tosResult.signatureField.height,
+          label: "Client Signature",
+        },
+      ];
+
+      const document = await storage.createDocument({
+        clientId: id,
+        projectId: project.id,
+        title: `Terms of Service - ${client.businessLegalName}`,
+        documentType: "terms_of_service",
+        description: `Terms of Service agreement for ${client.businessLegalName}, dated ${new Date().toLocaleDateString()}`,
+        fileUrl: dataUrl,
+        fileName: `tos-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`,
+        requiresSignature: true,
+        visibleToClient: true,
+        signatureFields: JSON.stringify(signatureFields),
+      });
+
+      await storage.updateProject(project.id, { status: "tos_pending" });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: id,
+        action: "tos_sent",
+        description: `Terms of Service document sent to ${client.businessLegalName}`,
+        ipAddress: req.ip,
+      });
+
+      sendWorkflowEmail(id, project.id, "tos_ready").catch(err =>
+        console.error("Failed to send TOS ready email:", err)
+      );
+
+      notifyDocumentUpdate(id, {
+        documentId: document.id,
+        title: document.title,
+        requiresSignature: true,
+      });
+
+      res.json({ success: true, document });
+    } catch (error) {
+      console.error("Send TOS error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

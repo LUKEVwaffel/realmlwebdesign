@@ -26,7 +26,9 @@ import {
   Save,
   ExternalLink,
   Trash2,
-  FileSignature
+  FileSignature,
+  Eye,
+  Send
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -766,6 +768,93 @@ export default function ClientDetails() {
                             : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
                         }>
                           {client.projects[0]?.questionnaireStatus?.replace(/_/g, " ") || "Not Started"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle className="font-serif text-lg flex items-center gap-2">
+                          <FileSignature className="w-4 h-4" />
+                          Terms of Service
+                        </CardTitle>
+                        <CardDescription>Preview and send TOS agreement to client</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            window.open(`/api/admin/clients/${clientId}/tos/pdf`, '_blank');
+                          }}
+                          data-testid="button-preview-tos"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Preview
+                        </Button>
+                        {client.projects[0]?.questionnaireStatus === "completed" && 
+                         !["tos_pending", "tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "") && (
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/admin/clients/${clientId}/tos/send`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                });
+                                if (res.ok) {
+                                  toast({
+                                    title: "TOS Sent",
+                                    description: "Terms of Service has been sent to the client for signing.",
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+                                } else {
+                                  throw new Error("Failed to send TOS");
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to send Terms of Service.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            data-testid="button-send-tos"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send to Client
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between gap-4 p-4 rounded-lg border">
+                        <div>
+                          <p className="font-medium">TOS Status</p>
+                          <p className="text-sm text-muted-foreground">
+                            {["tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "")
+                              ? "Client has signed the Terms of Service" 
+                              : client.projects[0]?.status === "tos_pending"
+                              ? "Waiting for client to sign"
+                              : client.projects[0]?.questionnaireStatus === "completed"
+                              ? "Ready to send - questionnaire completed"
+                              : "Cannot send - questionnaire not completed"}
+                          </p>
+                        </div>
+                        <Badge className={
+                          ["tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "")
+                            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                            : client.projects[0]?.status === "tos_pending"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                        }>
+                          {["tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "")
+                            ? "Signed"
+                            : client.projects[0]?.status === "tos_pending"
+                            ? "Pending Signature"
+                            : "Not Sent"}
                         </Badge>
                       </div>
                     </CardContent>
