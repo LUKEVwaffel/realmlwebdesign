@@ -77,14 +77,14 @@ const phaseLabels: Record<string, { label: string; phase: number; description: s
   questionnaire_complete: { label: "Questionnaire Complete", phase: 2, description: "Client has completed the questionnaire" },
   tos_pending: { label: "Terms of Service", phase: 3, description: "Waiting for client to sign Terms of Service" },
   tos_signed: { label: "TOS Signed", phase: 3, description: "Client has signed Terms of Service" },
-  design_pending: { label: "Design Review", phase: 4, description: "Waiting for design requirements approval" },
-  design_approved: { label: "Design Approved", phase: 4, description: "Design requirements have been approved" },
-  in_development: { label: "Development", phase: 5, description: "Website is being built" },
-  hosting_setup: { label: "Hosting Setup", phase: 6, description: "Setting up hosting and domain configuration" },
-  deployed: { label: "Deployed", phase: 6, description: "Website has been deployed to hosting" },
-  delivery: { label: "Final Delivery", phase: 7, description: "Final review and handoff to client" },
-  client_review: { label: "Client Review", phase: 7, description: "Client is reviewing the final delivery" },
-  completed: { label: "Project Complete", phase: 8, description: "Project has been successfully completed" },
+  design_pending: { label: "Development", phase: 4, description: "Website development in progress" },
+  design_approved: { label: "Development", phase: 4, description: "Website development in progress" },
+  in_development: { label: "Development", phase: 4, description: "Website is being built" },
+  hosting_setup: { label: "Hosting Setup", phase: 5, description: "Setting up hosting and domain configuration" },
+  deployed: { label: "Deployed", phase: 5, description: "Website has been deployed to hosting" },
+  delivery: { label: "Final Delivery", phase: 6, description: "Final review and handoff to client" },
+  client_review: { label: "Client Review", phase: 6, description: "Client is reviewing the final delivery" },
+  completed: { label: "Project Complete", phase: 7, description: "Project has been successfully completed" },
   on_hold: { label: "On Hold", phase: 0, description: "Project is temporarily paused" },
   cancelled: { label: "Cancelled", phase: 0, description: "Project has been cancelled" },
 };
@@ -473,11 +473,11 @@ export default function ClientDetails() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((phase) => {
+                        {[1, 2, 3, 4, 5, 6, 7].map((phase) => {
                           const currentPhase = phaseLabels[projectSettings.status]?.phase || 0;
                           const isComplete = currentPhase > phase;
                           const isCurrent = currentPhase === phase;
-                          const phaseNames = ["Setup", "Questionnaire", "Terms", "Design", "Development", "Hosting", "Delivery", "Complete"];
+                          const phaseNames = ["Setup", "Questionnaire", "Terms", "Development", "Hosting", "Delivery", "Complete"];
                           
                           return (
                             <div 
@@ -563,14 +563,12 @@ export default function ClientDetails() {
                               <SelectItem value="questionnaire_complete">Phase 2: Questionnaire Complete</SelectItem>
                               <SelectItem value="tos_pending">Phase 3: TOS Pending</SelectItem>
                               <SelectItem value="tos_signed">Phase 3: TOS Signed</SelectItem>
-                              <SelectItem value="design_pending">Phase 4: Design Pending</SelectItem>
-                              <SelectItem value="design_approved">Phase 4: Design Approved</SelectItem>
-                              <SelectItem value="in_development">Phase 5: In Development</SelectItem>
-                              <SelectItem value="hosting_setup">Phase 6: Hosting Setup</SelectItem>
-                              <SelectItem value="deployed">Phase 6: Deployed</SelectItem>
-                              <SelectItem value="delivery">Phase 7: Final Delivery</SelectItem>
-                              <SelectItem value="client_review">Phase 7: Client Review</SelectItem>
-                              <SelectItem value="completed">Phase 8: Completed</SelectItem>
+                              <SelectItem value="in_development">Phase 4: In Development</SelectItem>
+                              <SelectItem value="hosting_setup">Phase 5: Hosting Setup</SelectItem>
+                              <SelectItem value="deployed">Phase 5: Deployed</SelectItem>
+                              <SelectItem value="delivery">Phase 6: Final Delivery</SelectItem>
+                              <SelectItem value="client_review">Phase 6: Client Review</SelectItem>
+                              <SelectItem value="completed">Phase 7: Completed</SelectItem>
                               <SelectItem value="on_hold">On Hold</SelectItem>
                               <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
@@ -726,15 +724,30 @@ export default function ClientDetails() {
                   </Card>
 
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="font-serif text-lg flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4" />
-                        Client Questionnaire
-                      </CardTitle>
-                      <CardDescription>Track client questionnaire completion status</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle className="font-serif text-lg flex items-center gap-2">
+                          <ClipboardList className="w-4 h-4" />
+                          Client Questionnaire
+                        </CardTitle>
+                        <CardDescription>Track client questionnaire completion status</CardDescription>
+                      </div>
+                      {client.projects[0]?.questionnaireStatus === "completed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            window.open(`/api/admin/clients/${clientId}/questionnaire/pdf`, '_blank');
+                          }}
+                          data-testid="button-download-questionnaire"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between p-4 rounded-lg border">
+                      <div className="flex items-center justify-between gap-4 p-4 rounded-lg border">
                         <div>
                           <p className="font-medium">Questionnaire Status</p>
                           <p className="text-sm text-muted-foreground">

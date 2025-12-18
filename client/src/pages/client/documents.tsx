@@ -572,11 +572,18 @@ export default function ClientDocuments() {
                       const scaledY = (pdfDimensions.height - field.y - field.height) * scale;
                       const scaledWidth = field.width * scale;
                       const scaledHeight = field.height * scale;
+                      const displaySignature = selectedDocument?.isSigned 
+                        ? selectedDocument.signatureData 
+                        : typedSignature;
 
                       return (
                         <div
                           key={field.id}
-                          className="absolute border-2 border-dashed border-primary/60 bg-primary/10 rounded flex items-center justify-center pointer-events-none"
+                          className={`absolute rounded flex items-center justify-center pointer-events-none ${
+                            selectedDocument?.isSigned 
+                              ? "bg-white/90 border border-gray-300" 
+                              : "border-2 border-dashed border-primary/60 bg-primary/10"
+                          }`}
                           style={{
                             left: scaledX,
                             top: scaledY,
@@ -584,12 +591,12 @@ export default function ClientDocuments() {
                             height: scaledHeight,
                           }}
                         >
-                          {typedSignature ? (
+                          {displaySignature ? (
                             <span 
-                              className="font-serif italic text-foreground"
-                              style={{ fontSize: Math.min(scaledHeight * 0.6, 24) }}
+                              className="font-serif italic"
+                              style={{ fontSize: Math.min(scaledHeight * 0.6, 24), color: '#000000' }}
                             >
-                              {typedSignature}
+                              {displaySignature}
                             </span>
                           ) : (
                             <span className="text-xs text-primary/70">Sign here</span>

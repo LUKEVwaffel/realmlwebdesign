@@ -41,15 +41,15 @@ const phaseInfo: Record<string, { label: string; phase: number; action: string; 
   questionnaire_pending: { label: "Questionnaire", phase: 2, action: "Complete questionnaire", description: "Please fill out the project questionnaire so we can understand your needs." },
   questionnaire_complete: { label: "Questionnaire Complete", phase: 2, action: "Awaiting review", description: "Thank you! We're reviewing your questionnaire responses." },
   tos_pending: { label: "Terms of Service", phase: 3, action: "Sign terms", description: "Please review and sign the Terms of Service to proceed with your project." },
-  tos_signed: { label: "TOS Complete", phase: 3, action: "Awaiting design phase", description: "Great! We're preparing your design requirements document." },
-  design_pending: { label: "Design Review", phase: 4, action: "Review design", description: "Please review and approve your design requirements document." },
-  design_approved: { label: "Design Approved", phase: 4, action: "Development starting", description: "Excellent! Your design has been approved and development is beginning." },
-  in_development: { label: "In Development", phase: 5, action: "Building your site", description: "Our team is actively building your website. We'll notify you when it's ready for review." },
-  hosting_setup: { label: "Hosting Setup", phase: 6, action: "Setting up hosting", description: "We're configuring your hosting and domain settings." },
-  deployed: { label: "Deployed", phase: 6, action: "Site is live", description: "Your website has been deployed to the hosting server." },
-  delivery: { label: "Final Delivery", phase: 7, action: "Review final site", description: "Your website is ready for final review before handoff." },
-  client_review: { label: "Your Review", phase: 7, action: "Approve final delivery", description: "Please review your completed website and let us know of any final changes." },
-  completed: { label: "Project Complete", phase: 8, action: "Site is yours!", description: "Congratulations! Your project is complete and your website is live." },
+  tos_signed: { label: "TOS Complete", phase: 3, action: "Development starting", description: "Great! Development will begin shortly." },
+  design_pending: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website." },
+  design_approved: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website." },
+  in_development: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website. We'll notify you when it's ready for review." },
+  hosting_setup: { label: "Hosting Setup", phase: 5, action: "Setting up hosting", description: "We're configuring your hosting and domain settings." },
+  deployed: { label: "Deployed", phase: 5, action: "Site is live", description: "Your website has been deployed to the hosting server." },
+  delivery: { label: "Final Delivery", phase: 6, action: "Review final site", description: "Your website is ready for final review before handoff." },
+  client_review: { label: "Your Review", phase: 6, action: "Approve final delivery", description: "Please review your completed website and let us know of any final changes." },
+  completed: { label: "Project Complete", phase: 7, action: "Site is yours!", description: "Congratulations! Your project is complete and your website is live." },
   on_hold: { label: "On Hold", phase: 0, action: "Contact us", description: "Your project is currently on hold. Please contact us for more information." },
   cancelled: { label: "Cancelled", phase: 0, action: "Contact us", description: "This project has been cancelled. Please contact us if you have questions." },
 };
@@ -150,7 +150,7 @@ export default function ClientDashboard() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Current Phase:</span>
                       <Badge variant="outline" className="font-medium">
-                        Phase {phaseInfo[project.status]?.phase || 0} of 8
+                        Phase {phaseInfo[project.status]?.phase || 0} of 7
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
