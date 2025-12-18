@@ -20,6 +20,7 @@ import {
   sendWorkflowEmail,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
+import { generateQuestionnairePdf } from "./questionnairePdfService";
 import {
   initializeWebSocket,
   notifyNewMessage,
@@ -822,6 +823,47 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Get client error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Download questionnaire answers as PDF
+  app.get("/api/admin/clients/:id/questionnaire/pdf", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const questionnaire = await storage.getQuestionnaireByClientId(id);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
+
+      const pdfBuffer = await generateQuestionnairePdf({
+        questionnaire,
+        client,
+        project: projects[0],
+        contactName,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="questionnaire-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Download questionnaire PDF error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
