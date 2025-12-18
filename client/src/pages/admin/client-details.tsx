@@ -738,8 +738,23 @@ export default function ClientDetails() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            window.open(`/api/admin/clients/${clientId}/questionnaire/pdf`, '_blank');
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem("token");
+                              const res = await fetch(`/api/admin/clients/${clientId}/questionnaire/pdf`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              if (!res.ok) throw new Error("Failed to fetch PDF");
+                              const blob = await res.blob();
+                              const url = URL.createObjectURL(blob);
+                              window.open(url, '_blank');
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to download questionnaire PDF.",
+                                variant: "destructive",
+                              });
+                            }
                           }}
                           data-testid="button-download-questionnaire"
                         >
@@ -786,8 +801,23 @@ export default function ClientDetails() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            window.open(`/api/admin/clients/${clientId}/tos/pdf`, '_blank');
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem("token");
+                              const res = await fetch(`/api/admin/clients/${clientId}/tos/pdf`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              if (!res.ok) throw new Error("Failed to fetch PDF");
+                              const blob = await res.blob();
+                              const url = URL.createObjectURL(blob);
+                              window.open(url, '_blank');
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to preview TOS PDF.",
+                                variant: "destructive",
+                              });
+                            }
                           }}
                           data-testid="button-preview-tos"
                         >
