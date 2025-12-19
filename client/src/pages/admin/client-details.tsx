@@ -18,10 +18,6 @@ import {
   Copy,
   Check,
   Settings,
-  Palette,
-  Layout,
-  Type,
-  Image as ImageIcon,
   ClipboardList,
   Save,
   ExternalLink,
@@ -143,10 +139,6 @@ export default function ClientDetails() {
     paymentStructure: "50_50",
     domain: "",
     hosting: "",
-    primaryColor: "#3B82F6",
-    secondaryColor: "#10B981",
-    fontFamily: "Inter",
-    layoutStyle: "modern",
     specialRequirements: "",
   });
 
@@ -257,10 +249,6 @@ export default function ClientDetails() {
         paymentStructure: project.paymentStructure || "50_50",
         domain: project.domain || "",
         hosting: project.hosting || "",
-        primaryColor: project.primaryColor || "#3B82F6",
-        secondaryColor: project.secondaryColor || "#10B981",
-        fontFamily: project.fontFamily || "Inter",
-        layoutStyle: project.layoutStyle || "modern",
         specialRequirements: project.specialRequirements || "",
       });
     }
@@ -640,92 +628,6 @@ export default function ClientDetails() {
                   </Card>
 
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="font-serif text-lg flex items-center gap-2">
-                        <Palette className="w-4 h-4" />
-                        Design Preferences
-                      </CardTitle>
-                      <CardDescription>Colors, fonts, and layout style</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label>Primary Color</Label>
-                          <div className="flex gap-2 items-center">
-                            <Input
-                              type="color"
-                              value={projectSettings.primaryColor}
-                              onChange={(e) => setProjectSettings({ ...projectSettings, primaryColor: e.target.value })}
-                              className="w-12 h-9 p-1 cursor-pointer"
-                              data-testid="input-settings-primary-color"
-                            />
-                            <Input
-                              value={projectSettings.primaryColor}
-                              onChange={(e) => setProjectSettings({ ...projectSettings, primaryColor: e.target.value })}
-                              className="flex-1"
-                              placeholder="#3B82F6"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Secondary Color</Label>
-                          <div className="flex gap-2 items-center">
-                            <Input
-                              type="color"
-                              value={projectSettings.secondaryColor}
-                              onChange={(e) => setProjectSettings({ ...projectSettings, secondaryColor: e.target.value })}
-                              className="w-12 h-9 p-1 cursor-pointer"
-                              data-testid="input-settings-secondary-color"
-                            />
-                            <Input
-                              value={projectSettings.secondaryColor}
-                              onChange={(e) => setProjectSettings({ ...projectSettings, secondaryColor: e.target.value })}
-                              className="flex-1"
-                              placeholder="#10B981"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Font Family</Label>
-                          <Select 
-                            value={projectSettings.fontFamily} 
-                            onValueChange={(v) => setProjectSettings({ ...projectSettings, fontFamily: v })}
-                          >
-                            <SelectTrigger data-testid="select-settings-font">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Inter">Inter</SelectItem>
-                              <SelectItem value="Roboto">Roboto</SelectItem>
-                              <SelectItem value="Open Sans">Open Sans</SelectItem>
-                              <SelectItem value="Poppins">Poppins</SelectItem>
-                              <SelectItem value="Montserrat">Montserrat</SelectItem>
-                              <SelectItem value="Lato">Lato</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Layout Style</Label>
-                          <Select 
-                            value={projectSettings.layoutStyle} 
-                            onValueChange={(v) => setProjectSettings({ ...projectSettings, layoutStyle: v })}
-                          >
-                            <SelectTrigger data-testid="select-settings-layout">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="modern">Modern</SelectItem>
-                              <SelectItem value="classic">Classic</SelectItem>
-                              <SelectItem value="minimal">Minimal</SelectItem>
-                              <SelectItem value="bold">Bold</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                       <div>
                         <CardTitle className="font-serif text-lg flex items-center gap-2">
@@ -760,6 +662,43 @@ export default function ClientDetails() {
                         >
                           <FileText className="w-4 h-4 mr-2" />
                           Download PDF
+                        </Button>
+                      )}
+                      {client.projects[0]?.questionnaireStatus !== "completed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem("auth_token");
+                              const res = await fetch(`/api/admin/clients/${clientId}/send-reminder`, {
+                                method: "POST",
+                                headers: { 
+                                  "Content-Type": "application/json",
+                                  Authorization: `Bearer ${token}`,
+                                },
+                                body: JSON.stringify({ type: "questionnaire" }),
+                              });
+                              if (res.ok) {
+                                toast({
+                                  title: "Reminder Sent",
+                                  description: "Questionnaire reminder has been sent to the client.",
+                                });
+                              } else {
+                                throw new Error("Failed to send reminder");
+                              }
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to send questionnaire reminder.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          data-testid="button-send-questionnaire-reminder"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Send Reminder
                         </Button>
                       )}
                     </CardHeader>
@@ -830,9 +769,13 @@ export default function ClientDetails() {
                             size="sm"
                             onClick={async () => {
                               try {
+                                const token = localStorage.getItem("auth_token");
                                 const res = await fetch(`/api/admin/clients/${clientId}/tos/send`, {
                                   method: "POST",
-                                  headers: { "Content-Type": "application/json" },
+                                  headers: { 
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${token}`,
+                                  },
                                 });
                                 if (res.ok) {
                                   toast({

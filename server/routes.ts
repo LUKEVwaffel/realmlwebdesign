@@ -994,6 +994,60 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/clients/:id/send-reminder", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { type } = req.body;
+      
+      if (!type || !["questionnaire", "tos"].includes(type)) {
+        return res.status(400).json({ error: "Invalid reminder type. Must be 'questionnaire' or 'tos'" });
+      }
+
+      const client = await storage.getClient(id);
+      if (!client || !client.userId) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = projects[0];
+
+      if (type === "questionnaire") {
+        sendWorkflowEmail(id, project.id, "questionnaire_pending").catch(err =>
+          console.error("Failed to send questionnaire reminder:", err)
+        );
+
+        await storage.createActivityLog({
+          userId: req.user!.id,
+          clientId: id,
+          action: "reminder_sent",
+          description: "Questionnaire completion reminder sent to client",
+          ipAddress: req.ip,
+        });
+      } else if (type === "tos") {
+        sendWorkflowEmail(id, project.id, "tos_ready").catch(err =>
+          console.error("Failed to send TOS reminder:", err)
+        );
+
+        await storage.createActivityLog({
+          userId: req.user!.id,
+          clientId: id,
+          action: "reminder_sent",
+          description: "Terms of Service signing reminder sent to client",
+          ipAddress: req.ip,
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Send reminder error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/admin/clients/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

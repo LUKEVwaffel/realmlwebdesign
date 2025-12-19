@@ -1,0 +1,596 @@
+# Terms of Service
+
+**Effective Date:** [Insert Date]  
+**Last Updated:** [Insert Date]
+
+## 1. Introduction and Acceptance of Terms
+
+### 1.1 Agreement to Terms
+By accessing our services, submitting a project inquiry, signing a proposal, making a payment, or otherwise engaging with our company in any capacity, you ("Client," "you," or "your") acknowledge that you have read, understood, and agree to be bound by these Terms of Service ("Terms," "Agreement," or "TOS"). These Terms constitute a legally binding agreement between you and [Company Name] ("Company," "we," "us," or "our").
+
+### 1.2 Scope of Application
+These Terms govern all aspects of the business relationship between the Company and the Client, including but not limited to:
+- All design, development, consulting, and related services
+- Project proposals, contracts, and statements of work
+- All communications conducted through email, phone, video conference, client portal, or any other medium
+- All deliverables, including but not limited to websites, graphics, documents, and digital assets
+- Payment transactions and financial arrangements
+- Use of any tools, platforms, or portals provided by the Company
+
+### 1.3 Modifications to Terms
+The Company reserves the right to modify, update, or replace these Terms at any time at its sole discretion. When material changes are made, we will provide notice through email or posting on our website. Continued use of our services after such modifications constitutes acceptance of the updated Terms. It is the Client's responsibility to review these Terms periodically.
+
+### 1.4 Additional Agreements
+In addition to these Terms, specific projects may be governed by additional agreements such as project proposals, statements of work, service level agreements, or addenda. In the event of a conflict between these Terms and a project-specific agreement, the project-specific agreement shall take precedence for that particular project only.
+
+### 1.5 Eligibility
+By agreeing to these Terms, you represent and warrant that you are at least 18 years of age and have the legal capacity to enter into binding contracts. If you are accepting these Terms on behalf of a business entity, you represent that you have the authority to bind that entity to these Terms.
+
+## 2. Client Responsibilities and Obligations
+
+### 2.1 Provision of Accurate Information
+The Client agrees to provide complete, accurate, and truthful information at all stages of the project, including:
+- All questionnaires, intake forms, and discovery documents
+- Brand guidelines, existing marketing materials, and assets
+- Target audience information and business objectives
+- Technical requirements and specifications
+- Access credentials to necessary platforms and systems
+- Contact information for all stakeholders and decision-makers
+
+The Client acknowledges that the quality and accuracy of deliverables depend significantly on the information provided. Any delays or issues arising from incomplete, inaccurate, or misleading information provided by the Client are not the responsibility of the Company.
+
+### 2.2 Timely Responses and Approvals
+The Client agrees to:
+- Respond to requests for information, feedback, or approvals within the timeframes specified in project documentation (typically within 3-5 business days unless otherwise agreed)
+- Provide electronic signatures on required documents within 48 hours of receipt
+- Review and approve deliverables according to the project timeline
+- Notify the Company immediately if they anticipate delays in providing required input
+
+Failure to provide timely responses may result in project delays, and the Company will not be held responsible for missing deadlines due to Client delays. Extended delays beyond 30 days may result in project suspension or additional fees to resume work.
+
+### 2.3 Payment Obligations
+The Client agrees to pay all fees according to the payment schedule outlined in the project agreement. This includes:
+- The agreed-upon flat fee for all services
+- Any additional fees for scope changes or revisions beyond the agreed limits
+- Cancellation fees if applicable
+- Any third-party costs that the Client has authorized
+
+All payments must be made through the payment methods specified by the Company. Late payments may incur interest charges of 1.5% per month (18% annually) or the maximum rate permitted by law, whichever is lower.
+
+### 2.4 Content Responsibility
+The Client is solely responsible for:
+- Providing all text, images, videos, and other content for the website
+- Ensuring all provided content is original, licensed, or properly attributed
+- Obtaining all necessary permissions, releases, and rights for content use
+- Ensuring content complies with all applicable laws and regulations
+- Accuracy and legality of all information published on their website
+
+The Company is not responsible for reviewing, editing, or verifying the accuracy or legality of Client-provided content unless specifically contracted to do so.
+
+### 2.5 Cooperation and Communication
+The Client agrees to:
+- Designate a primary point of contact for the project
+- Participate in scheduled meetings and check-ins
+- Respond to communications through agreed channels
+- Provide constructive and consolidated feedback
+- Respect the Company's business hours and communication policies
+
+### 2.6 Third-Party Services
+If the project requires third-party services (such as stock photography, premium plugins, specialized software, or API access), the Client is responsible for:
+- Purchasing these services if not included in the project scope
+- Providing access credentials when needed
+- Maintaining subscriptions and renewals for ongoing functionality
+- Complying with all third-party terms of service
+
+## 3. Company Responsibilities and Commitments
+
+### 3.1 Service Delivery Standards
+The Company commits to:
+- Deliver design and development services that meet professional industry standards
+- Complete work according to the scope, specifications, and timeline outlined in the project agreement
+- Use reasonable skill and care in the provision of all services
+- Test deliverables for functionality across commonly used browsers and devices (as specified in the project scope)
+- Provide work that is free from defects in materials and workmanship
+
+### 3.2 Communication Protocols
+The Company will:
+- Provide regular project updates through the client portal or agreed communication channels
+- Respond to Client inquiries within 1-2 business days
+- Notify the Client promptly of any potential delays or issues
+- Maintain professional and respectful communication at all times
+- Schedule meetings and check-ins according to project needs
+
+### 3.3 Confidentiality and Data Protection
+The Company agrees to:
+- Keep all Client information, data, and project details strictly confidential
+- Not disclose Client information to third parties except as necessary to complete the project or as required by law
+- Implement reasonable security measures to protect Client data
+- Return or destroy confidential information upon project completion, upon request
+- Require any subcontractors or team members to agree to similar confidentiality obligations
+
+### 3.4 Professional Standards
+The Company maintains professional standards by:
+- Adhering to industry best practices and current web standards
+- Ensuring team members have appropriate skills and qualifications
+- Conducting internal quality reviews before presenting deliverables
+- Staying current with technologies and methodologies
+- Maintaining appropriate business insurance
+
+### 3.5 Transparency
+The Company commits to transparency by:
+- Clearly communicating project status and milestones
+- Providing honest assessments of timelines and feasibility
+- Disclosing any conflicts of interest
+- Explaining technical decisions and recommendations
+- Documenting all significant project decisions and changes
+
+## 4. Project Lifecycle and Management
+
+### 4.1 Project Phases
+Each project typically progresses through the following phases:
+1. **Discovery and Planning:** Requirements gathering, research, and strategic planning
+2. **Design:** Visual design creation, mockups, and design approval
+3. **Development:** Website build, functionality implementation, and content integration
+4. **Testing and Review:** Quality assurance, testing, and client review
+5. **Launch and Delivery:** Final deployment and handoff to client
+6. **Post-Launch Support:** Limited support period as defined in the project agreement
+
+### 4.2 Document Gating and Approvals
+No project phase will commence or progress without obtaining required approvals and signatures from the Client. This includes:
+- Sign-off on project briefs and specifications
+- Approval of design mockups and prototypes
+- Confirmation of content and functionality
+- Final acceptance of completed work
+
+Approvals must be provided in writing (email or electronic signature). Verbal approvals will not be considered binding. The Client acknowledges that once a phase is approved and signed off, any subsequent changes to that phase may be considered out of scope and subject to additional fees.
+
+### 4.3 Change Requests and Scope Management
+Any requests that fall outside the original agreed scope require:
+- A formal written change request submitted by the Client
+- An assessment by the Company of time and cost implications
+- Written approval from the Client before work commences
+- Updated project timeline and budget documentation
+
+Changes may include but are not limited to:
+- Additional pages or functionality beyond the original scope
+- Redesign of approved elements
+- Integration with additional third-party services
+- Changes to fundamental project requirements or objectives
+
+The Company reserves the right to decline change requests that significantly alter the project direction or would compromise project quality or timelines.
+
+### 4.4 Revision Policy
+The project agreement will specify the number of revision rounds included for each deliverable. Revisions must be:
+- Requested within the timeframe specified in the project agreement
+- Provided in consolidated written form
+- Related to the original scope and requirements
+- Reasonable in nature and extent
+
+Revisions beyond the included allowance will be billed at the Company's standard hourly rate or as a fixed additional fee, as determined by the Company.
+
+### 4.5 Project Completion
+A project is considered complete when:
+- All deliverables specified in the project agreement have been provided
+- The final website has been delivered to the Client or deployed to the Client's hosting environment
+- The Client has been provided with all necessary documentation, credentials, and training
+- Final approval and sign-off has been obtained from the Client
+
+Completion triggers the conclusion of the active project phase and the beginning of any post-launch support period as defined in the project agreement.
+
+### 4.6 Project Delays
+If project delays occur due to Client inaction, unresponsiveness, or failure to provide required materials:
+- The original timeline will be adjusted accordingly
+- The Company is not responsible for missing original deadlines
+- After 30 days of inactivity, the project may be considered dormant
+- Dormant projects may incur a reactivation fee and require rescheduling
+- Projects dormant for 90 days may be considered abandoned and subject to cancellation terms
+
+## 5. Payments, Fees, and Refunds
+
+### 5.1 Flat Fee Structure
+All projects are billed at a single flat fee agreed upon before work begins. This fee is outlined in the project proposal or agreement and includes:
+- All services specified in the project scope
+- The agreed number of design and revision rounds
+- One year of domain registration and hosting services
+- Standard project management and communication
+- File delivery and basic training/documentation
+
+### 5.2 Payment Schedule
+Unless otherwise specified in the project agreement, the standard payment structure is:
+- 50% deposit due upon signing the project agreement
+- 50% final payment due upon project completion and before final delivery
+
+Alternative payment schedules may be arranged for larger projects and will be detailed in the project agreement.
+
+### 5.3 Payment Methods
+Acceptable payment methods include:
+- Credit card or debit card
+- ACH bank transfer
+- Electronic payment platforms as specified by the Company
+- Check (with advance notice and extended processing time)
+
+All payment processing fees are included in the project cost unless otherwise specified.
+
+### 5.4 Late Payment Terms
+Payments not received within 7 days of the due date are considered late. Late payments may result in:
+- Interest charges of 1.5% per month (18% annually) on the outstanding balance
+- Suspension of work until payment is received
+- Withholding of deliverables and access credentials
+- Project cancellation if payment is more than 30 days overdue
+- Engagement of collection services, with all collection costs to be borne by the Client
+
+### 5.5 Cancellation Before Delivery
+If the Client chooses to cancel the project before the final website has been delivered:
+- A cancellation fee of $100 will apply in all cases
+- Any work completed up to the point of cancellation must be paid for at the Company's standard hourly rate
+- The Client may retain any deliverables completed and approved prior to cancellation
+- Any deposit paid will be applied toward the cancellation fee and completed work
+- Any remaining balance owed must be paid within 14 days of cancellation notice
+
+### 5.6 No Refunds After Delivery
+Once the final website has been delivered to the Client, no refunds are available under any circumstances. This policy applies even if:
+- The Client changes their mind about the project
+- The Client's business circumstances change
+- The Client is unsatisfied with the website (provided it meets the specifications in the project agreement)
+- The Client chooses not to launch or use the website
+
+The Client acknowledges that final delivery constitutes completion of the Company's contractual obligations, and all fees are considered fully earned at that point.
+
+### 5.7 Disputed Charges
+If the Client disputes any charge, they must notify the Company in writing within 10 days of the invoice date. The Company will investigate the dispute and respond within 15 business days. During the dispute resolution period, the Client remains obligated to pay any undisputed portions of the invoice on time.
+
+### 5.8 Additional Fees
+Additional fees not included in the flat fee structure may include:
+- Out-of-scope work or change requests
+- Excessive revisions beyond the included allowance
+- Rush fees for expedited timelines
+- Third-party services, premium plugins, or software not included in the original scope
+- Extended support or maintenance beyond the included period
+- Restoration fees if the Client requests archived project files after completion
+
+All additional fees will be communicated and approved by the Client in writing before work commences.
+
+## 6. Domain Registration and Hosting Services
+
+### 6.1 Account Creation Requirements
+Upon request from the Company, the Client must create a domain registrar and hosting account in their own name. This ensures:
+- The Client maintains direct ownership and control of their domain
+- The Client has direct access to account management and billing
+- There are no complications with account transfers or ownership disputes
+- The Client can manage renewals and services independently after the first year
+
+### 6.2 Company-Provided Guidance
+The Company will provide:
+- Detailed step-by-step instructions for creating the hosting account
+- Recommendations for reputable hosting providers
+- Guidance on selecting appropriate hosting plans
+- Technical specifications and requirements
+- Support during the account setup process
+
+The Client is responsible for following these instructions carefully and accurately.
+
+### 6.3 Temporary Credential Access
+To facilitate domain purchase and configuration, the Client must provide temporary login credentials to the Company. The Client agrees that:
+- These credentials are provided voluntarily for the purpose of project completion
+- The Company will use these credentials solely for purchasing and configuring domain and hosting services
+- The Company will implement reasonable security measures to protect these credentials
+- Access will be limited to the minimum duration necessary
+- The Client should change their password after project completion if desired
+
+### 6.4 Initial Coverage Period
+The cost of one full year of domain registration and hosting services is included in the project flat fee. This includes:
+- Domain registration for one year
+- Hosting service for one year at the level specified in the project agreement
+- SSL certificate for the first year (if required)
+- Initial DNS configuration
+
+### 6.5 Ongoing Responsibility After Year One
+After the first year, the Client assumes full and sole responsibility for:
+- Renewing the domain registration annually
+- Paying all hosting fees according to the provider's billing schedule
+- Maintaining adequate hosting resources for the website's needs
+- Updating payment methods and account information with the provider
+- Monitoring renewal notices and avoiding service lapses
+
+The Company is not responsible for notifying the Client of upcoming renewals and is not liable for any service interruptions, domain expiration, or data loss resulting from the Client's failure to renew services.
+
+### 6.6 Return of Access Rights
+Once domain purchase and initial configuration are complete, the Company will:
+- Return full administrative access to the Client
+- Provide documentation of all settings and configurations
+- Remove Company access to the account (unless ongoing maintenance services are contracted)
+- Surrender any temporary credentials provided by the Client
+
+### 6.7 Domain and Hosting Recommendations
+While the Company provides recommendations for domain and hosting providers, the final selection rests with the Client. The Company:
+- Makes recommendations based on technical suitability and reliability
+- Does not receive commissions or referral fees from recommended providers
+- Cannot guarantee the performance, uptime, or customer service of third-party providers
+- Is not responsible for disputes between the Client and their hosting provider
+
+### 6.8 Technical Support Limitations
+The Company's responsibility for domain and hosting support is limited to:
+- Initial setup and configuration during the project
+- Troubleshooting issues directly related to the website deployment
+- Guidance on basic account management during the first year
+
+The Company is not responsible for:
+- Ongoing technical support for the hosting account after project completion
+- Issues arising from the Client's modifications to hosting settings
+- Server-level issues that must be resolved by the hosting provider
+- Third-party hosting provider outages or service failures
+
+## 7. Intellectual Property Rights
+
+### 7.1 Ownership Upon Payment
+Upon receipt of full payment for the project, the Client receives ownership of:
+- The final website code and design elements
+- Custom graphics and visual assets created specifically for the project
+- Content developed by the Company for the Client's website
+- Project documentation and training materials provided to the Client
+
+### 7.2 Pre-Existing Materials and Third-Party Components
+Ownership does not extend to:
+- Stock photography, fonts, or other licensed assets (which remain subject to their original licenses)
+- Third-party frameworks, libraries, plugins, or templates (which retain their original licenses, typically open source)
+- Pre-existing Company tools, methodologies, or proprietary processes
+- Generic code or design elements that the Company commonly uses across multiple projects
+
+The Client receives appropriate licenses to use these materials as part of their website but does not own them outright.
+
+### 7.3 Company Portfolio Rights
+The Company retains the right to:
+- Display the completed project in its portfolio, on its website, and in marketing materials
+- Reference the Client and project in case studies and client lists
+- Showcase the work in industry publications and award submissions
+- Use screenshots, descriptions, and general information about the project
+
+If the Client requires confidentiality or wishes to exclude their project from the Company's portfolio, this must be agreed upon in writing before project commencement and may affect pricing.
+
+### 7.4 Attribution Rights
+The Company may include:
+- A discrete "Designed by [Company Name]" credit in the website footer
+- Metadata attribution in the website code
+- The Company logo in the footer or credits section (if agreed)
+
+The Client may request removal of visible attribution, but code-level attribution will typically remain.
+
+### 7.5 Restrictions on Company Work Product
+Until full payment is received, the Company retains all rights to deliverables. The Client may not:
+- Use, modify, or distribute any deliverables before full payment
+- Transfer any incomplete work to third parties
+- Attempt to recreate the Company's work through reverse engineering or other means
+
+### 7.6 Client Intellectual Property
+The Client retains all rights to:
+- Their brand name, logo, and trademarks
+- Content they provide or create
+- Their business processes and proprietary information
+- Pre-existing materials provided to the Company
+
+The Client grants the Company a limited license to use these materials solely for the purpose of completing the contracted project.
+
+### 7.7 Warranty of Original Work
+The Company warrants that:
+- All work product created by the Company will be original or appropriately licensed
+- The Company has the right to grant the licenses and rights outlined in this section
+- The work will not knowingly infringe upon any third-party intellectual property rights
+
+If any claim of infringement arises, the Company will work with the Client to resolve the issue, which may include modifying the work or obtaining necessary licenses.
+
+## 8. Limitations of Liability and Warranties
+
+### 8.1 No Guarantee of Business Outcomes
+The Company does not guarantee, warrant, or represent that:
+- The website will generate any specific amount of traffic, leads, or revenue
+- The website will achieve specific search engine rankings
+- The Client's business will grow or succeed as a result of the website
+- Any particular results or outcomes will be achieved
+
+The Company provides website design and development services, but success depends on many factors outside the Company's control, including the Client's business model, marketing efforts, market conditions, and competition.
+
+### 8.2 Technical Limitations
+The Company is not liable for:
+- Third-party hosting service failures, outages, or performance issues
+- Domain registrar problems or domain expiration
+- Internet service provider issues or connectivity problems
+- Third-party plugin or software failures or incompatibilities
+- Hosting provider security breaches or data loss
+- Issues arising from server misconfigurations made by the Client or hosting provider
+- Compatibility issues with outdated or non-standard browsers
+- Problems caused by client modifications to the website after delivery
+
+### 8.3 Warranty Disclaimer
+Except as expressly stated in these Terms, the Company provides all services "as is" and disclaims all warranties, whether express, implied, or statutory, including but not limited to:
+- Implied warranties of merchantability
+- Fitness for a particular purpose
+- Non-infringement
+- Accuracy, reliability, or completeness
+- Uninterrupted or error-free operation
+
+### 8.4 Limited Warranty Period
+The Company provides a limited warranty for 30 days after final delivery that:
+- The website will function substantially as described in the project agreement
+- The website will be free from critical defects in code or functionality
+- The website will display properly in commonly used modern browsers
+
+This warranty does not cover:
+- Issues caused by client modifications or third-party changes
+- Problems arising from hosting environment changes
+- Normal wear and tear or minor cosmetic issues
+- Features working as designed but not meeting the Client's unstated expectations
+
+### 8.5 Limitation of Liability Cap
+To the maximum extent permitted by law, the Company's total liability for any claims arising from or related to the project shall not exceed the total amount paid by the Client for the project. This limitation applies regardless of the legal theory of liability, whether contract, tort, negligence, strict liability, or otherwise.
+
+### 8.6 Exclusion of Consequential Damages
+In no event shall the Company be liable for:
+- Indirect, incidental, special, consequential, or punitive damages
+- Lost profits, lost revenue, or lost business opportunities
+- Loss of data or business interruption
+- Cost of substitute services or technology
+- Damage to reputation or goodwill
+- Any damages arising from third-party claims
+
+This exclusion applies even if the Company has been advised of the possibility of such damages.
+
+### 8.7 Third-Party Services Disclaimer
+The Company is not responsible for:
+- Performance, reliability, or availability of third-party services, tools, or platforms
+- Changes to third-party APIs, terms of service, or functionality
+- Costs associated with third-party services beyond the first year (if included)
+- Security breaches or data loss at third-party providers
+- Discontinuation of third-party services or features
+
+### 8.8 Security and Maintenance Limitations
+After project delivery, the Company is not responsible for:
+- Ongoing security updates and patches (unless contracted separately)
+- Protection against hacking, malware, or security breaches
+- Backup and disaster recovery (Client's responsibility)
+- Performance optimization as content and traffic grow
+- Compatibility with future browser or technology updates
+
+The Client is strongly encouraged to maintain regular backups and implement ongoing security and maintenance practices.
+
+### 8.9 Client Indemnification
+The Client agrees to indemnify, defend, and hold harmless the Company from any claims, damages, losses, liabilities, and expenses (including reasonable attorney fees) arising from:
+- Content provided by the Client
+- Client's use of the website or deliverables
+- Client's breach of these Terms
+- Infringement of third-party rights by Client-provided materials
+- Client's violation of applicable laws or regulations
+
+## 9. Termination and Suspension
+
+### 9.1 Termination by Client
+The Client may terminate the project at any time with written notice. Upon termination:
+- The $100 cancellation fee applies immediately
+- The Client must pay for all work completed to the date of termination at the Company's standard hourly rate
+- Any deposit paid will be applied to the cancellation fee and completed work
+- The Client may retain deliverables that have been completed and approved prior to termination
+- The Client must pay all outstanding invoices within 14 days of termination notice
+- The Company will provide a final invoice itemizing all work completed
+
+### 9.2 Termination by Company
+The Company reserves the right to terminate the agreement if:
+- The Client fails to make payment within 30 days of the due date
+- The Client fails to respond to communications for 30 consecutive days
+- The Client fails to provide required materials, approvals, or information for 45 consecutive days
+- The Client breaches any material term of this agreement
+- The Client engages in abusive, threatening, or inappropriate behavior toward Company staff
+- Continuing the project would violate applicable laws or regulations
+
+### 9.3 Notice Period
+When the Company initiates termination:
+- The Company will provide written notice specifying the reason for termination
+- The Client will have 7 business days to cure the issue (if curable)
+- If the issue is not cured, termination becomes effective
+- The Company will provide a final invoice for all completed work
+- The Client must pay all outstanding amounts within 14 days
+
+### 9.4 Effects of Termination
+Upon termination by either party:
+- All work stops immediately
+- The Company is released from all further obligations
+- The Client's payment obligations for completed work remain in effect
+- The Company may retain all deposits and payments received
+- Access to project files, work-in-progress, and client portal will be terminated
+- Confidentiality and intellectual property provisions remain in effect
+
+### 9.5 Project Suspension
+The Company may suspend work without terminating the agreement if:
+- Payment is overdue
+- The Client is unresponsive but has not exceeded the 30-day termination threshold
+- The Client has not provided required materials or approvals
+- There are unresolved disputes regarding scope or requirements
+
+During suspension:
+- No work will be performed
+- Timeline deadlines are paused
+- The project may be reactivated once issues are resolved
+- Extended suspension (beyond 30 days) may incur a reactivation fee
+
+### 9.6 Return of Materials
+Upon termination:
+- The Company will return original materials provided by the Client within 30 days
+- The Client must return any Company materials, templates, or proprietary resources immediately
+- All confidential information must be returned or destroyed as appropriate
+- Access credentials to Company systems must be deactivated
+
+### 9.7 Survival of Terms
+The following provisions survive termination:
+- Payment obligations
+- Intellectual property provisions
+- Confidentiality obligations
+- Limitation of liability
+- Indemnification
+- Governing law and dispute resolution
+
+## 10. Legal Provisions
+
+### 10.1 Governing Law
+These Terms shall be governed by and construed in accordance with the laws of the State of Tennessee, United States of America, without regard to its conflict of law provisions.
+
+### 10.2 Jurisdiction and Venue
+Any legal action or proceeding arising under or relating to these Terms shall be brought exclusively in the state or federal courts located in Tennessee. Both parties consent to the personal jurisdiction of these courts and waive any objection to venue.
+
+### 10.3 Dispute Resolution
+Before initiating formal legal proceedings, the parties agree to:
+1. Attempt to resolve disputes through good-faith negotiation
+2. Provide written notice of the dispute with specific details
+3. Allow 30 days for informal resolution attempts
+4. Consider mediation if negotiation is unsuccessful
+
+This requirement does not apply to disputes requiring immediate injunctive relief.
+
+### 10.4 Attorney Fees
+In any action to enforce these Terms, the prevailing party shall be entitled to recover reasonable attorney fees, court costs, and other litigation expenses from the non-prevailing party.
+
+### 10.5 Severability
+If any provision of these Terms is found to be invalid, illegal, or unenforceable, the remaining provisions shall continue in full force and effect. The invalid provision shall be modified to the minimum extent necessary to make it valid and enforceable while preserving the parties' original intent.
+
+### 10.6 Entire Agreement
+These Terms, together with any project-specific agreements, constitute the entire agreement between the parties regarding the subject matter and supersede all prior or contemporaneous understandings, agreements, representations, and warranties, whether written or oral.
+
+### 10.7 No Waiver
+The failure of either party to enforce any provision of these Terms shall not constitute a waiver of that provision or any other provision. No waiver shall be effective unless made in writing and signed by the waiving party.
+
+### 10.8 Assignment
+The Client may not assign, transfer, or delegate any rights or obligations under these Terms without the Company's prior written consent. The Company may assign these Terms or subcontract services without Client consent, provided service quality is maintained.
+
+### 10.9 Force Majeure
+Neither party shall be liable for any failure or delay in performance due to events beyond their reasonable control, including but not limited to acts of God, war, terrorism, strikes, natural disasters, pandemics, government actions, or telecommunications failures.
+
+### 10.10 Independent Contractor
+The Company is an independent contractor, not an employee, agent, or partner of the Client. Nothing in these Terms creates an employment relationship, joint venture, or partnership.
+
+### 10.11 Notices
+All notices required under these Terms must be in writing and delivered via:
+- Email to the addresses specified in the project agreement
+- Certified mail to the addresses specified in the project agreement
+- The client portal messaging system
+
+Notices are considered delivered when sent via email or three days after mailing.
+
+### 10.12 Language
+These Terms are written in English. Any translations are provided for convenience only, and the English version shall control in case of discrepancies.
+
+---
+
+## 11. Acceptance and Acknowledgment
+
+By engaging our services, making payment, signing a project agreement, or otherwise proceeding with a project, the Client acknowledges that they have:
+- Read and understood these Terms of Service in their entirety
+- Had adequate opportunity to review these Terms and ask questions
+- Agreed to be legally bound by all provisions contained herein
+- The authority to bind their organization (if applicable) to these Terms
+
+**For questions about these Terms, please contact:**  
+[Company Name]  
+[Contact Email]  
+[Contact Phone]  
+[Business Address]
+
+---
+
+*These Terms of Service are effective as of [Effective Date] and remain in effect for all projects initiated after this date.*
