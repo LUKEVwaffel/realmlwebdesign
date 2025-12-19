@@ -422,13 +422,13 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Filename is required" });
       }
 
-      // Security: validate filename and extension
-      const allowedExtensions = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+      // Security: validate filename and extension (block executable files)
+      const blockedExtensions = ['.exe', '.bat', '.cmd', '.sh', '.ps1', '.msi', '.dll', '.com', '.scr', '.vbs', '.js', '.jar', '.php', '.py', '.rb', '.pl'];
       const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 255);
       const ext = sanitizedFilename.toLowerCase().slice(sanitizedFilename.lastIndexOf('.'));
       
-      if (!allowedExtensions.includes(ext)) {
-        return res.status(400).json({ error: "Invalid file type. Allowed: PDF, DOC, DOCX, PNG, JPG, JPEG, GIF, WEBP" });
+      if (blockedExtensions.includes(ext)) {
+        return res.status(400).json({ error: "This file type is not allowed for security reasons" });
       }
 
       const { ObjectStorageService } = await import("./objectStorage");

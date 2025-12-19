@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Upload, X, FileText, Check, AlertCircle } from "lucide-react";
@@ -13,7 +13,7 @@ interface FileUploaderProps {
 }
 
 export function FileUploader({
-  accept = ".pdf,.doc,.docx",
+  accept,
   maxSize = 52428800,
   onUpload,
   onComplete,
@@ -24,12 +24,11 @@ export function FileUploader({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     if (file.size > maxSize) {
       setError(`File size must be less than ${Math.round(maxSize / 1024 / 1024)}MB`);
       return;
@@ -56,11 +55,52 @@ export function FileUploader({
       setIsUploading(false);
       setProgress(0);
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    await processFile(file);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !isUploading) {
+      setIsDragging(true);
+    }
+  }, [disabled, isUploading]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled || isUploading) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await processFile(files[0]);
+    }
+  }, [disabled, isUploading]);
 
   const clearUpload = () => {
     setUploadedFile(null);
@@ -80,17 +120,50 @@ export function FileUploader({
       />
 
       {!uploadedFile && !isUploading && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
-          className="w-full"
-          data-testid="button-select-file"
+        <div
+          ref={dropZoneRef}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onClick={() => !disabled && fileInputRef.current?.click()}
+          className={`
+            relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+            transition-colors duration-200
+            ${isDragging 
+              ? "border-primary bg-primary/10" 
+              : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50"
+            }
+            ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          `}
+          data-testid="dropzone-file-upload"
         >
-          <Upload className="w-4 h-4 mr-2" />
-          {buttonLabel}
-        </Button>
+          <div className="flex flex-col items-center gap-2">
+            <Upload className={`w-8 h-8 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
+            <div>
+              <p className="text-sm font-medium">
+                {isDragging ? "Drop file here" : "Drag and drop a file here"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                or click to browse
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              className="mt-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              data-testid="button-select-file"
+            >
+              {buttonLabel}
+            </Button>
+          </div>
+        </div>
       )}
 
       {isUploading && (
@@ -133,7 +206,7 @@ export function FileUploader({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Supported formats: PDF, DOC, DOCX. Max size: {Math.round(maxSize / 1024 / 1024)}MB
+        Any file type supported. Max size: {Math.round(maxSize / 1024 / 1024)}MB
       </p>
     </div>
   );
