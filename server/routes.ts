@@ -948,8 +948,14 @@ export async function registerRoutes(
         contactName,
       });
 
-      const base64Pdf = tosResult.buffer.toString("base64");
-      const dataUrl = `data:application/pdf;base64,${base64Pdf}`;
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const sanitizedBusinessName = client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_");
+      const { objectPath } = await objectStorageService.uploadBuffer(
+        tosResult.buffer,
+        `tos-${sanitizedBusinessName}.pdf`,
+        "application/pdf"
+      );
 
       const signatureFields = customSignatureFields && customSignatureFields.length > 0 
         ? customSignatureFields 
@@ -971,8 +977,8 @@ export async function registerRoutes(
         title: `Terms of Service - ${client.businessLegalName}`,
         documentType: "terms_of_service",
         description: `Terms of Service agreement for ${client.businessLegalName}, dated ${new Date().toLocaleDateString()}`,
-        fileUrl: dataUrl,
-        fileName: `tos-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`,
+        fileUrl: objectPath,
+        fileName: `tos-${sanitizedBusinessName}.pdf`,
         requiresSignature: true,
         visibleToClient: true,
         signatureFields: JSON.stringify(signatureFields),
