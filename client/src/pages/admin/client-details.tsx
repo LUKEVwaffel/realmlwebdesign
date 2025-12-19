@@ -130,6 +130,8 @@ export default function ClientDetails() {
     signatureFields: [] as SignatureField[],
   });
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isGeneratingTos, setIsGeneratingTos] = useState(false);
+  const [tosPdfDataUrl, setTosPdfDataUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const [projectSettings, setProjectSettings] = useState({
@@ -189,10 +191,31 @@ export default function ClientDetails() {
       setIsDocumentDialogOpen(false);
       setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, requiresAcknowledgment: false, visibleToClient: true, signatureFields: [] });
       setUploadedFileName(null);
+      setTosPdfDataUrl(null);
       toast({ title: "Document created", description: "New document has been added for this client." });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to create document", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendTosMutation = useMutation({
+    mutationFn: async (signatureFields: SignatureField[]) => {
+      const serializedFields = signatureFields.map(({ id, page, x, y, width, height, label }) => ({
+        id, page, x, y, width, height, label
+      }));
+      const res = await apiRequest("POST", `/api/admin/clients/${clientId}/tos/send`, { signatureFields: serializedFields });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      setIsDocumentDialogOpen(false);
+      setNewDocument({ title: "", documentType: "contract", description: "", fileUrl: "", requiresSignature: false, requiresAcknowledgment: false, visibleToClient: true, signatureFields: [] });
+      setTosPdfDataUrl(null);
+      toast({ title: "Terms of Service sent", description: "TOS has been sent to the client for signing." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send TOS", description: error.message, variant: "destructive" });
     },
   });
 
@@ -275,7 +298,11 @@ export default function ClientDetails() {
 
   const handleCreateDocument = (e: React.FormEvent) => {
     e.preventDefault();
-    createDocumentMutation.mutate(newDocument);
+    if (newDocument.documentType === "terms_of_service") {
+      sendTosMutation.mutate(newDocument.signatureFields);
+    } else {
+      createDocumentMutation.mutate(newDocument);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -1089,7 +1116,7 @@ export default function ClientDetails() {
                       Add Document
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className={newDocument.requiresSignature && newDocument.fileUrl ? "max-w-4xl" : undefined}>
+                  <DialogContent className={(newDocument.requiresSignature && (newDocument.fileUrl || tosPdfDataUrl)) ? "max-w-4xl" : undefined}>
                     <DialogHeader>
                       <DialogTitle>Create New Document</DialogTitle>
                       <DialogDescription>Add a document for this client to view/sign in their portal</DialogDescription>
@@ -1107,11 +1134,57 @@ export default function ClientDetails() {
                       </div>
                       <div className="space-y-2">
                         <Label>Document Type</Label>
-                        <Select value={newDocument.documentType} onValueChange={(v) => setNewDocument({ ...newDocument, documentType: v })}>
+                        <Select 
+                          value={newDocument.documentType} 
+                          onValueChange={async (v) => {
+                            if (v === "terms_of_service") {
+                              setNewDocument({ 
+                                ...newDocument, 
+                                documentType: v, 
+                                title: "Terms of Service",
+                                description: "Terms of Service agreement for web design services",
+                                requiresSignature: true,
+                                signatureFields: [{
+                                  id: "client-signature",
+                                  page: 1,
+                                  x: 72,
+                                  y: 650,
+                                  width: 200,
+                                  height: 50,
+                                  label: "Client Signature"
+                                }]
+                              });
+                              setIsGeneratingTos(true);
+                              try {
+                                const token = localStorage.getItem("auth_token");
+                                const res = await fetch(`/api/admin/clients/${clientId}/tos/preview`, {
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                if (res.ok) {
+                                  const blob = await res.blob();
+                                  const dataUrl = await new Promise<string>((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => resolve(reader.result as string);
+                                    reader.readAsDataURL(blob);
+                                  });
+                                  setTosPdfDataUrl(dataUrl);
+                                }
+                              } catch (err) {
+                                console.error("Failed to generate TOS preview:", err);
+                              } finally {
+                                setIsGeneratingTos(false);
+                              }
+                            } else {
+                              setNewDocument({ ...newDocument, documentType: v });
+                              setTosPdfDataUrl(null);
+                            }
+                          }}
+                        >
                           <SelectTrigger data-testid="select-document-type">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="terms_of_service">Terms of Service (auto-generated)</SelectItem>
                             <SelectItem value="contract">Contract (requires signature)</SelectItem>
                             <SelectItem value="upload">Upload (for review)</SelectItem>
                             <SelectItem value="invoice">Invoice</SelectItem>
@@ -1129,47 +1202,72 @@ export default function ClientDetails() {
                           data-testid="input-document-description"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Upload Document (PDF, DOC, DOCX)</Label>
-                        <FileUploader
-                          accept=".pdf,.doc,.docx"
-                          maxSize={52428800}
-                          buttonLabel={uploadedFileName ? `Replace: ${uploadedFileName}` : "Choose File"}
-                          disabled={isUploading}
-                          onUpload={async (file) => {
-                            setIsUploading(true);
-                            try {
-                              const res = await apiRequest("POST", "/api/admin/documents/upload-url", { 
-                                filename: file.name 
-                              });
-                              const { uploadURL, objectPath } = await res.json();
-                              
-                              await fetch(uploadURL, {
-                                method: "PUT",
-                                body: file,
-                                headers: {
-                                  "Content-Type": file.type || "application/octet-stream",
-                                },
-                              });
-                              
-                              return { url: objectPath, objectPath };
-                            } finally {
-                              setIsUploading(false);
-                            }
-                          }}
-                          onComplete={(result) => {
-                            setNewDocument({ ...newDocument, fileUrl: result.objectPath });
-                            setUploadedFileName(result.file.name);
-                            toast({ title: "File uploaded", description: `${result.file.name} uploaded successfully` });
-                          }}
-                        />
-                        {uploadedFileName && (
-                          <p className="text-xs text-green-600 flex items-center gap-1">
-                            <Check className="w-3 h-3" />
-                            Uploaded: {uploadedFileName}
-                          </p>
-                        )}
-                      </div>
+                      {newDocument.documentType === "terms_of_service" ? (
+                        <div className="space-y-2">
+                          <Label>Terms of Service Document</Label>
+                          {isGeneratingTos ? (
+                            <div className="flex items-center gap-2 p-4 border rounded-lg bg-muted/50">
+                              <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                              <span className="text-sm text-muted-foreground">Generating TOS document...</span>
+                            </div>
+                          ) : tosPdfDataUrl ? (
+                            <div className="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20">
+                              <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                                <Check className="w-4 h-4" />
+                                Terms of Service document generated. Add signature field below.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-3 border rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                              <p className="text-sm text-amber-700 dark:text-amber-400">
+                                Select "Terms of Service" to auto-generate the document
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label>Upload Document (PDF, DOC, DOCX)</Label>
+                          <FileUploader
+                            accept=".pdf,.doc,.docx"
+                            maxSize={52428800}
+                            buttonLabel={uploadedFileName ? `Replace: ${uploadedFileName}` : "Choose File"}
+                            disabled={isUploading}
+                            onUpload={async (file) => {
+                              setIsUploading(true);
+                              try {
+                                const res = await apiRequest("POST", "/api/admin/documents/upload-url", { 
+                                  filename: file.name 
+                                });
+                                const { uploadURL, objectPath } = await res.json();
+                                
+                                await fetch(uploadURL, {
+                                  method: "PUT",
+                                  body: file,
+                                  headers: {
+                                    "Content-Type": file.type || "application/octet-stream",
+                                  },
+                                });
+                                
+                                return { url: objectPath, objectPath };
+                              } finally {
+                                setIsUploading(false);
+                              }
+                            }}
+                            onComplete={(result) => {
+                              setNewDocument({ ...newDocument, fileUrl: result.objectPath });
+                              setUploadedFileName(result.file.name);
+                              toast({ title: "File uploaded", description: `${result.file.name} uploaded successfully` });
+                            }}
+                          />
+                          {uploadedFileName && (
+                            <p className="text-xs text-green-600 flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              Uploaded: {uploadedFileName}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <Label htmlFor="requires-signature">Requires Signature</Label>
                         <Switch
@@ -1181,7 +1279,7 @@ export default function ClientDetails() {
                       </div>
                       {newDocument.requiresSignature && (
                         <PDFSignatureEditor
-                          pdfUrl={newDocument.fileUrl || null}
+                          pdfUrl={newDocument.documentType === "terms_of_service" ? tosPdfDataUrl : (newDocument.fileUrl || null)}
                           signatureFields={newDocument.signatureFields}
                           onFieldsChange={(fields) => setNewDocument({ ...newDocument, signatureFields: fields })}
                         />
@@ -1211,8 +1309,14 @@ export default function ClientDetails() {
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
                         <Button type="button" variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" disabled={createDocumentMutation.isPending} data-testid="button-submit-document">
-                          {createDocumentMutation.isPending ? "Creating..." : "Create Document"}
+                        <Button 
+                          type="submit" 
+                          disabled={createDocumentMutation.isPending || sendTosMutation.isPending || isGeneratingTos} 
+                          data-testid="button-submit-document"
+                        >
+                          {createDocumentMutation.isPending || sendTosMutation.isPending 
+                            ? (newDocument.documentType === "terms_of_service" ? "Sending..." : "Creating...") 
+                            : (newDocument.documentType === "terms_of_service" ? "Send for Signing" : "Create Document")}
                         </Button>
                       </div>
                     </form>

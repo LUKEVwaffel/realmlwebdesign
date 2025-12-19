@@ -853,6 +853,41 @@ export async function registerRoutes(
     }
   });
 
+  // Generate and preview TOS PDF for a client (returns data URL for signature editor)
+  app.get("/api/admin/clients/:id/tos/preview", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
+
+      const tosResult = await generateTosPdf({
+        client,
+        project: projects[0],
+        contactName,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="tos-preview-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`
+      );
+      res.send(tosResult.buffer);
+    } catch (error) {
+      console.error("Generate TOS preview error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Generate and preview TOS PDF for a client
   app.get("/api/admin/clients/:id/tos/pdf", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
@@ -892,6 +927,7 @@ export async function registerRoutes(
   app.post("/api/admin/clients/:id/tos/send", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
+      const { signatureFields: customSignatureFields } = req.body;
       const client = await storage.getClient(id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -915,17 +951,19 @@ export async function registerRoutes(
       const base64Pdf = tosResult.buffer.toString("base64");
       const dataUrl = `data:application/pdf;base64,${base64Pdf}`;
 
-      const signatureFields = [
-        {
-          id: "client-signature",
-          page: tosResult.signatureField.page,
-          x: tosResult.signatureField.x,
-          y: tosResult.signatureField.y,
-          width: tosResult.signatureField.width,
-          height: tosResult.signatureField.height,
-          label: "Client Signature",
-        },
-      ];
+      const signatureFields = customSignatureFields && customSignatureFields.length > 0 
+        ? customSignatureFields 
+        : [
+            {
+              id: "client-signature",
+              page: tosResult.signatureField.page,
+              x: tosResult.signatureField.x,
+              y: tosResult.signatureField.y,
+              width: tosResult.signatureField.width,
+              height: tosResult.signatureField.height,
+              label: "Client Signature",
+            },
+          ];
 
       const document = await storage.createDocument({
         clientId: id,
