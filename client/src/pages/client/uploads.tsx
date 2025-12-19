@@ -35,6 +35,7 @@ import {
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { FileUploader } from "@/components/FileUploader";
 import { format } from "date-fns";
 
 const fileTypeCategories = [
@@ -60,9 +61,8 @@ const getFileIcon = (category: string) => {
 
 export default function ClientUploads() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedFileData, setUploadedFileData] = useState<{ url: string; objectPath: string; file: File } | null>(null);
   const [fileName, setFileName] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -79,9 +79,8 @@ export default function ClientUploads() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/uploads"] });
       setUploadDialogOpen(false);
-      setSelectedFile(null);
+      setUploadedFileData(null);
       setFileName("");
-      setFileUrl("");
       setCategory("");
       setDescription("");
       toast({
@@ -120,23 +119,50 @@ export default function ClientUploads() {
 
   const uploads = uploadsData?.uploads || [];
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
+  const handleFileUpload = async (file: File): Promise<{ url: string; objectPath: string }> => {
+    const token = localStorage.getItem("auth_token");
+    
+    const urlRes = await fetch("/api/client/documents/upload-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ filename: file.name }),
+    });
+
+    if (!urlRes.ok) {
+      const error = await urlRes.json();
+      throw new Error(error.error || "Failed to get upload URL");
     }
+
+    const { uploadURL, objectPath } = await urlRes.json();
+
+    const uploadRes = await fetch(uploadURL, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error("Failed to upload file");
+    }
+
+    return { url: objectPath, objectPath };
   };
 
-  const handleUpload = async () => {
-    if (!fileUrl || !category) return;
+  const handleSubmit = async () => {
+    if (!uploadedFileData || !category) return;
     
     setIsUploading(true);
     try {
       await uploadMutation.mutateAsync({
-        fileName: fileName || "Uploaded File",
-        fileUrl,
-        fileSize: 0,
-        fileType: "",
+        fileName: fileName || uploadedFileData.file.name,
+        fileUrl: uploadedFileData.url,
+        fileSize: uploadedFileData.file.size,
+        fileType: uploadedFileData.file.type,
         category,
         description,
       });
@@ -152,9 +178,18 @@ export default function ClientUploads() {
   };
 
   const formatFileSize = (bytes: number) => {
+    if (!bytes) return "";
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const resetDialog = () => {
+    setUploadDialogOpen(false);
+    setUploadedFileData(null);
+    setFileName("");
+    setCategory("");
+    setDescription("");
   };
 
   return (
@@ -220,7 +255,7 @@ export default function ClientUploads() {
                                 {fileTypeCategories.find(c => c.value === upload.category)?.label || upload.category}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
-                                {upload.fileSize ? formatFileSize(upload.fileSize) : ""}
+                                {formatFileSize(upload.fileSize)}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 Uploaded {format(new Date(upload.createdAt), "MMM d, yyyy")}
@@ -271,83 +306,85 @@ export default function ClientUploads() {
         </Card>
       </div>
 
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={uploadDialogOpen} onOpenChange={resetDialog}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-serif">Upload File</DialogTitle>
             <DialogDescription>
-              Upload logos, content, images, or other assets for your project
+              Drag and drop a file or click to browse. Upload logos, images, documents, or any other assets.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fileName">File Name</Label>
-              <Input
-                id="fileName"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="e.g., Company Logo"
-                data-testid="input-file-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fileUrl">File URL</Label>
-              <Input
-                id="fileUrl"
-                value={fileUrl}
-                onChange={(e) => setFileUrl(e.target.value)}
-                placeholder="https://example.com/file.pdf"
-                data-testid="input-file-url"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter the URL of your file (from Google Drive, Dropbox, etc.)
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger data-testid="select-category">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fileTypeCategories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of this file..."
-                rows={3}
-                data-testid="input-description"
-              />
-            </div>
+            <FileUploader
+              onUpload={handleFileUpload}
+              onComplete={(result) => {
+                setUploadedFileData(result);
+                if (!fileName) {
+                  setFileName(result.file.name);
+                }
+              }}
+              buttonLabel="Choose File"
+            />
+
+            {uploadedFileData && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="fileName">File Name</Label>
+                  <Input
+                    id="fileName"
+                    value={fileName}
+                    onChange={(e) => setFileName(e.target.value)}
+                    placeholder="e.g., Company Logo"
+                    data-testid="input-file-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger data-testid="select-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fileTypeCategories.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (optional)</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief description of this file..."
+                    rows={3}
+                    data-testid="input-description"
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+            <Button variant="outline" onClick={resetDialog}>
               Cancel
             </Button>
             <Button
-              onClick={handleUpload}
-              disabled={!fileUrl || !category || isUploading}
+              onClick={handleSubmit}
+              disabled={!uploadedFileData || !category || isUploading}
               data-testid="button-submit-upload"
             >
               {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload
+                  Save
                 </>
               )}
             </Button>
