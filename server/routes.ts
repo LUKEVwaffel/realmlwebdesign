@@ -414,6 +414,49 @@ export async function registerRoutes(
     }
   });
 
+  // Download signed TOS PDF (for clients)
+  app.get("/api/client/documents/:id/signed-pdf", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+
+      const doc = await storage.getDocument(id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client || doc.clientId !== client.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (doc.documentType !== "terms_of_service") {
+        return res.status(400).json({ error: "This endpoint is only for Terms of Service documents" });
+      }
+
+      if (!doc.isSigned) {
+        return res.status(400).json({ error: "Document has not been signed yet" });
+      }
+
+      const { generateSignedTosPdf } = await import("./tosPdfService");
+      const pdfBuffer = await generateSignedTosPdf(
+        client.businessLegalName,
+        doc.signatureData,
+        doc.signatureType,
+        doc.signedAt
+      );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="signed-tos-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Generate client signed TOS PDF error:", error);
+      res.status(500).json({ error: "Failed to generate signed PDF" });
+    }
+  });
+
   // Get upload URL for client file uploads
   app.post("/api/client/documents/upload-url", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {

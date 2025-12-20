@@ -350,6 +350,19 @@ export default function ClientDocuments() {
                                   Review & Sign
                                 </Button>
                               )}
+                              {doc.documentType === "terms_of_service" && doc.isSigned && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  asChild
+                                  data-testid={`button-download-signed-${doc.id}`}
+                                >
+                                  <a href={`/api/client/documents/${doc.id}/signed-pdf`} download>
+                                    <Download className="w-4 h-4 mr-1" />
+                                    Download Signed PDF
+                                  </a>
+                                </Button>
+                              )}
                               {doc.requiresAcknowledgment && !doc.isAcknowledged && (
                                 <Button
                                   size="sm"
