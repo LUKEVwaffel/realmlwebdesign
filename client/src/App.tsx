@@ -22,6 +22,7 @@ import ClientDocuments from "@/pages/client/documents";
 import ClientUploads from "@/pages/client/uploads";
 import ClientSettings from "@/pages/client/settings";
 import ClientQuestionnaire from "@/pages/client/questionnaire";
+import ClientQuotes from "@/pages/client/quotes";
 
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminClients from "@/pages/admin/clients";
@@ -44,6 +45,7 @@ function Router() {
       
       {/* Client Portal Routes */}
       <Route path="/client/dashboard" component={ClientDashboard} />
+      <Route path="/client/quotes" component={ClientQuotes} />
       <Route path="/client/payments" component={ClientPayments} />
       <Route path="/client/payments/success" component={PaymentSuccess} />
       <Route path="/client/payments/cancel" component={PaymentCancel} />

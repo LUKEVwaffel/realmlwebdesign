@@ -250,6 +250,129 @@ export default function ClientDetails() {
     },
   });
 
+  // Quote state and mutations
+  const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
+  const [newQuote, setNewQuote] = useState({
+    title: "",
+    description: "",
+    lineItems: [{ name: "", description: "", quantity: 1, unitPrice: 0 }] as Array<{name: string; description: string; quantity: number; unitPrice: number}>,
+    discountAmount: 0,
+    discountDescription: "",
+    taxRate: 0,
+    validUntil: "",
+    notes: "",
+    termsAndConditions: "",
+  });
+
+  const { data: quotes, isLoading: quotesLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/clients", clientId, "quotes"],
+    enabled: !!clientId,
+  });
+
+  const createQuoteMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/admin/clients/${clientId}/quotes`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId, "quotes"] });
+      setIsQuoteDialogOpen(false);
+      setNewQuote({
+        title: "",
+        description: "",
+        lineItems: [{ name: "", description: "", quantity: 1, unitPrice: 0 }],
+        discountAmount: 0,
+        discountDescription: "",
+        taxRate: 0,
+        validUntil: "",
+        notes: "",
+        termsAndConditions: "",
+      });
+      toast({ title: "Quote created", description: "New quote has been created." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create quote", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const res = await apiRequest("POST", `/api/admin/quotes/${quoteId}/send`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId, "quotes"] });
+      toast({ title: "Quote sent", description: "Quote has been sent to the client." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send quote", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/quotes/${quoteId}`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId, "quotes"] });
+      toast({ title: "Quote deleted", description: "Quote has been removed." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete quote", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const addLineItem = () => {
+    setNewQuote(prev => ({
+      ...prev,
+      lineItems: [...prev.lineItems, { name: "", description: "", quantity: 1, unitPrice: 0 }]
+    }));
+  };
+
+  const removeLineItem = (index: number) => {
+    setNewQuote(prev => ({
+      ...prev,
+      lineItems: prev.lineItems.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateLineItem = (index: number, field: string, value: string | number) => {
+    setNewQuote(prev => ({
+      ...prev,
+      lineItems: prev.lineItems.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const calculateQuoteTotals = () => {
+    const subtotal = newQuote.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const discountedSubtotal = subtotal - newQuote.discountAmount;
+    const taxAmount = discountedSubtotal * (newQuote.taxRate / 100);
+    const total = discountedSubtotal + taxAmount;
+    return { subtotal, taxAmount, total };
+  };
+
+  const handleCreateQuote = (e: React.FormEvent) => {
+    e.preventDefault();
+    const { subtotal, taxAmount, total } = calculateQuoteTotals();
+    createQuoteMutation.mutate({
+      title: newQuote.title,
+      description: newQuote.description,
+      lineItems: newQuote.lineItems,
+      subtotal: subtotal.toFixed(2),
+      discountAmount: newQuote.discountAmount.toFixed(2),
+      discountDescription: newQuote.discountDescription,
+      taxRate: newQuote.taxRate.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      totalAmount: total.toFixed(2),
+      validUntil: newQuote.validUntil || null,
+      notes: newQuote.notes,
+      termsAndConditions: newQuote.termsAndConditions,
+    });
+  };
+
   const resetPasswordMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/admin/clients/${clientId}/reset-password`, {});
@@ -526,6 +649,7 @@ export default function ClientDetails() {
           <TabsList className="flex-wrap gap-1">
             <TabsTrigger value="settings" data-testid="tab-project-settings">Project Settings</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
+            <TabsTrigger value="quotes" data-testid="tab-quotes">Quotes</TabsTrigger>
             <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
             <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
             <TabsTrigger value="uploads" data-testid="tab-uploads">Client Uploads</TabsTrigger>
@@ -1099,6 +1223,321 @@ export default function ClientDetails() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">No projects yet. Click "Add Project" to create one.</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="quotes" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="font-serif text-lg flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Quotes
+                  </CardTitle>
+                  <CardDescription>{quotes?.length || 0} total quotes</CardDescription>
+                </div>
+                {canEdit && (
+                <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2" data-testid="button-add-quote">
+                      <Plus className="w-4 h-4" />
+                      Create Quote
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create New Quote</DialogTitle>
+                      <DialogDescription>Create a pricing proposal for this client</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateQuote} className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Quote Title *</Label>
+                          <Input
+                            value={newQuote.title}
+                            onChange={(e) => setNewQuote({ ...newQuote, title: e.target.value })}
+                            placeholder="e.g., Website Development Proposal"
+                            required
+                            data-testid="input-quote-title"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Valid Until</Label>
+                          <Input
+                            type="date"
+                            value={newQuote.validUntil}
+                            onChange={(e) => setNewQuote({ ...newQuote, validUntil: e.target.value })}
+                            data-testid="input-quote-valid-until"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea
+                          value={newQuote.description}
+                          onChange={(e) => setNewQuote({ ...newQuote, description: e.target.value })}
+                          placeholder="Brief description of the quote..."
+                          rows={2}
+                          data-testid="input-quote-description"
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Line Items</Label>
+                          <Button type="button" variant="outline" size="sm" onClick={addLineItem} data-testid="button-add-line-item">
+                            <Plus className="w-4 h-4 mr-1" /> Add Item
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {newQuote.lineItems.map((item, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 rounded-lg border">
+                              <div className="col-span-4 space-y-1">
+                                <Label className="text-xs">Item Name</Label>
+                                <Input
+                                  value={item.name}
+                                  onChange={(e) => updateLineItem(index, "name", e.target.value)}
+                                  placeholder="Service name"
+                                  data-testid={`input-line-item-name-${index}`}
+                                />
+                              </div>
+                              <div className="col-span-3 space-y-1">
+                                <Label className="text-xs">Description</Label>
+                                <Input
+                                  value={item.description}
+                                  onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                                  placeholder="Details"
+                                  data-testid={`input-line-item-desc-${index}`}
+                                />
+                              </div>
+                              <div className="col-span-1 space-y-1">
+                                <Label className="text-xs">Qty</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => updateLineItem(index, "quantity", parseInt(e.target.value) || 1)}
+                                  data-testid={`input-line-item-qty-${index}`}
+                                />
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <Label className="text-xs">Unit Price</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.unitPrice}
+                                  onChange={(e) => updateLineItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                                  data-testid={`input-line-item-price-${index}`}
+                                />
+                              </div>
+                              <div className="col-span-1 space-y-1">
+                                <Label className="text-xs">Total</Label>
+                                <p className="h-9 flex items-center font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</p>
+                              </div>
+                              <div className="col-span-1">
+                                {newQuote.lineItems.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeLineItem(index)}
+                                    data-testid={`button-remove-line-item-${index}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Discount Description</Label>
+                          <Input
+                            value={newQuote.discountDescription}
+                            onChange={(e) => setNewQuote({ ...newQuote, discountDescription: e.target.value })}
+                            placeholder="e.g., Early bird discount"
+                            data-testid="input-quote-discount-desc"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Discount Amount ($)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={newQuote.discountAmount}
+                            onChange={(e) => setNewQuote({ ...newQuote, discountAmount: parseFloat(e.target.value) || 0 })}
+                            data-testid="input-quote-discount-amount"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tax Rate (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={newQuote.taxRate}
+                          onChange={(e) => setNewQuote({ ...newQuote, taxRate: parseFloat(e.target.value) || 0 })}
+                          className="w-32"
+                          data-testid="input-quote-tax-rate"
+                        />
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal:</span>
+                          <span>${calculateQuoteTotals().subtotal.toFixed(2)}</span>
+                        </div>
+                        {newQuote.discountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Discount:</span>
+                            <span>-${newQuote.discountAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {newQuote.taxRate > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Tax ({newQuote.taxRate}%):</span>
+                            <span>${calculateQuoteTotals().taxAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg border-t pt-2">
+                          <span>Total:</span>
+                          <span>${calculateQuoteTotals().total.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Notes (visible to client)</Label>
+                        <Textarea
+                          value={newQuote.notes}
+                          onChange={(e) => setNewQuote({ ...newQuote, notes: e.target.value })}
+                          placeholder="Additional notes..."
+                          rows={2}
+                          data-testid="input-quote-notes"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Terms and Conditions</Label>
+                        <Textarea
+                          value={newQuote.termsAndConditions}
+                          onChange={(e) => setNewQuote({ ...newQuote, termsAndConditions: e.target.value })}
+                          placeholder="Payment terms, project timeline, etc."
+                          rows={3}
+                          data-testid="input-quote-terms"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setIsQuoteDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={createQuoteMutation.isPending} data-testid="button-submit-quote">
+                          {createQuoteMutation.isPending ? "Creating..." : "Create Quote"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                )}
+              </CardHeader>
+              <CardContent>
+                {quotesLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : quotes && quotes.length > 0 ? (
+                  <div className="space-y-4">
+                    {quotes.map((quote: any) => {
+                      const lineItems = typeof quote.lineItems === 'string' ? JSON.parse(quote.lineItems) : quote.lineItems;
+                      return (
+                        <div key={quote.id} className="p-4 rounded-lg border space-y-3" data-testid={`quote-${quote.id}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="font-medium text-lg">{quote.title}</p>
+                              {quote.description && <p className="text-sm text-muted-foreground">{quote.description}</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={
+                                quote.status === "approved" ? "bg-green-500/10 text-green-600 dark:text-green-400" :
+                                quote.status === "rejected" ? "bg-red-500/10 text-red-600 dark:text-red-400" :
+                                quote.status === "sent" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                                quote.status === "viewed" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" :
+                                quote.status === "expired" ? "bg-gray-500/10 text-gray-600 dark:text-gray-400" :
+                                "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                              }>
+                                {quote.status}
+                              </Badge>
+                              <span className="font-bold text-lg">${quote.totalAmount}</span>
+                            </div>
+                          </div>
+                          
+                          {lineItems && lineItems.length > 0 && (
+                            <div className="text-sm text-muted-foreground">
+                              {lineItems.length} line item{lineItems.length > 1 ? 's' : ''}
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-4 text-muted-foreground">
+                              <span>Created: {format(new Date(quote.createdAt), "MMM d, yyyy")}</span>
+                              {quote.validUntil && (
+                                <span>Valid until: {format(new Date(quote.validUntil), "MMM d, yyyy")}</span>
+                              )}
+                            </div>
+                            {canEdit && (
+                            <div className="flex items-center gap-2">
+                              {quote.status === "draft" && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => sendQuoteMutation.mutate(quote.id)}
+                                  disabled={sendQuoteMutation.isPending}
+                                  data-testid={`button-send-quote-${quote.id}`}
+                                >
+                                  <Send className="w-4 h-4 mr-1" />
+                                  Send to Client
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (confirm("Are you sure you want to delete this quote?")) {
+                                    deleteQuoteMutation.mutate(quote.id);
+                                  }
+                                }}
+                                disabled={deleteQuoteMutation.isPending}
+                                data-testid={`button-delete-quote-${quote.id}`}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                            )}
+                          </div>
+                          
+                          {quote.clientResponse && (
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-sm font-medium">Client Response:</p>
+                              <p className="text-sm text-muted-foreground">{quote.clientResponse}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No quotes yet.{canEdit && ' Click "Create Quote" to make one.'}</p>
                 )}
               </CardContent>
             </Card>

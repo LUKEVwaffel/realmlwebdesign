@@ -10,7 +10,8 @@ import {
   Users,
   BarChart3,
   ChevronDown,
-  ClipboardList
+  ClipboardList,
+  Receipt
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -37,6 +38,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
   { title: "Questionnaire", url: "/client/questionnaire", icon: ClipboardList },
+  { title: "Quotes", url: "/client/quotes", icon: Receipt },
   { title: "Payments", url: "/client/payments", icon: CreditCard },
   { title: "Documents", url: "/client/documents", icon: FileText },
   { title: "Uploads", url: "/client/uploads", icon: Upload },
