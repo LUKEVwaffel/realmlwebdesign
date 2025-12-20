@@ -1,0 +1,84 @@
+What should I do?
+
+3:29 PM
+Great instinct - you're right! Here's how to fix it:
+
+Remove or make optional:
+
+❌ Competitor websites - Most clients don't have this ready, and it's not essential
+❌ Disliked elements - Asking what they DON'T want is harder than what they DO want
+❌ Preferred fonts/style - Too technical for most clients
+Keep these core questions (simplified):
+
+✅ What does your business do?
+✅ Who is your target audience?
+✅ What's the main goal of your website? (leads, sales, info)
+✅ Websites you like for inspiration (optional)
+✅ Preferred colors (if any)
+✅ Layout style (dropdown - easy to answer)
+✅ How many pages do you need?
+✅ Must-have features (contact form, gallery, etc.)
+✅ Anything else we should know?
+That's 9 questions, down from 12 - much less overwhelming!
+
+Pro tips:
+
+Mark "Websites you like" and "Preferred colors" as optional
+Add placeholder text like "Not sure? That's okay - we can discuss this together"
+Consider making this even shorter for your test clients (6-7 questions max)
+For your 2-3 test clients specifically, I'd suggest: Just ask the 5 essential questions:
+
+What does your business do?
+Who are you trying to reach?
+What's your main website goal?
+How many pages?
+What features do you need?
+Then have a conversation to discuss design preferences rather than making them fill out forms. You'll get better info and build rapport.
+
+Want me to update the questionnaire to remove the burden?
+
+Okay but what about the people that don't know what pages are, or the systle they want and stuff
+
+3:30 PM
+Excellent point! Here's how to handle clients who don't know technical stuff:
+
+Strategy: Guide them with examples instead of asking open questions
+
+Instead of asking "How many pages?" Show them common options:
+
+☐ Small site (Home, About, Services, Contact) - 4 pages
+☐ Medium site (+ Portfolio, Testimonials, FAQ) - 7 pages
+☐ Large site (+ Blog, Team, Multiple services) - 10+ pages
+☐ Not sure - let's discuss!
+Instead of "What style do you want?" Show visual examples:
+
+☐ Clean & Professional (like Apple, Stripe)
+☐ Bold & Colorful (like Nike, Coca-Cola)
+☐ Elegant & Minimal (like luxury brands)
+☐ Friendly & Approachable (like local businesses)
+☐ Not sure - surprise me!
+Instead of "What features do you need?" Give checkboxes:
+
+☐ Contact form
+☐ Photo gallery
+☐ Online booking/scheduling
+☐ Customer testimonials
+☐ Blog
+☐ Online store
+☐ Social media links
+☐ Not sure what I need
+Make everything visual and example-based!
+
+Even better for your test clients: Just ask 3 super simple questions:
+
+What does your business do? (free text)
+Show me 2-3 websites you like (any website, doesn't have to be competitors)
+What do you want visitors to do on your site? (call you, buy something, learn about you, book an appointment)
+Then YOU handle the rest:
+
+You suggest the pages based on their business
+You show them 2-3 design directions to choose from
+You recommend features based on their goals
+The questionnaire becomes a conversation starter, not a test they have to pass.
+
+Want me to rebuild the questionnaire with this approach?

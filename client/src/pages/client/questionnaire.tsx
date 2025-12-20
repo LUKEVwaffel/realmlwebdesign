@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Palette, Building2, Globe, FileText, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Building2, Target, Palette, Sparkles, HelpCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -15,24 +15,94 @@ import { useToast } from "@/hooks/use-toast";
 interface QuestionnaireData {
   businessDescription: string;
   targetAudience: string;
-  primaryGoals: string;
-  competitorWebsites: string;
+  websiteGoal: string;
+  siteSize: string;
+  designStyle: string;
+  features: string[];
   likedWebsites: string;
-  dislikedElements: string;
   preferredColors: string;
-  preferredFonts: string;
-  layoutPreference: string;
-  numPages: string;
-  mustHaveFeatures: string;
   additionalNotes: string;
 }
 
 const steps = [
-  { id: "business", title: "Business Info", icon: Building2 },
-  { id: "goals", title: "Goals & Audience", icon: Globe },
-  { id: "design", title: "Design Preferences", icon: Palette },
-  { id: "features", title: "Features & Content", icon: FileText },
+  { id: "business", title: "Your Business", icon: Building2 },
+  { id: "goals", title: "Goals", icon: Target },
+  { id: "design", title: "Design", icon: Palette },
   { id: "review", title: "Review", icon: Sparkles },
+];
+
+const siteSizeOptions = [
+  { 
+    value: "small", 
+    label: "Small Site", 
+    description: "Home, About, Services, Contact",
+    pages: "4 pages"
+  },
+  { 
+    value: "medium", 
+    label: "Medium Site", 
+    description: "Small site + Portfolio, Testimonials, FAQ",
+    pages: "7 pages"
+  },
+  { 
+    value: "large", 
+    label: "Large Site", 
+    description: "Medium site + Blog, Team, Multiple services",
+    pages: "10+ pages"
+  },
+  { 
+    value: "not_sure", 
+    label: "Not Sure", 
+    description: "Let's discuss what's best for you",
+    pages: "We'll help!"
+  },
+];
+
+const designStyleOptions = [
+  { 
+    value: "professional", 
+    label: "Clean & Professional", 
+    examples: "Like Apple, Stripe"
+  },
+  { 
+    value: "bold", 
+    label: "Bold & Colorful", 
+    examples: "Like Nike, Spotify"
+  },
+  { 
+    value: "elegant", 
+    label: "Elegant & Minimal", 
+    examples: "Like luxury brands"
+  },
+  { 
+    value: "friendly", 
+    label: "Friendly & Approachable", 
+    examples: "Like local businesses"
+  },
+  { 
+    value: "not_sure", 
+    label: "Not Sure", 
+    examples: "Surprise me!"
+  },
+];
+
+const featureOptions = [
+  { value: "contact_form", label: "Contact Form" },
+  { value: "photo_gallery", label: "Photo Gallery" },
+  { value: "booking", label: "Online Booking/Scheduling" },
+  { value: "testimonials", label: "Customer Testimonials" },
+  { value: "blog", label: "Blog" },
+  { value: "store", label: "Online Store" },
+  { value: "social_links", label: "Social Media Links" },
+  { value: "not_sure", label: "Not sure what I need" },
+];
+
+const websiteGoalOptions = [
+  { value: "leads", label: "Get people to contact me" },
+  { value: "sales", label: "Sell products or services" },
+  { value: "info", label: "Provide information about my business" },
+  { value: "bookings", label: "Get bookings or appointments" },
+  { value: "credibility", label: "Build trust and credibility" },
 ];
 
 export default function ClientQuestionnaire() {
@@ -41,15 +111,12 @@ export default function ClientQuestionnaire() {
   const [formData, setFormData] = useState<QuestionnaireData>({
     businessDescription: "",
     targetAudience: "",
-    primaryGoals: "",
-    competitorWebsites: "",
+    websiteGoal: "",
+    siteSize: "",
+    designStyle: "",
+    features: [],
     likedWebsites: "",
-    dislikedElements: "",
     preferredColors: "",
-    preferredFonts: "",
-    layoutPreference: "modern",
-    numPages: "5-10",
-    mustHaveFeatures: "",
     additionalNotes: "",
   });
 
@@ -59,19 +126,17 @@ export default function ClientQuestionnaire() {
 
   useEffect(() => {
     if (questionnaire?.responses) {
+      const r = questionnaire.responses;
       setFormData({
-        businessDescription: questionnaire.responses.businessDescription || "",
-        targetAudience: questionnaire.responses.targetAudience || "",
-        primaryGoals: questionnaire.responses.primaryGoals || "",
-        competitorWebsites: questionnaire.responses.competitorWebsites || "",
-        likedWebsites: questionnaire.responses.likedWebsites || "",
-        dislikedElements: questionnaire.responses.dislikedElements || "",
-        preferredColors: questionnaire.responses.preferredColors || "",
-        preferredFonts: questionnaire.responses.preferredFonts || "",
-        layoutPreference: questionnaire.responses.layoutPreference || "modern",
-        numPages: questionnaire.responses.numPages || "5-10",
-        mustHaveFeatures: questionnaire.responses.mustHaveFeatures || "",
-        additionalNotes: questionnaire.responses.additionalNotes || "",
+        businessDescription: r.businessDescription || "",
+        targetAudience: r.targetAudience || "",
+        websiteGoal: r.websiteGoal || r.primaryGoals || "",
+        siteSize: r.siteSize || r.numPages || "",
+        designStyle: r.designStyle || r.layoutPreference || "",
+        features: r.features || [],
+        likedWebsites: r.likedWebsites || "",
+        preferredColors: r.preferredColors || "",
+        additionalNotes: r.additionalNotes || "",
       });
     }
   }, [questionnaire]);
@@ -97,7 +162,7 @@ export default function ClientQuestionnaire() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/questionnaire"] });
-      toast({ title: "Questionnaire submitted", description: "Thank you! Your responses have been submitted to our team." });
+      toast({ title: "Questionnaire submitted", description: "Thank you! We'll be in touch soon to discuss your project." });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to submit", description: error.message, variant: "destructive" });
@@ -123,8 +188,17 @@ export default function ClientQuestionnaire() {
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
-  const updateField = (field: keyof QuestionnaireData, value: string) => {
+  const updateField = (field: keyof QuestionnaireData, value: string | string[]) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const toggleFeature = (feature: string) => {
+    const current = formData.features;
+    if (current.includes(feature)) {
+      updateField("features", current.filter(f => f !== feature));
+    } else {
+      updateField("features", [...current, feature]);
+    }
   };
 
   if (isLoading) {
@@ -152,7 +226,7 @@ export default function ClientQuestionnaire() {
                 </div>
                 <h2 className="font-serif text-2xl font-bold mb-2">Questionnaire Completed</h2>
                 <p className="text-muted-foreground mb-6">
-                  Thank you for completing the questionnaire. Our team is reviewing your responses and will use them to create your perfect website.
+                  Thank you! Our team is reviewing your responses and will use them to create your perfect website.
                 </p>
                 <Button variant="outline" onClick={() => setCurrentStep(0)} data-testid="button-view-responses">
                   View Your Responses
@@ -167,13 +241,13 @@ export default function ClientQuestionnaire() {
 
   return (
     <PortalLayout requiredRole="client">
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-questionnaire-title">
-            Website Questionnaire
+            Tell Us About Your Project
           </h1>
           <p className="text-muted-foreground mt-1">
-            Help us understand your vision for your new website
+            Just a few quick questions to help us understand your vision
           </p>
         </div>
 
@@ -214,204 +288,223 @@ export default function ClientQuestionnaire() {
               {steps[currentStep].title}
             </CardTitle>
             <CardDescription>
-              {currentStep === 0 && "Tell us about your business and what you do"}
-              {currentStep === 1 && "Help us understand your goals and target audience"}
-              {currentStep === 2 && "Share your design preferences and style"}
-              {currentStep === 3 && "Describe the features and content you need"}
-              {currentStep === 4 && "Review your responses before submitting"}
+              {currentStep === 0 && "Tell us what you do and who you serve"}
+              {currentStep === 1 && "Help us understand what you want from your website"}
+              {currentStep === 2 && "Pick a look and feel - no wrong answers!"}
+              {currentStep === 3 && "Review your responses before submitting"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Step 1: Business Info */}
             {currentStep === 0 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Describe your business</Label>
+                  <Label>What does your business do?</Label>
                   <Textarea
                     value={formData.businessDescription}
                     onChange={(e) => updateField("businessDescription", e.target.value)}
-                    placeholder="What does your business do? What products or services do you offer?"
+                    placeholder="Tell us about your business in a few sentences..."
                     className="min-h-24"
                     data-testid="input-business-description"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>List any competitor websites</Label>
-                  <Textarea
-                    value={formData.competitorWebsites}
-                    onChange={(e) => updateField("competitorWebsites", e.target.value)}
-                    placeholder="Enter URLs of competitor websites (one per line)"
-                    className="min-h-20"
-                    data-testid="input-competitor-websites"
-                  />
-                </div>
-              </div>
-            )}
-
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Who is your target audience?</Label>
+                  <Label>Who are you trying to reach?</Label>
                   <Textarea
                     value={formData.targetAudience}
                     onChange={(e) => updateField("targetAudience", e.target.value)}
-                    placeholder="Describe your ideal customer or visitor (age, interests, needs, etc.)"
-                    className="min-h-24"
+                    placeholder="Describe your ideal customer (e.g., small business owners, parents, young professionals...)"
+                    className="min-h-20"
                     data-testid="input-target-audience"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>What are your primary goals for the website?</Label>
-                  <Textarea
-                    value={formData.primaryGoals}
-                    onChange={(e) => updateField("primaryGoals", e.target.value)}
-                    placeholder="e.g., Generate leads, sell products, provide information, build credibility..."
-                    className="min-h-24"
-                    data-testid="input-primary-goals"
-                  />
+              </div>
+            )}
+
+            {/* Step 2: Goals */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label>What's the main goal of your website?</Label>
+                  <div className="grid gap-2">
+                    {websiteGoalOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateField("websiteGoal", option.value)}
+                        className={`p-4 rounded-md border text-left transition-colors ${
+                          formData.websiteGoal === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover-elevate"
+                        }`}
+                        data-testid={`goal-${option.value}`}
+                      >
+                        <span className="font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>What size website do you need?</Label>
+                  <div className="grid gap-2">
+                    {siteSizeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateField("siteSize", option.value)}
+                        className={`p-4 rounded-md border text-left transition-colors ${
+                          formData.siteSize === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover-elevate"
+                        }`}
+                        data-testid={`size-${option.value}`}
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <span className="font-medium">{option.label}</span>
+                            <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                          </div>
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">{option.pages}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>What features do you need?</Label>
+                  <p className="text-sm text-muted-foreground">Select all that apply</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {featureOptions.map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                          formData.features.includes(option.value)
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover-elevate"
+                        }`}
+                        data-testid={`feature-${option.value}`}
+                      >
+                        <Checkbox
+                          checked={formData.features.includes(option.value)}
+                          onCheckedChange={() => toggleFeature(option.value)}
+                        />
+                        <span className={option.value === "not_sure" ? "text-muted-foreground italic" : ""}>
+                          {option.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
+            {/* Step 3: Design */}
             {currentStep === 2 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label>What style fits your brand?</Label>
+                  <div className="grid gap-2">
+                    {designStyleOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateField("designStyle", option.value)}
+                        className={`p-4 rounded-md border text-left transition-colors ${
+                          formData.designStyle === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover-elevate"
+                        }`}
+                        data-testid={`style-${option.value}`}
+                      >
+                        <div>
+                          <span className="font-medium">{option.label}</span>
+                          <p className="text-sm text-muted-foreground mt-1">{option.examples}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label>Websites you like (for inspiration)</Label>
+                  <div className="flex items-center gap-2">
+                    <Label>Any websites you like for inspiration?</Label>
+                    <span className="text-xs text-muted-foreground">(Optional)</span>
+                  </div>
                   <Textarea
                     value={formData.likedWebsites}
                     onChange={(e) => updateField("likedWebsites", e.target.value)}
-                    placeholder="Enter URLs of websites you like and what you like about them"
+                    placeholder="Share any website links you like - doesn't have to be competitors!"
                     className="min-h-20"
                     data-testid="input-liked-websites"
                   />
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <HelpCircle className="w-3 h-3" />
+                    Not sure? That's okay - we can discuss this together!
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Elements you dislike or want to avoid</Label>
-                  <Textarea
-                    value={formData.dislikedElements}
-                    onChange={(e) => updateField("dislikedElements", e.target.value)}
-                    placeholder="What design elements or features do you want to avoid?"
-                    className="min-h-20"
-                    data-testid="input-disliked-elements"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Preferred colors</Label>
-                    <Input
-                      value={formData.preferredColors}
-                      onChange={(e) => updateField("preferredColors", e.target.value)}
-                      placeholder="e.g., Blue, gold, white"
-                      data-testid="input-preferred-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Preferred fonts/style</Label>
-                    <Input
-                      value={formData.preferredFonts}
-                      onChange={(e) => updateField("preferredFonts", e.target.value)}
-                      placeholder="e.g., Modern, clean, professional"
-                      data-testid="input-preferred-fonts"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Layout preference</Label>
-                  <Select
-                    value={formData.layoutPreference}
-                    onValueChange={(v) => updateField("layoutPreference", v)}
-                  >
-                    <SelectTrigger data-testid="select-layout-preference">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="modern">Modern & Clean</SelectItem>
-                      <SelectItem value="classic">Classic & Traditional</SelectItem>
-                      <SelectItem value="bold">Bold & Eye-catching</SelectItem>
-                      <SelectItem value="minimal">Minimal & Simple</SelectItem>
-                      <SelectItem value="creative">Creative & Unique</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
 
-            {currentStep === 3 && (
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Approximate number of pages</Label>
-                  <Select
-                    value={formData.numPages}
-                    onValueChange={(v) => updateField("numPages", v)}
-                  >
-                    <SelectTrigger data-testid="select-num-pages">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1-4">1-4 pages (Small site)</SelectItem>
-                      <SelectItem value="5-10">5-10 pages (Medium site)</SelectItem>
-                      <SelectItem value="11-20">11-20 pages (Large site)</SelectItem>
-                      <SelectItem value="20+">20+ pages (Enterprise)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Must-have features</Label>
-                  <Textarea
-                    value={formData.mustHaveFeatures}
-                    onChange={(e) => updateField("mustHaveFeatures", e.target.value)}
-                    placeholder="e.g., Contact form, blog, e-commerce, booking system, gallery..."
-                    className="min-h-24"
-                    data-testid="input-must-have-features"
+                  <div className="flex items-center gap-2">
+                    <Label>Preferred colors?</Label>
+                    <span className="text-xs text-muted-foreground">(Optional)</span>
+                  </div>
+                  <Input
+                    value={formData.preferredColors}
+                    onChange={(e) => updateField("preferredColors", e.target.value)}
+                    placeholder="e.g., Blue, gold, white - or leave blank if unsure"
+                    data-testid="input-preferred-colors"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Additional notes or special requirements</Label>
+                  <div className="flex items-center gap-2">
+                    <Label>Anything else we should know?</Label>
+                    <span className="text-xs text-muted-foreground">(Optional)</span>
+                  </div>
                   <Textarea
                     value={formData.additionalNotes}
                     onChange={(e) => updateField("additionalNotes", e.target.value)}
-                    placeholder="Anything else you'd like us to know about your project?"
-                    className="min-h-24"
+                    placeholder="Any special requirements, deadlines, or things you'd like to discuss?"
+                    className="min-h-20"
                     data-testid="input-additional-notes"
                   />
                 </div>
               </div>
             )}
 
-            {currentStep === 4 && (
+            {/* Step 4: Review */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <p className="text-muted-foreground">
-                  Please review your responses below. Once submitted, our team will use this information to design your website.
+                  Review your responses below. After you submit, we'll reach out to discuss your project further.
                 </p>
                 <div className="space-y-4 divide-y">
                   <div className="pt-4">
-                    <h3 className="font-medium mb-2">Business Info</h3>
+                    <h3 className="font-medium mb-2">Your Business</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
-                      <p><span className="font-medium text-foreground">Description:</span> {formData.businessDescription || "Not provided"}</p>
-                      <p><span className="font-medium text-foreground">Competitors:</span> {formData.competitorWebsites || "Not provided"}</p>
+                      <p><span className="font-medium text-foreground">What you do:</span> {formData.businessDescription || "Not provided"}</p>
+                      <p><span className="font-medium text-foreground">Who you serve:</span> {formData.targetAudience || "Not provided"}</p>
                     </div>
                   </div>
                   <div className="pt-4">
-                    <h3 className="font-medium mb-2">Goals & Audience</h3>
+                    <h3 className="font-medium mb-2">Website Goals</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
-                      <p><span className="font-medium text-foreground">Target Audience:</span> {formData.targetAudience || "Not provided"}</p>
-                      <p><span className="font-medium text-foreground">Primary Goals:</span> {formData.primaryGoals || "Not provided"}</p>
+                      <p><span className="font-medium text-foreground">Main goal:</span> {websiteGoalOptions.find(o => o.value === formData.websiteGoal)?.label || "Not selected"}</p>
+                      <p><span className="font-medium text-foreground">Site size:</span> {siteSizeOptions.find(o => o.value === formData.siteSize)?.label || "Not selected"}</p>
+                      <p><span className="font-medium text-foreground">Features:</span> {formData.features.length > 0 ? formData.features.map(f => featureOptions.find(o => o.value === f)?.label).join(", ") : "None selected"}</p>
                     </div>
                   </div>
                   <div className="pt-4">
                     <h3 className="font-medium mb-2">Design Preferences</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
-                      <p><span className="font-medium text-foreground">Liked Websites:</span> {formData.likedWebsites || "Not provided"}</p>
+                      <p><span className="font-medium text-foreground">Style:</span> {designStyleOptions.find(o => o.value === formData.designStyle)?.label || "Not selected"}</p>
+                      <p><span className="font-medium text-foreground">Inspiration:</span> {formData.likedWebsites || "Not provided"}</p>
                       <p><span className="font-medium text-foreground">Colors:</span> {formData.preferredColors || "Not provided"}</p>
-                      <p><span className="font-medium text-foreground">Style:</span> {formData.preferredFonts || "Not provided"}</p>
-                      <p><span className="font-medium text-foreground">Layout:</span> {formData.layoutPreference}</p>
-                    </div>
-                  </div>
-                  <div className="pt-4">
-                    <h3 className="font-medium mb-2">Features & Content</h3>
-                    <div className="text-sm text-muted-foreground space-y-2">
-                      <p><span className="font-medium text-foreground">Pages:</span> {formData.numPages}</p>
-                      <p><span className="font-medium text-foreground">Must-have Features:</span> {formData.mustHaveFeatures || "Not provided"}</p>
-                      <p><span className="font-medium text-foreground">Additional Notes:</span> {formData.additionalNotes || "Not provided"}</p>
+                      {formData.additionalNotes && (
+                        <p><span className="font-medium text-foreground">Additional notes:</span> {formData.additionalNotes}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -439,7 +532,7 @@ export default function ClientQuestionnaire() {
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="gap-2" data-testid="button-submit">
-                {submitMutation.isPending ? "Submitting..." : "Submit Questionnaire"}
+                {submitMutation.isPending ? "Submitting..." : "Submit"}
                 <Check className="w-4 h-4" />
               </Button>
             )}
