@@ -71,6 +71,7 @@ export interface IStorage {
   getPayments(): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
+  deletePayment(id: string): Promise<void>;
 
   // Documents
   getDocument(id: string): Promise<Document | undefined>;
@@ -78,6 +79,7 @@ export interface IStorage {
   getDocuments(): Promise<Document[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
   updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: string): Promise<void>;
 
   // Messages
   getMessagesByClientId(clientId: string): Promise<Message[]>;
@@ -254,6 +256,10 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deletePayment(id: string): Promise<void> {
+    await db.delete(payments).where(eq(payments.id, id));
+  }
+
   // Documents
   async getDocument(id: string): Promise<Document | undefined> {
     const [doc] = await db.select().from(documents).where(eq(documents.id, id));
@@ -276,6 +282,10 @@ export class DatabaseStorage implements IStorage {
   async updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined> {
     const [updated] = await db.update(documents).set({ ...data, updatedAt: new Date() }).where(eq(documents.id, id)).returning();
     return updated;
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
   }
 
   // Messages

@@ -220,6 +220,34 @@ export default function ClientDetails() {
     },
   });
 
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/payments/${paymentId}`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Payment deleted", description: "The payment has been removed." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete payment", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/documents/${documentId}`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Document deleted", description: "The document has been removed." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete document", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetPasswordMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/admin/clients/${clientId}/reset-password`, {});
@@ -1119,11 +1147,28 @@ export default function ClientDetails() {
                             {payment.dueDate ? format(new Date(payment.dueDate), "MMM d, yyyy") : "No due date"}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium">${payment.amount}</p>
-                          <Badge className={paymentStatusColors[payment.status] || paymentStatusColors.pending}>
-                            {payment.status}
-                          </Badge>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-medium">${payment.amount}</p>
+                            <Badge className={paymentStatusColors[payment.status] || paymentStatusColors.pending}>
+                              {payment.status}
+                            </Badge>
+                          </div>
+                          {payment.status !== "paid" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this payment?")) {
+                                  deletePaymentMutation.mutate(payment.id);
+                                }
+                              }}
+                              disabled={deletePaymentMutation.isPending}
+                              data-testid={`button-delete-payment-${payment.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1417,6 +1462,19 @@ export default function ClientDetails() {
                               </DialogContent>
                             </Dialog>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this document?")) {
+                                deleteDocumentMutation.mutate(doc.id);
+                              }
+                            }}
+                            disabled={deleteDocumentMutation.isPending}
+                            data-testid={`button-delete-document-${doc.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                         </div>
                       </div>
                     ))}

@@ -1241,6 +1241,38 @@ export async function registerRoutes(
     }
   });
 
+  // Delete a payment
+  app.delete("/api/admin/payments/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(id);
+      
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      // Don't allow deleting paid payments
+      if (payment.status === "paid") {
+        return res.status(400).json({ error: "Cannot delete a paid payment" });
+      }
+
+      await storage.deletePayment(id);
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: payment.clientId,
+        action: "payment_deleted",
+        description: `Deleted payment: ${payment.description} - $${payment.amount}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, message: "Payment deleted" });
+    } catch (error) {
+      console.error("Delete payment error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/admin/documents", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { clientId, title, documentType, description, fileUrl, requiresSignature, visibleToClient, signatureFields } = req.body;
@@ -1295,6 +1327,33 @@ export async function registerRoutes(
       res.json(document);
     } catch (error) {
       console.error("Create document error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete a document
+  app.delete("/api/admin/documents/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const doc = await storage.getDocument(id);
+      
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      await storage.deleteDocument(id);
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: doc.clientId,
+        action: "document_deleted",
+        description: `Deleted document: ${doc.title}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, message: "Document deleted" });
+    } catch (error) {
+      console.error("Delete document error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
