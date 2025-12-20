@@ -19,16 +19,10 @@ const services = [
     features: ["Responsive Design", "SEO Optimized", "Fast Loading"],
   },
   {
-    icon: Palette,
-    title: "Brand Refresh",
-    description: "Transform your digital presence with a modern redesign that stands out from competitors.",
-    features: ["UI/UX Audit", "Visual Upgrade", "Content Strategy"],
-  },
-  {
     icon: MousePointer,
     title: "Landing Pages",
     description: "High-converting pages designed to capture leads and maximize your marketing ROI.",
-    features: ["A/B Testing", "Analytics", "Lead Capture"],
+    features: ["Analytics", "Lead Capture", "Conversion Focused"],
   },
   {
     icon: Layers,
