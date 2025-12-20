@@ -607,6 +607,9 @@ export async function registerRoutes(
       const project = projects[0];
       const { status, responses } = req.body;
       
+      console.log("Questionnaire PUT - received body:", JSON.stringify(req.body, null, 2));
+      console.log("Questionnaire PUT - responses:", JSON.stringify(responses, null, 2));
+      
       let questionnaire = await storage.getQuestionnaireByClientId(client.id);
       
       // Map frontend response fields to database columns
@@ -624,6 +627,8 @@ export async function registerRoutes(
       if (status === "completed") {
         updateData.submittedAt = new Date();
       }
+      
+      console.log("Questionnaire PUT - updateData:", JSON.stringify(updateData, null, 2));
       
       if (questionnaire) {
         questionnaire = await storage.updateQuestionnaire(questionnaire.id, updateData);
