@@ -1284,6 +1284,60 @@ export async function registerRoutes(
     }
   });
 
+  // Close client account (archive with details)
+  app.post("/api/admin/clients/:id/close", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { reasonForClosing, finalNotes, accountStatus, projectType, budget, timeline } = req.body;
+      
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await storage.canAdminEditClient(req.user!.id, id);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have permission to close this client account" });
+      }
+
+      // Update the client status to closed/archived
+      const closureNotes = `Account closed by admin. Status: ${accountStatus}. Reason: ${reasonForClosing}. ${finalNotes ? `Notes: ${finalNotes}` : ''}`;
+      
+      await storage.updateClient(id, {
+        status: accountStatus === 'cancelled' ? 'cancelled' : 'completed',
+        notes: closureNotes,
+      });
+
+      // Update all projects to completed or cancelled
+      const projects = await storage.getProjectsByClientId(id);
+      for (const project of projects) {
+        await storage.updateProject(project.id, {
+          status: accountStatus === 'cancelled' ? 'cancelled' : 'completed',
+        });
+      }
+
+      // Deactivate the user account
+      const user = await storage.getUser(client.userId);
+      if (user) {
+        await storage.updateUser(user.id, { isActive: false });
+      }
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: id,
+        action: "account_closed",
+        description: `Client account closed. Reason: ${reasonForClosing}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, message: "Client account closed successfully" });
+    } catch (error) {
+      console.error("Close client account error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/admin/payments", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { clientId, description, amount, dueDate } = req.body;

@@ -27,7 +27,8 @@ import {
   Send,
   Download,
   Lock,
-  Share2
+  Share2,
+  XCircle
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ import {
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
 import { FileUploader } from "@/components/FileUploader";
+import { CloseAccountForm } from "@/components/admin/close-account-form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -252,6 +254,7 @@ export default function ClientDetails() {
 
   // Quote state and mutations
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
+  const [isCloseAccountDialogOpen, setIsCloseAccountDialogOpen] = useState(false);
   const [newQuote, setNewQuote] = useState({
     title: "",
     description: "",
@@ -1095,6 +1098,50 @@ export default function ClientDetails() {
                       />
                     </CardContent>
                   </Card>
+
+                  {canEdit && (
+                    <Card className="border-destructive/30">
+                      <CardHeader>
+                        <CardTitle className="font-serif text-lg flex items-center gap-2 text-destructive">
+                          <XCircle className="w-4 h-4" />
+                          Close Client Account
+                        </CardTitle>
+                        <CardDescription>Archive this client and mark the project as complete</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <p className="text-sm text-muted-foreground">
+                            This will deactivate the client's login access and archive all project data.
+                          </p>
+                          <Dialog open={isCloseAccountDialogOpen} onOpenChange={setIsCloseAccountDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button variant="destructive" className="gap-2" data-testid="button-close-account">
+                                <XCircle className="w-4 h-4" />
+                                Close Account
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                              <CloseAccountForm
+                                client={{
+                                  id: clientId!,
+                                  contactName: client.contactName,
+                                  email: client.email,
+                                  phone: client.phone,
+                                  businessName: client.businessName,
+                                  projects: client.projects,
+                                }}
+                                onSuccess={() => {
+                                  setIsCloseAccountDialogOpen(false);
+                                  window.location.href = "/admin/clients";
+                                }}
+                                onCancel={() => setIsCloseAccountDialogOpen(false)}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               ) : (
                 <Card>
