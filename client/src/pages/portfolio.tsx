@@ -33,9 +33,9 @@ const defaultPortfolio = [
     businessName: "ML Web Design",
     industry: "Web Design Managment System",
     description: "A amazing web managment system with client and admin dashboard to create a easy and enjoyable experince for both parties.",
-    imageUrl: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=600&fit=crop",
-    websiteUrl: "#",
-    features: ["Portfolio Gallery", "Project Showcase", "Contact Forms", "SEO Optimized"],
+    imageUrl: "https://www.in2code.de/fileadmin/_processed_/0/b/csm_code_javascript_49d002a67e.webp",
+    websiteUrl: "n/a",
+    features: ["Profile Managment", "Project Showcase", "Contact Forms", "SEO Optimized"],
   },
   {
     id: "4",

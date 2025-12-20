@@ -13,16 +13,16 @@ const stats = [
 
 const team = [
   {
-    name: "Alex Rivera",
-    role: "Creative Director",
-    bio: "With over a decade of experience in digital design, Alex leads our creative vision and ensures every project exceeds expectations.",
+    name: "Luke Vetsch",
+    role: "Web Designer, Lead Developer",
+    bio: "As a self-taught developer fluent in 5+ programming languages, I believe this generation has an incredible opportunity to shape the digital landscape. I build complete web solutions, from custom sites to e-commerce platforms, with integrity at the core of everything I do. My faith drives me to deliver excellent work, treat clients with respect, and create digital experiences that truly serve people.",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
   },
   {
-    name: "Jordan Chen",
-    role: "Lead Developer",
+    name: "Makaio Roos",
+    role: "Web Designer, Head of Finance",
     bio: "Jordan transforms designs into pixel-perfect, high-performance websites using the latest web technologies.",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
   },
 ];
 
