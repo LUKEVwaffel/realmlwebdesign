@@ -1,12 +1,15 @@
 import { Link } from "wouter";
-import { ArrowRight, Code, Palette, Zap, Globe, CheckCircle, ChevronDown, Sparkles, Users, Clock, Award, Star, MousePointer, Layers, Rocket } from "lucide-react";
+import { ArrowRight, Code, Palette, Zap, Globe, CheckCircle, ChevronDown, Sparkles, Users, Clock, Award, Star, MousePointer, Layers, Rocket, Layout, Calendar, ShoppingCart, Check, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PublicNavbar } from "@/components/public/navbar";
 import { PublicFooter } from "@/components/public/footer";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const services = [
   {
@@ -61,54 +64,127 @@ const process = [
 const portfolioPreview = [
   {
     id: "1",
-    businessName: "Artisan Coffee Co.",
-    industry: "Food & Beverage",
-    image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&h=600&fit=crop",
-    result: "+180% online orders",
+    businessName: "Worship Wave",
+    industry: "Church Organization",
+    image: "https://assets.worshipartistry.com/sites/default/files/imagecache/share/greenroom-main/youthgroup_0.jpg",
+    result: "Complete worship management",
   },
   {
     id: "2",
-    businessName: "Urban Fitness Studio",
-    industry: "Health & Fitness",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop",
-    result: "+250% memberships",
+    businessName: "Verse Vault",
+    industry: "Bible App",
+    image: "https://cf.albertmohler.com/uploads/2016/09/iStock_45271310_MED.jpg",
+    result: "AI-powered Bible study",
   },
   {
     id: "3",
-    businessName: "Bloom Interior Design",
-    industry: "Interior Design",
-    image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=600&fit=crop",
-    result: "+90% inquiries",
+    businessName: "ML Web Design",
+    industry: "Web Design Platform",
+    image: "https://www.in2code.de/fileadmin/_processed_/0/b/csm_code_javascript_49d002a67e.webp",
+    result: "Client management system",
   },
 ];
 
 const stats = [
-  { value: 50, label: "Happy Clients", suffix: "+" },
-  { value: 120, label: "Projects Delivered", suffix: "+" },
-  { value: 98, label: "Client Retention", suffix: "%" },
+  { value: 3, label: "Projects Completed", suffix: "" },
+  { value: 2, label: "Happy Clients", suffix: "" },
+  { value: 100, label: "Client Satisfaction", suffix: "%" },
   { value: 5.0, label: "Average Rating", icon: Star, decimals: 1 },
 ];
 
-const testimonials = [
+const pricingTiers = [
   {
-    quote: "They transformed our online presence completely. The new website has been a game-changer for our business.",
-    author: "Sarah Chen",
-    role: "CEO, Bloom Interior",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
+    id: 'standard',
+    name: 'Standard Website',
+    icon: Layout,
+    description: 'Perfect for small businesses and personal sites',
+    price: 'Contact for Quote',
+    features: [
+      'Free consultation',
+      '5-8 pages included',
+      'Modern, responsive design',
+      'Visual features & animations',
+      'Free SSL certificate',
+      'Optimized performance',
+      'Security & DDoS protection'
+    ]
   },
   {
-    quote: "Professional, creative, and incredibly responsive. They delivered beyond our expectations.",
-    author: "Marcus Johnson",
-    role: "Founder, Urban Fitness",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+    id: 'premium',
+    name: 'Business / Premium',
+    icon: Calendar,
+    description: 'Advanced features for growing businesses',
+    price: 'Contact for Quote',
+    popular: true,
+    features: [
+      'Everything in Standard',
+      'Up to 8 pages (custom beyond)',
+      'Scheduling & booking tools',
+      'Client intake forms',
+      'Membership logins',
+      'Calendar sync',
+      'Advanced SEO optimization',
+      'Performance tuning'
+    ]
   },
   {
-    quote: "Our conversion rate doubled within the first month. Best investment we've made for our brand.",
-    author: "Emma Rodriguez",
-    role: "Owner, Artisan Coffee",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
+    id: 'store',
+    name: 'Premium Web Store',
+    icon: ShoppingCart,
+    description: 'Complete e-commerce solution',
+    price: 'Contact for Quote',
+    features: [
+      'Everything in Premium',
+      'Full Shopify integration',
+      'Product variants & filters',
+      'Multiple payment gateways',
+      'Shipping & tax automation',
+      'Digital & physical products',
+      'Scalable catalog support',
+      'E-commerce optimization'
+    ]
+  }
+];
+
+const clientJourney = [
+  {
+    step: "01",
+    title: "Client Onboarding",
+    description: "After our initial conversation, we create your account and send you access to your private client portal.",
+  },
+  {
+    step: "02",
+    title: "Questionnaire",
+    description: "Complete our detailed questionnaire about your business, goals, branding, and website requirements.",
+  },
+  {
+    step: "03",
+    title: "Terms & Agreement",
+    description: "Review and digitally sign our terms of service agreement outlining project scope and deliverables.",
+  },
+  {
+    step: "04",
+    title: "Development Phase",
+    description: "We build your website while keeping you updated through your portal with progress updates.",
+  },
+  {
+    step: "05",
+    title: "Review & Revisions",
+    description: "Preview your site, request changes, and collaborate with us until you're completely satisfied.",
+  },
+  {
+    step: "06",
+    title: "Launch & Handoff",
+    description: "We set up hosting, deploy your site, and provide all credentials and documentation.",
+  },
+  {
+    step: "07",
+    title: "Ongoing Support",
+    description: "Your portal remains active for support requests, updates, and future enhancements.",
   },
 ];
+
+const testimonials: { quote: string; author: string; role: string; image: string }[] = [];
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -273,28 +349,30 @@ export default function HomePage() {
             </Link>
           </motion.div>
 
-          {/* Stats Row */}
+          {/* Stats Row - Coming Soon */}
           <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
+            className="relative max-w-4xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 1 }}
           >
-            {stats.map((stat, index) => (
-              <motion.div 
-                key={index} 
-                className="text-center" 
-                data-testid={`stat-${index}`}
-                variants={fadeInUp}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="font-serif text-3xl sm:text-4xl font-bold text-foreground flex items-center justify-center gap-1">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix || ""} decimals={stat.decimals || 0} />
-                  {stat.icon && <stat.icon className="w-5 h-5 text-primary fill-primary" />}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 blur-sm opacity-50">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center" data-testid={`stat-${index}`}>
+                  <div className="font-serif text-3xl sm:text-4xl font-bold text-foreground flex items-center justify-center gap-1">
+                    {stat.value}{stat.suffix}
+                    {stat.icon && <stat.icon className="w-5 h-5 text-primary fill-primary" />}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Badge variant="secondary" className="px-6 py-3 text-base font-medium shadow-lg">
+                <Clock className="w-4 h-4 mr-2" />
+                Stats Coming Soon
+              </Badge>
+            </div>
           </motion.div>
         </div>
 
@@ -527,11 +605,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Testimonials Section - Coming Soon */}
       <section className="py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
-            className="text-center mb-20"
+            className="text-center"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
@@ -543,61 +621,42 @@ export default function HomePage() {
               What Our Clients
               <span className="block text-primary">Say About Us</span>
             </h2>
-          </motion.div>
-
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-          >
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                transition={{ duration: 0.5 }}
-                whileHover={{ y: -8, transition: { duration: 0.2 } }}
-              >
-                <Card className="border-border/50 h-full" data-testid={`testimonial-${index}`}>
-                  <CardContent className="p-8">
-                    <motion.div 
-                      className="flex gap-1 mb-6"
-                      initial="hidden"
-                      whileInView="visible"
-                      viewport={{ once: true }}
-                      variants={staggerContainerFast}
-                    >
-                      {[...Array(5)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          variants={scaleIn}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Star className="w-5 h-5 text-primary fill-primary" />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                    <blockquote className="text-lg mb-6 leading-relaxed">
-                      "{testimonial.quote}"
-                    </blockquote>
-                    <div className="flex items-center gap-4">
-                      <motion.img
-                        src={testimonial.image}
-                        alt={testimonial.author}
-                        className="w-12 h-12 rounded-full object-cover"
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.2 }}
-                      />
-                      <div>
-                        <div className="font-semibold">{testimonial.author}</div>
-                        <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+            
+            <motion.div 
+              className="relative max-w-4xl mx-auto mt-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 blur-sm opacity-40">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="border-border/50">
+                    <CardContent className="p-8">
+                      <div className="flex gap-1 mb-6">
+                        {[...Array(5)].map((_, j) => (
+                          <Star key={j} className="w-5 h-5 text-primary fill-primary" />
+                        ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                      <div className="h-20 bg-muted rounded mb-6" />
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-muted" />
+                        <div>
+                          <div className="h-4 w-24 bg-muted rounded mb-2" />
+                          <div className="h-3 w-16 bg-muted rounded" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Badge variant="secondary" className="px-6 py-3 text-base font-medium shadow-lg">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Testimonials Coming Soon
+                </Badge>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -692,7 +751,7 @@ export default function HomePage() {
                       </motion.div>
                       <div>
                         <div className="font-serif text-3xl font-bold">
-                          <AnimatedCounter value={120} suffix="+" />
+                          <AnimatedCounter value={3} suffix="" />
                         </div>
                         <div className="text-muted-foreground">Projects Launched</div>
                       </div>
@@ -705,73 +764,320 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Contact CTA */}
+      {/* Client Journey Section */}
       <section className="py-32">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-20"
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.7 }}
+            variants={fadeInUp}
+            transition={{ duration: 0.6 }}
           >
-            <Card className="border-border/50 overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/5">
-              <CardContent className="p-12 sm:p-16 lg:p-20">
-                <motion.div 
-                  className="text-center"
-                  variants={staggerContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                >
-                  <motion.div variants={fadeInUp}>
-                    <Badge variant="secondary" className="mb-6">Get Started</Badge>
-                  </motion.div>
-                  <motion.h2 
-                    className="font-serif text-4xl sm:text-5xl font-bold mb-6" 
-                    data-testid="text-cta-title"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5 }}
-                  >
-                    Ready to Transform
-                    <span className="block text-primary">Your Online Presence?</span>
-                  </motion.h2>
-                  <motion.p 
-                    className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5 }}
-                  >
-                    We work with select clients to deliver exceptional results. 
-                    Let's discuss how we can help your business grow.
-                  </motion.p>
-
-                  <motion.div 
-                    className="flex flex-col sm:flex-row items-center justify-center gap-6"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <a href="mailto:hello@pixelcraft.studio">
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                        <Button size="lg" className="gap-2" data-testid="button-contact-email">
-                          Start a Project
-                          <ArrowRight className="w-5 h-5" />
-                        </Button>
-                      </motion.div>
-                    </a>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <span>or call</span>
-                      <a href="tel:+15551234567" className="font-semibold text-foreground hover:text-primary transition-colors">
-                        (555) 123-4567
-                      </a>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </CardContent>
-            </Card>
+            <Badge variant="outline" className="mb-4">How It Works</Badge>
+            <h2 className="font-serif text-4xl sm:text-5xl font-bold mb-6" data-testid="text-journey-title">
+              Your Journey
+              <span className="block text-primary">From Start to Finish</span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              A transparent, premium experience from the moment you become our client until project completion and beyond.
+            </p>
           </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {clientJourney.map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="h-full border-border/50 hover-elevate" data-testid={`journey-step-${index}`}>
+                  <CardContent className="p-6">
+                    <div className="font-serif text-4xl font-bold text-primary/20 mb-3">{item.step}</div>
+                    <h3 className="font-serif font-semibold text-lg mb-2">{item.title}</h3>
+                    <p className="text-muted-foreground text-sm">{item.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <PricingSection />
+
+      {/* Contact Section */}
+      <ContactSection />
+
       <PublicFooter />
     </div>
+  );
+}
+
+function PricingSection() {
+  const [activeTab, setActiveTab] = useState('premium');
+  const activeTier = pricingTiers.find(tier => tier.id === activeTab);
+  const Icon = activeTier?.icon;
+
+  return (
+    <section id="pricing" className="py-32 bg-muted/30">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          className="text-center mb-12"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={fadeInUp}
+          transition={{ duration: 0.6 }}
+        >
+          <Badge variant="outline" className="mb-4">Pricing</Badge>
+          <h2 className="font-serif text-4xl sm:text-5xl font-bold mb-6" data-testid="text-pricing-title">
+            Choose Your
+            <span className="block text-primary">Perfect Plan</span>
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            All plans include free consultation and ongoing support. Custom quotes available for unique requirements.
+          </p>
+        </motion.div>
+
+        {/* Tab Navigation */}
+        <motion.div 
+          className="flex flex-col sm:flex-row gap-2 mb-8 p-1 bg-muted rounded-lg border border-border"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          {pricingTiers.map((tier) => {
+            const TierIcon = tier.icon;
+            return (
+              <button
+                key={tier.id}
+                onClick={() => setActiveTab(tier.id)}
+                className={`flex-1 relative px-4 py-3 rounded-md font-medium transition-all duration-200 ${
+                  activeTab === tier.id
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                data-testid={`button-pricing-${tier.id}`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <TierIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tier.name}</span>
+                  <span className="sm:hidden">{tier.name.split(' ')[0]}</span>
+                </div>
+                {tier.popular && (
+                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                    Popular
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </motion.div>
+
+        {/* Content Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="border-border/50 shadow-lg">
+            <CardHeader className="text-center pb-4">
+              <div className="mx-auto mb-4 relative">
+                <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+                <div className="relative bg-primary/10 p-4 rounded-full inline-block">
+                  {Icon && <Icon className="h-8 w-8 text-primary" />}
+                </div>
+              </div>
+              <CardTitle className="text-3xl font-serif">{activeTier?.name}</CardTitle>
+              <p className="text-muted-foreground mt-2">{activeTier?.description}</p>
+              <div className="mt-4">
+                <span className="text-4xl font-bold text-primary">{activeTier?.price}</span>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="pt-6">
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                {activeTier?.features.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="mt-0.5 bg-primary/10 rounded-full p-1">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-sm text-foreground">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border">
+                <a href="#contact" className="flex-1">
+                  <Button className="w-full" size="lg" data-testid="button-pricing-get-started">
+                    Get Started
+                  </Button>
+                </a>
+                <a href="#contact" className="flex-1">
+                  <Button variant="outline" className="w-full" size="lg" data-testid="button-pricing-learn-more">
+                    Learn More
+                  </Button>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    company: '',
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Simulate form submission
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    toast({
+      title: "Message Sent",
+      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
+    });
+
+    setFormData({ name: '', email: '', company: '', message: '' });
+    setIsSubmitting(false);
+  };
+
+  return (
+    <section id="contact" className="py-32">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          className="text-center mb-16"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={fadeInUp}
+          transition={{ duration: 0.6 }}
+        >
+          <Badge variant="outline" className="mb-4">Get In Touch</Badge>
+          <h2 className="font-serif text-4xl sm:text-5xl font-bold mb-6" data-testid="text-contact-title">
+            Ready to Start
+            <span className="block text-primary">Your Project?</span>
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Send us a message and we'll get back to you within 24 hours with a free consultation.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <Card className="border-border/50">
+            <CardContent className="p-8 sm:p-12">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-medium">
+                      Your Name
+                    </label>
+                    <Input
+                      id="name"
+                      placeholder="John Doe"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      data-testid="input-contact-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-medium">
+                      Email Address
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="john@company.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      data-testid="input-contact-email"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="company" className="text-sm font-medium">
+                    Company / Business Name
+                  </label>
+                  <Input
+                    id="company"
+                    placeholder="Your Company"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    data-testid="input-contact-company"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="message" className="text-sm font-medium">
+                    Tell us about your project
+                  </label>
+                  <Textarea
+                    id="message"
+                    placeholder="Describe what you're looking for, your timeline, budget range, and any specific requirements..."
+                    rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    required
+                    data-testid="input-contact-message"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4 inline mr-2" />
+                    Or email us directly at{' '}
+                    <a href="mailto:hello@mlwebdesign.com" className="text-primary hover:underline">
+                      hello@mlwebdesign.com
+                    </a>
+                  </p>
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="gap-2 w-full sm:w-auto"
+                    disabled={isSubmitting}
+                    data-testid="button-contact-submit"
+                  >
+                    {isSubmitting ? (
+                      "Sending..."
+                    ) : (
+                      <>
+                        Send Message
+                        <Send className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </section>
   );
 }

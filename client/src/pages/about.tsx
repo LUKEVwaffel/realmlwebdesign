@@ -5,9 +5,9 @@ import { PublicFooter } from "@/components/public/footer";
 import { motion } from "framer-motion";
 
 const stats = [
-  { icon: Users, label: "Happy Clients", value: "50+" },
-  { icon: Award, label: "Projects Completed", value: "75+" },
-  { icon: Clock, label: "Years Experience", value: "8+" },
+  { icon: Users, label: "Happy Clients", value: "2+" },
+  { icon: Award, label: "Projects Completed", value: "3" },
+  { icon: Clock, label: "Years Experience", value: "1+" },
   { icon: Heart, label: "Client Satisfaction", value: "100%" },
 ];
 
@@ -114,43 +114,35 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats - Coming Soon */}
       <section className="py-16 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-8"
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
+            className="relative"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6 }}
           >
-            {stats.map((stat, index) => (
-              <motion.div 
-                key={index} 
-                className="text-center" 
-                data-testid={`stat-${index}`}
-                variants={scaleIn}
-                transition={{ duration: 0.5 }}
-              >
-                <motion.div 
-                  className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <stat.icon className="w-6 h-6 text-primary" />
-                </motion.div>
-                <motion.div 
-                  className="font-serif text-3xl font-bold mb-1"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  {stat.value}
-                </motion.div>
-                <div className="text-muted-foreground text-sm">{stat.label}</div>
-              </motion.div>
-            ))}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 blur-sm opacity-50">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center" data-testid={`stat-${index}`}>
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <stat.icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="font-serif text-3xl font-bold mb-1">{stat.value}</div>
+                  <div className="text-muted-foreground text-sm">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-background/80 backdrop-blur-sm px-6 py-3 rounded-full border border-border shadow-lg">
+                <div className="flex items-center gap-2 text-base font-medium">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <span>Stats Coming Soon</span>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>

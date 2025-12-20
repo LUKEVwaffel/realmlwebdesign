@@ -1,0 +1,146 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Check, ShoppingCart, Calendar, Layout } from 'lucide-react';
+
+const pricingTiers = [
+  {
+    id: 'standard',
+    name: 'Standard Website',
+    icon: Layout,
+    description: 'Perfect for small businesses and personal sites',
+    price: 'Contact for Quote',
+    features: [
+      'Free consultation',
+      '5-8 pages included',
+      'Modern, responsive design',
+      'Visual features & animations',
+      'Free SSL certificate',
+      'Optimized performance',
+      'Security & DDoS protection'
+    ]
+  },
+  {
+    id: 'premium',
+    name: 'Business / Premium',
+    icon: Calendar,
+    description: 'Advanced features for growing businesses',
+    price: 'Contact for Quote',
+    popular: true,
+    features: [
+      'Everything in Standard',
+      'Up to 8 pages (custom beyond)',
+      'Scheduling & booking tools',
+      'Client intake forms',
+      'Membership logins',
+      'Calendar sync',
+      'Advanced SEO optimization',
+      'Performance tuning'
+    ]
+  },
+  {
+    id: 'store',
+    name: 'Premium Web Store',
+    icon: ShoppingCart,
+    description: 'Complete e-commerce solution',
+    price: 'Contact for Quote',
+    features: [
+      'Everything in Premium',
+      'Full Shopify integration',
+      'Product variants & filters',
+      'Multiple payment gateways',
+      'Shipping & tax automation',
+      'Digital & physical products',
+      'Scalable catalog support',
+      'E-commerce optimization'
+    ]
+  }
+];
+
+export default function PricingTabs() {
+  const [activeTab, setActiveTab] = useState('premium');
+
+  const activeTier = pricingTiers.find(tier => tier.id === activeTab);
+  const Icon = activeTier?.icon;
+
+  return (
+    <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-5xl">
+        {/* Tab Navigation */}
+        <div className="flex flex-col sm:flex-row gap-2 mb-6 p-1 bg-muted rounded-lg border border-border">
+          {pricingTiers.map((tier) => {
+            const TierIcon = tier.icon;
+            return (
+              <button
+                key={tier.id}
+                onClick={() => setActiveTab(tier.id)}
+                className={`flex-1 relative px-4 py-3 rounded-md font-medium transition-all duration-200 ${
+                  activeTab === tier.id
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <TierIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tier.name}</span>
+                  <span className="sm:hidden">{tier.name.split(' ')[0]}</span>
+                </div>
+                {tier.popular && (
+                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                    Popular
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content Card */}
+        <Card className="border-card-border shadow-lg">
+          <CardHeader className="text-center pb-4">
+            <div className="mx-auto mb-4 relative">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+              <div className="relative bg-primary/10 p-4 rounded-full inline-block">
+                {Icon && <Icon className="h-8 w-8 text-primary" />}
+              </div>
+            </div>
+            <CardTitle className="text-3xl font-serif">{activeTier?.name}</CardTitle>
+            <p className="text-muted-foreground mt-2">{activeTier?.description}</p>
+            <div className="mt-4">
+              <span className="text-4xl font-bold gradient-text">{activeTier?.price}</span>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="pt-6">
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              {activeTier?.features.map((feature, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <div className="mt-0.5 bg-primary/10 rounded-full p-1">
+                    <Check className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm text-foreground">{feature}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border">
+              <Button className="flex-1" size="lg">
+                Get Started
+              </Button>
+              <Button variant="outline" className="flex-1" size="lg">
+                Learn More
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Info */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            All plans include free consultation and ongoing support. Custom quotes available for unique requirements.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
