@@ -12,27 +12,27 @@ import type { PortfolioItem } from "@shared/schema";
 const defaultPortfolio = [
   {
     id: "1",
-    businessName: "Artisan Coffee Co.",
-    industry: "Food & Beverage",
-    description: "A modern e-commerce website for a specialty coffee roaster featuring online ordering, subscription services, and a wholesale portal.",
-    imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&h=600&fit=crop",
-    websiteUrl: "#",
-    features: ["E-commerce", "Subscription System", "Wholesale Portal", "Mobile Responsive"],
+    businessName: "Worship Wave",
+    industry: "Church Organization And Band Managment",
+    description: "An all in one worship management solution helping churches youth groups organize service plans, coordinate band members, schedule event, manage song libraries, and streamline communication across multiple users.",
+    imageUrl: "https://assets.worshipartistry.com/sites/default/files/imagecache/share/greenroom-main/youthgroup_0.jpg",
+    websiteUrl: "worship-wave-goingtosdhs.replit.app",
+    features: ["Admin Prioritization", "Booking System", "Song Managment", "Mobile Responsive"],
   },
   {
     id: "2",
-    businessName: "Urban Fitness Studio",
-    industry: "Health & Fitness",
-    description: "A dynamic website for a boutique fitness studio with class booking, member portal, and trainer profiles.",
-    imageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop",
-    websiteUrl: "#",
-    features: ["Class Booking", "Member Portal", "Trainer Profiles", "Payment Integration"],
+    businessName: "Verse Vault",
+    industry: "Bible App",
+    description: "An AI Bible app powered by a custom made possible by a hand crafted AI Modle",
+    imageUrl: "https://cf.albertmohler.com/uploads/2016/09/iStock_45271310_MED.jpg",
+    websiteUrl: "verse-vault-goingtosdhs.replit.app",
+    features: ["Storage Managment", "Profile Creation", "Ai Profiling", "Deep Analitics"],
   },
   {
     id: "3",
-    businessName: "Bloom Interior Design",
-    industry: "Interior Design",
-    description: "An elegant portfolio website showcasing residential and commercial interior design projects with immersive galleries.",
+    businessName: "ML Web Design",
+    industry: "Web Design Managment System",
+    description: "A amazing web managment system with client and admin dashboard to create a easy and enjoyable experince for both parties.",
     imageUrl: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=600&fit=crop",
     websiteUrl: "#",
     features: ["Portfolio Gallery", "Project Showcase", "Contact Forms", "SEO Optimized"],
@@ -119,7 +119,7 @@ export default function PortfolioPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            Explore our collection of websites we've designed for businesses across various industries.
+            Explore our collection of websites we've designed for businesses in our local community.
           </motion.p>
         </div>
       </section>

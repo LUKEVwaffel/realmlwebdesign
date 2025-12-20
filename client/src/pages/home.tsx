@@ -217,7 +217,7 @@ export default function HomePage() {
           >
             <Badge variant="secondary" className="mb-8 px-4 py-2 text-sm" data-testid="badge-hero">
               <Sparkles className="w-4 h-4 mr-2" />
-              Premium Web Design Studio
+              Premium Web Design Made Easy
             </Badge>
           </motion.div>
 
