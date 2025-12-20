@@ -30,6 +30,12 @@ const services = [
     description: "Online stores that make shopping delightful and checkout seamless for your customers.",
     features: ["Payment Integration", "Inventory Sync", "Mobile First"],
   },
+  {
+    icon: Zap,
+    title: "Website Maintenance",
+    description: "Keep your site running smoothly with regular updates, security patches, and support.",
+    features: ["Security Updates", "Performance Tuning", "Priority Support"],
+  },
 ];
 
 const process = [
@@ -144,37 +150,32 @@ const clientJourney = [
   {
     step: "01",
     title: "Client Onboarding",
-    description: "After our initial conversation, we create your account and send you access to your private client portal.",
+    description: "We create your account and send you access to your private client portal.",
   },
   {
     step: "02",
     title: "Questionnaire",
-    description: "Complete our detailed questionnaire about your business, goals, branding, and website requirements.",
+    description: "Complete our detailed questionnaire about your business, goals, and requirements.",
   },
   {
     step: "03",
     title: "Terms & Agreement",
-    description: "Review and digitally sign our terms of service agreement outlining project scope and deliverables.",
+    description: "Review and digitally sign our terms of service outlining project scope.",
   },
   {
     step: "04",
-    title: "Development Phase",
-    description: "We build your website while keeping you updated through your portal with progress updates.",
+    title: "Development",
+    description: "We build your website while keeping you updated with regular progress reports.",
   },
   {
     step: "05",
-    title: "Review & Revisions",
-    description: "Preview your site, request changes, and collaborate with us until you're completely satisfied.",
+    title: "Review & Launch",
+    description: "Preview your site, request revisions, and we deploy when you're satisfied.",
   },
   {
     step: "06",
-    title: "Launch & Handoff",
-    description: "We set up hosting, deploy your site, and provide all credentials and documentation.",
-  },
-  {
-    step: "07",
     title: "Ongoing Support",
-    description: "Your portal remains active for support requests, updates, and future enhancements.",
+    description: "Your portal stays active for support requests and future enhancements.",
   },
 ];
 
@@ -779,7 +780,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {clientJourney.map((item, index) => (
               <motion.div
                 key={index}
