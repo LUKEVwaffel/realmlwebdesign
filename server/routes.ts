@@ -21,7 +21,7 @@ import {
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import { generateQuestionnairePdf } from "./questionnairePdfService";
-import { generateTosPdf, TosGenerationResult } from "./tosPdfService";
+import { generateTosPdf, generateSignedTosPdf, TosGenerationResult } from "./tosPdfService";
 import {
   initializeWebSocket,
   notifyNewMessage,
@@ -1043,6 +1043,60 @@ export async function registerRoutes(
       res.json({ success: true, document });
     } catch (error) {
       console.error("Send TOS error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Download signed TOS PDF with embedded signature
+  app.get("/api/admin/clients/:id/tos/signed-pdf", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const projects = await storage.getProjectsByClientId(id);
+      if (projects.length === 0) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = projects[0];
+      
+      // Check if TOS has been signed
+      const signedStatuses = ["tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"];
+      if (!signedStatuses.includes(project.status || "")) {
+        return res.status(400).json({ error: "TOS has not been signed yet" });
+      }
+
+      // Get the TOS document to find the signature
+      const documents = await storage.getDocumentsByClientId(id);
+      const tosDocument = documents.find(doc => doc.documentType === "terms_of_service" && doc.isSigned);
+      
+      if (!tosDocument || !tosDocument.signatureData) {
+        return res.status(404).json({ error: "Signed TOS document not found" });
+      }
+
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
+
+      const pdfBuffer = await generateSignedTosPdf({
+        client,
+        project,
+        contactName,
+        signatureData: tosDocument.signatureData,
+        signatureType: (tosDocument.signatureType as "drawn" | "typed") || "typed",
+        signedAt: tosDocument.signedAt || new Date(),
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="tos-signed-${client.businessLegalName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Generate signed TOS PDF error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

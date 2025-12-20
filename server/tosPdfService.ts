@@ -7,6 +7,12 @@ interface TosData {
   contactName?: string;
 }
 
+interface SignedTosData extends TosData {
+  signatureData: string;
+  signatureType: "drawn" | "typed";
+  signedAt: Date | string;
+}
+
 const COMPANY_INFO = {
   name: process.env.COMPANY_NAME || "Web Design Studio",
   address: process.env.COMPANY_ADDRESS || "123 Design Street, Creative City, ST 12345",
@@ -270,6 +276,238 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
       width: 250,
       height: 60,
     };
+    
+    doc.end();
+  });
+}
+
+export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const { client, signatureData, signatureType, signedAt } = data;
+    const currentDate = formatDate(new Date());
+    const signedDate = formatDate(signedAt);
+    const clientBusinessName = client.businessLegalName || client.businessDba || "Client";
+    const companyName = COMPANY_INFO.name;
+
+    const doc = new PDFDocument({
+      size: "LETTER",
+      margin: 50,
+      bufferPages: true,
+    });
+
+    const chunks: Buffer[] = [];
+    
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const primaryColor = "#1a1a2e";
+    const textColor = "#333333";
+    const mutedColor = "#666666";
+
+    const addHeading = (text: string, level: 1 | 2 | 3 = 1) => {
+      if (doc.y > 680) doc.addPage();
+      const fontSize = level === 1 ? 16 : level === 2 ? 12 : 10;
+      doc
+        .fillColor(primaryColor)
+        .fontSize(fontSize)
+        .font("Helvetica-Bold")
+        .text(text, 50, doc.y)
+        .moveDown(0.5);
+    };
+
+    const addParagraph = (text: string) => {
+      if (doc.y > 680) doc.addPage();
+      doc
+        .fillColor(textColor)
+        .fontSize(9)
+        .font("Helvetica")
+        .text(text, 50, doc.y, { width: 512, align: "justify" })
+        .moveDown(0.8);
+    };
+
+    const addBulletList = (items: string[]) => {
+      items.forEach((item) => {
+        if (doc.y > 680) doc.addPage();
+        doc
+          .fillColor(textColor)
+          .fontSize(9)
+          .font("Helvetica")
+          .text(`  •  ${item}`, 50, doc.y, { width: 500 })
+          .moveDown(0.3);
+      });
+      doc.moveDown(0.5);
+    };
+
+    // Add SIGNED watermark at top
+    doc
+      .fillColor("#22c55e")
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("SIGNED DOCUMENT", 50, 30, { align: "right" });
+
+    doc
+      .fillColor(primaryColor)
+      .fontSize(20)
+      .font("Helvetica-Bold")
+      .text("TERMS OF SERVICE", 50, 50, { align: "center" });
+
+    doc
+      .fillColor(mutedColor)
+      .fontSize(10)
+      .font("Helvetica")
+      .text(`Effective Date: ${currentDate}`, 50, 80, { align: "center" })
+      .text(`Signed Date: ${signedDate}`, 50, 95, { align: "center" });
+
+    doc.moveDown(2);
+
+    addHeading("1. Introduction and Acceptance of Terms");
+
+    addHeading("1.1 Agreement to Terms", 3);
+    addParagraph(`By accessing our services, submitting a project inquiry, signing a proposal, making a payment, or otherwise engaging with our company in any capacity, you ("Client," "you," or "your") acknowledge that you have read, understood, and agree to be bound by these Terms of Service ("Terms," "Agreement," or "TOS"). These Terms constitute a legally binding agreement between you and ${companyName} ("Company," "we," "us," or "our").`);
+
+    addHeading("1.2 Scope of Application", 3);
+    addParagraph("These Terms govern all aspects of the business relationship between the Company and the Client, including but not limited to:");
+    addBulletList([
+      "Initial consultations and project inquiries",
+      "Proposals, quotes, and estimates",
+      "Project contracts and agreements",
+      "Design and development services",
+      "Payment terms and billing",
+      "Ongoing maintenance and support",
+      "Communication and correspondence",
+    ]);
+
+    addHeading("2. Services and Deliverables");
+
+    addHeading("2.1 Service Description", 3);
+    addParagraph("The Company provides professional web design, development, and related digital services. The specific scope of work, deliverables, timeline, and pricing for each project will be outlined in a separate Project Proposal or Statement of Work, which shall be incorporated by reference into these Terms.");
+
+    addHeading("2.2 Revisions and Changes", 3);
+    addParagraph("Each project includes a specified number of revision rounds. Additional revisions beyond this limit may incur additional fees. Significant changes to project scope after work has commenced will require a written change order and may affect pricing and timeline.");
+
+    addHeading("3. Payment Terms");
+
+    addHeading("3.1 Payment Schedule", 3);
+    addParagraph("Payment terms will be specified in the Project Proposal. Typical arrangements include a 50% deposit before project commencement, with the remaining balance due upon completion, or milestone-based payments for larger projects.");
+
+    addHeading("3.2 Late Payments", 3);
+    addParagraph("Invoices are due within 14 days of the invoice date unless otherwise specified. Late payments may incur a 1.5% monthly interest charge. Continued non-payment may result in suspension of services, project work stoppage, or removal of delivered work.");
+
+    addHeading("4. Client Responsibilities");
+
+    addHeading("4.1 Content and Materials", 3);
+    addParagraph("The Client is responsible for providing all necessary content, including text, images, logos, and any other materials required for the project, in a timely manner. Delays in providing materials may result in project timeline extensions.");
+
+    addHeading("4.2 Feedback and Approvals", 3);
+    addParagraph("The Client agrees to provide timely feedback and approvals during the design and development process. Delayed approvals may impact the project timeline. The Client is responsible for ensuring all provided content is accurate and does not infringe on any third-party rights.");
+
+    addHeading("5. Timeline and Delivery");
+
+    addHeading("5.1 Project Timeline", 3);
+    addParagraph("The Company will make reasonable efforts to meet the agreed-upon timeline. However, the timeline is contingent upon the Client meeting their responsibilities for providing content, feedback, and approvals in a timely manner.");
+
+    addHeading("5.2 Delays", 3);
+    addParagraph("Delays caused by the Client, including late content delivery, slow feedback, or extended review periods, may result in timeline extensions and potential additional fees. The Company will communicate any anticipated delays as soon as they become apparent.");
+
+    addHeading("6. Approval and Sign-Off Process");
+    addParagraph("No project phase will commence or progress without obtaining required approvals and signatures from the Client. Approvals must be provided in writing (email or electronic signature). The Client acknowledges that once a phase is approved and signed off, any subsequent changes to that phase may be considered out of scope and subject to additional fees.");
+
+    addHeading("7. Intellectual Property Rights");
+
+    addHeading("7.1 Ownership Upon Payment", 3);
+    addParagraph("Upon receipt of full payment for the project, the Client receives ownership of the final website code and design elements, custom graphics and visual assets created specifically for the project, and project documentation.");
+
+    addHeading("7.2 Company Portfolio Rights", 3);
+    addParagraph("The Company retains the right to display the completed project in its portfolio, on its website, and in marketing materials, and to reference the Client and project in case studies and client lists.");
+
+    addHeading("8. Limitations of Liability");
+
+    addHeading("8.1 No Guarantee of Business Outcomes", 3);
+    addParagraph("The Company does not guarantee that the website will generate any specific amount of traffic, leads, or revenue, or that the Client's business will grow or succeed as a result of the website.");
+
+    addHeading("8.2 Limitation of Liability Cap", 3);
+    addParagraph("To the maximum extent permitted by law, the Company's total liability for any claims arising from or related to the project shall not exceed the total amount paid by the Client for the project.");
+
+    addHeading("9. Indemnification");
+    addParagraph("The Client agrees to indemnify, defend, and hold harmless the Company from any claims, damages, or expenses arising from the Client's content or materials, the Client's use of the website, any breach of these Terms by the Client, or any violation of applicable laws by the Client.");
+
+    addHeading("10. Governing Law and Dispute Resolution");
+    addParagraph("These Terms shall be governed by and construed in accordance with applicable laws. Any disputes will be resolved through good faith negotiation, and if unresolved, through binding arbitration.");
+
+    doc.addPage();
+
+    doc
+      .fontSize(14)
+      .font("Helvetica-Bold")
+      .fillColor(primaryColor)
+      .text("CLIENT ACKNOWLEDGMENT AND SIGNATURE", 50, 50);
+
+    doc.moveDown(2);
+
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor(textColor)
+      .text(`By signing below, ${clientBusinessName} acknowledges that they have read, understood, and agree to be bound by these Terms of Service.`, 50, doc.y, { width: 512 })
+      .moveDown(2);
+
+    doc
+      .text(`Client Business Name: ${clientBusinessName}`, 50, doc.y)
+      .moveDown(1)
+      .text(`Contact: ${data.contactName || "N/A"}`)
+      .moveDown(1)
+      .text(`Date Signed: ${signedDate}`)
+      .moveDown(3);
+
+    doc
+      .text("Client Signature:", 50, doc.y)
+      .moveDown(1);
+
+    const signatureY = doc.y;
+
+    // Draw signature box with green border to indicate signed
+    doc
+      .rect(50, signatureY, 250, 60)
+      .lineWidth(2)
+      .strokeColor("#22c55e")
+      .stroke();
+
+    // Add signature inside the box
+    if (signatureType === "typed") {
+      doc
+        .fontSize(18)
+        .font("Helvetica-Oblique")
+        .fillColor(textColor)
+        .text(signatureData, 60, signatureY + 20, { width: 230 });
+    } else if (signatureType === "drawn" && signatureData.startsWith("data:image")) {
+      try {
+        const base64Data = signatureData.split(",")[1];
+        const imgBuffer = Buffer.from(base64Data, "base64");
+        doc.image(imgBuffer, 55, signatureY + 5, { width: 240, height: 50 });
+      } catch (err) {
+        doc
+          .fontSize(12)
+          .font("Helvetica-Oblique")
+          .fillColor(textColor)
+          .text("[Signature on file]", 60, signatureY + 20);
+      }
+    }
+
+    doc.moveDown(5);
+
+    // Add verification footer
+    doc
+      .fontSize(8)
+      .fillColor("#22c55e")
+      .font("Helvetica-Bold")
+      .text(`This document was electronically signed on ${signedDate}`, 50, doc.y, { align: "center" });
+
+    doc
+      .fontSize(8)
+      .fillColor(mutedColor)
+      .font("Helvetica")
+      .text(`Generated by ${companyName}`, 50, 720, { align: "center" });
     
     doc.end();
   });

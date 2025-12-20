@@ -24,7 +24,8 @@ import {
   Trash2,
   FileSignature,
   Eye,
-  Send
+  Send,
+  Download
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -764,32 +765,67 @@ export default function ClientDetails() {
                         <CardDescription>Preview and send TOS agreement to client</CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              const token = localStorage.getItem("auth_token");
-                              const res = await fetch(`/api/admin/clients/${clientId}/tos/pdf`, {
-                                headers: { Authorization: `Bearer ${token}` },
-                              });
-                              if (!res.ok) throw new Error("Failed to fetch PDF");
-                              const blob = await res.blob();
-                              const url = URL.createObjectURL(blob);
-                              window.open(url, '_blank');
-                            } catch (error) {
-                              toast({
-                                title: "Error",
-                                description: "Failed to preview TOS PDF.",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                          data-testid="button-preview-tos"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Preview
-                        </Button>
+                        {["tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "") ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem("auth_token");
+                                const res = await fetch(`/api/admin/clients/${clientId}/tos/signed-pdf`, {
+                                  headers: { Authorization: `Bearer ${token}` },
+                                });
+                                if (!res.ok) throw new Error("Failed to download signed PDF");
+                                const blob = await res.blob();
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `tos-signed-${client.businessLegalName?.replace(/[^a-zA-Z0-9]/g, "_") || "client"}.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to download signed TOS PDF.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            data-testid="button-download-signed-tos"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Signed PDF
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem("auth_token");
+                                const res = await fetch(`/api/admin/clients/${clientId}/tos/pdf`, {
+                                  headers: { Authorization: `Bearer ${token}` },
+                                });
+                                if (!res.ok) throw new Error("Failed to fetch PDF");
+                                const blob = await res.blob();
+                                const url = URL.createObjectURL(blob);
+                                window.open(url, '_blank');
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to preview TOS PDF.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            data-testid="button-preview-tos"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Preview
+                          </Button>
+                        )}
                         {client.projects[0]?.questionnaireStatus === "completed" && 
                          !["tos_pending", "tos_signed", "in_development", "hosting_setup", "deployed", "delivery", "client_review", "completed"].includes(client.projects[0]?.status || "") && (
                           <Button
