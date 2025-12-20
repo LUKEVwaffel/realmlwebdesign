@@ -46,11 +46,14 @@ const siteSizeLabels: Record<string, string> = {
 };
 
 const designStyleLabels: Record<string, string> = {
-  professional: "Clean & Professional",
+  corporate: "Clean & Professional",
   bold: "Bold & Colorful",
   elegant: "Elegant & Minimal",
-  friendly: "Friendly & Approachable",
-  not_sure: "Not Sure - Surprise me!",
+  playful: "Friendly & Approachable",
+  creative: "Not Sure - Surprise me!",
+  modern: "Modern",
+  minimal: "Minimal",
+  classic: "Classic",
 };
 
 const featureLabels: Record<string, string> = {

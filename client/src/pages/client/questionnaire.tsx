@@ -61,7 +61,7 @@ const siteSizeOptions = [
 
 const designStyleOptions = [
   { 
-    value: "professional", 
+    value: "corporate", 
     label: "Clean & Professional", 
     examples: [
       { name: "Apple", url: "https://apple.com" },
@@ -85,7 +85,7 @@ const designStyleOptions = [
     ]
   },
   { 
-    value: "friendly", 
+    value: "playful", 
     label: "Friendly & Approachable", 
     examples: [
       { name: "Mailchimp", url: "https://mailchimp.com" },
@@ -93,8 +93,8 @@ const designStyleOptions = [
     ]
   },
   { 
-    value: "not_sure", 
-    label: "Not Sure", 
+    value: "creative", 
+    label: "Not Sure - Surprise me!", 
     examples: []
   },
 ];
