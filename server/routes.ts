@@ -185,7 +185,11 @@ export async function registerRoutes(
       }
 
       if (!user.isActive) {
-        return res.status(401).json({ error: "Account is disabled" });
+        return res.status(401).json({ 
+          error: "Account closed",
+          message: "Your account has been closed. If you have any questions or need assistance, please contact us at hello@pixelcraft.design. We're always happy to help!",
+          accountClosed: true
+        });
       }
 
       await storage.updateUser(user.id, { lastLogin: new Date() as any });

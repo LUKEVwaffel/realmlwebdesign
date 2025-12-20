@@ -439,7 +439,14 @@ export default function AdminClients() {
                               <Building2 className="w-5 h-5 text-muted-foreground" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{client.businessLegalName}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium truncate">{client.businessLegalName}</p>
+                                {(client.status === "completed" || client.status === "cancelled") && (
+                                  <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">
+                                    Closed
+                                  </Badge>
+                                )}
+                              </div>
                               {client.businessEmail && (
                                 <p className="text-sm text-muted-foreground truncate">{client.businessEmail}</p>
                               )}

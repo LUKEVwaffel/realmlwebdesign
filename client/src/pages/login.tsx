@@ -144,11 +144,34 @@ export default function LoginPage() {
         }, 100);
       }
     } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message || "Invalid email or password",
-        variant: "destructive",
-      });
+      const errorText = error.message || "Invalid email or password";
+      
+      // Check if this is a closed account error
+      if (errorText.includes("Account closed")) {
+        try {
+          const jsonPart = errorText.substring(errorText.indexOf("{"));
+          const parsed = JSON.parse(jsonPart);
+          toast({
+            title: "Account Closed",
+            description: parsed.message || "Your account has been closed. Please contact us for assistance.",
+            variant: "default",
+            duration: 10000,
+          });
+        } catch {
+          toast({
+            title: "Account Closed",
+            description: "Your account has been closed. If you have questions, please contact us at hello@pixelcraft.design.",
+            variant: "default",
+            duration: 10000,
+          });
+        }
+      } else {
+        toast({
+          title: "Login failed",
+          description: errorText.includes(":") ? errorText.split(":").slice(1).join(":").trim() : errorText,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

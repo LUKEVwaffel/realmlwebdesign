@@ -523,9 +523,16 @@ export default function ClientDetails() {
               </Link>
             </Button>
             <div>
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-client-name">
-                {client.businessLegalName}
-              </h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-client-name">
+                  {client.businessLegalName}
+                </h1>
+                {(client.status === "completed" || client.status === "cancelled") && (
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                    Account Closed
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <p className="text-muted-foreground">{client.industry || "No industry specified"}</p>
                 {!isOwner && (
