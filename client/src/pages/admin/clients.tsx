@@ -4,14 +4,11 @@ import { Link } from "wouter";
 import { 
   Plus, 
   Search, 
-  Eye, 
-  MoreHorizontal,
   Building2,
-  Calendar,
+  Trash2,
   MapPin,
-  Globe,
   Users,
-  Trash2
+  Globe
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,12 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -58,11 +49,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-const priorityColors: Record<string, string> = {
-  high: "bg-red-500/10 text-red-600 dark:text-red-400",
-  normal: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  low: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-};
 
 export default function AdminClients() {
   const { toast } = useToast();
@@ -88,7 +74,7 @@ export default function AdminClients() {
     secondaryContactRelationship: "",
   });
 
-  const { data: clients = [], isLoading } = useQuery({
+  const { data: clients = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/clients"],
   });
 
@@ -435,14 +421,18 @@ export default function AdminClients() {
                       <TableHead>Business</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead className="hidden md:table-cell">Industry</TableHead>
-                      <TableHead className="hidden sm:table-cell">Priority</TableHead>
                       <TableHead className="hidden lg:table-cell">Added</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredClients.map((client: any) => (
-                      <TableRow key={client.id} data-testid={`client-row-${client.id}`}>
+                      <TableRow 
+                        key={client.id} 
+                        data-testid={`client-row-${client.id}`}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => window.location.href = `/admin/clients/${client.id}`}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -467,41 +457,25 @@ export default function AdminClients() {
                         <TableCell className="hidden md:table-cell">
                           {client.industry || "-"}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge className={priorityColors[client.priority] || priorityColors.normal}>
-                            {client.priority || "Normal"}
-                          </Badge>
-                        </TableCell>
                         <TableCell className="hidden lg:table-cell text-muted-foreground">
                           {client.createdAt ? format(new Date(client.createdAt), "MMM d, yyyy") : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-actions-${client.id}`}>
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/clients/${client.id}`}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setClientToDelete({ 
-                                  id: client.id, 
-                                  name: client.businessLegalName 
-                                })}
-                                data-testid={`button-delete-client-${client.id}`}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Client
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClientToDelete({ 
+                                id: client.id, 
+                                name: client.businessLegalName 
+                              });
+                            }}
+                            data-testid={`button-delete-client-${client.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

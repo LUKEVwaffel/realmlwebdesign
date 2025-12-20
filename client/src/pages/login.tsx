@@ -231,30 +231,36 @@ export default function LoginPage() {
                               name="password"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Password</FormLabel>
+                                  <div className="flex items-center justify-between">
+                                    <FormLabel>Password</FormLabel>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-auto py-0 px-2 text-xs text-muted-foreground"
+                                      onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                      {showPassword ? (
+                                        <>
+                                          <EyeOff className="h-3 w-3 mr-1" />
+                                          Hide
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Show
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
                                   <FormControl>
-                                    <div className="relative">
-                                      <Input
-                                        type={showPassword ? "text" : "password"}
-                                        placeholder="Enter your password"
-                                        {...field}
-                                        autoFocus
-                                        data-testid="input-admin-password"
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute right-0 top-0 h-full px-3"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                      >
-                                        {showPassword ? (
-                                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                        ) : (
-                                          <Eye className="h-4 w-4 text-muted-foreground" />
-                                        )}
-                                      </Button>
-                                    </div>
+                                    <Input
+                                      type={showPassword ? "text" : "password"}
+                                      placeholder="Enter your password"
+                                      {...field}
+                                      autoFocus
+                                      data-testid="input-admin-password"
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -385,30 +391,36 @@ export default function LoginPage() {
                         name="password"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Password</FormLabel>
+                            <div className="flex items-center justify-between">
+                              <FormLabel>Password</FormLabel>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto py-0 px-2 text-xs text-muted-foreground"
+                                onClick={() => setShowPassword(!showPassword)}
+                                data-testid="button-toggle-password"
+                              >
+                                {showPassword ? (
+                                  <>
+                                    <EyeOff className="h-3 w-3 mr-1" />
+                                    Hide
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Show
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                             <FormControl>
-                              <div className="relative">
-                                <Input
-                                  type={showPassword ? "text" : "password"}
-                                  placeholder="Enter your password"
-                                  {...field}
-                                  data-testid="input-password"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute right-0 top-0 h-full px-3"
-                                  onClick={() => setShowPassword(!showPassword)}
-                                  data-testid="button-toggle-password"
-                                >
-                                  {showPassword ? (
-                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                  ) : (
-                                    <Eye className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                </Button>
-                              </div>
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                {...field}
+                                data-testid="input-password"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

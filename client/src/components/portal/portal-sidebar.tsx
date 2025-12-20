@@ -11,7 +11,8 @@ import {
   BarChart3,
   ChevronDown,
   ClipboardList,
-  Receipt
+  Receipt,
+  HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -37,6 +38,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
+  { title: "Tutorial", url: "/client/tutorial", icon: HelpCircle },
   { title: "Questionnaire", url: "/client/questionnaire", icon: ClipboardList },
   { title: "Quotes", url: "/client/quotes", icon: Receipt },
   { title: "Payments", url: "/client/payments", icon: CreditCard },
