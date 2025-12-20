@@ -570,7 +570,22 @@ export async function registerRoutes(
       if (!questionnaire) {
         return res.json({ status: "not_started", responses: {} });
       }
-      res.json(questionnaire);
+      // Return questionnaire with responses extracted for frontend compatibility
+      const status = questionnaire.submittedAt ? "completed" : "in_progress";
+      res.json({ 
+        status,
+        responses: {
+          businessDescription: questionnaire.businessDescription || "",
+          targetAudience: questionnaire.targetAudienceDescription || "",
+          websiteGoal: questionnaire.primaryGoal || "",
+          siteSize: questionnaire.requiredPages || "",
+          designStyle: questionnaire.stylePreference || "",
+          features: questionnaire.specialFeatures ? questionnaire.specialFeatures.split(",").map((f: string) => f.trim()) : [],
+          likedWebsites: questionnaire.inspirationWebsites || "",
+          preferredColors: questionnaire.preferredColors || "",
+          additionalNotes: questionnaire.additionalNotes || "",
+        }
+      });
     } catch (error) {
       console.error("Get questionnaire error:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -590,12 +605,21 @@ export async function registerRoutes(
       }
       
       const project = projects[0];
-      const { status, ...questionnaireFields } = req.body;
+      const { status, responses } = req.body;
       
       let questionnaire = await storage.getQuestionnaireByClientId(client.id);
       
+      // Map frontend response fields to database columns
       const updateData: any = {
-        ...questionnaireFields,
+        businessDescription: responses?.businessDescription || null,
+        targetAudienceDescription: responses?.targetAudience || null,
+        primaryGoal: responses?.websiteGoal || null,
+        requiredPages: responses?.siteSize || null,
+        stylePreference: responses?.designStyle || null,
+        specialFeatures: Array.isArray(responses?.features) ? responses.features.join(", ") : null,
+        inspirationWebsites: responses?.likedWebsites || null,
+        preferredColors: responses?.preferredColors || null,
+        additionalNotes: responses?.additionalNotes || null,
       };
       if (status === "completed") {
         updateData.submittedAt = new Date();
@@ -616,7 +640,7 @@ export async function registerRoutes(
           questionnaireStatus: "completed",
           questionnaireCompletedAt: new Date(),
         };
-        if (questionnaireFields.preferredColors) projectUpdates.primaryColor = questionnaireFields.preferredColors;
+        if (responses?.preferredColors) projectUpdates.primaryColor = responses.preferredColors;
         
         if (project.status === "created" || project.status === "questionnaire_pending") {
           projectUpdates.status = "tos_pending";
@@ -834,11 +858,24 @@ export async function registerRoutes(
       const user = client.userId ? await storage.getUser(client.userId) : null;
       const contactName = user ? `${user.firstName} ${user.lastName}` : "N/A";
 
+      // Map questionnaire columns to the responses format expected by the PDF service
+      const responses = {
+        businessDescription: questionnaire.businessDescription || undefined,
+        targetAudience: questionnaire.targetAudienceDescription || undefined,
+        websiteGoal: questionnaire.primaryGoal || undefined,
+        siteSize: questionnaire.requiredPages || undefined,
+        designStyle: questionnaire.stylePreference || undefined,
+        features: questionnaire.specialFeatures ? [questionnaire.specialFeatures] : undefined,
+        likedWebsites: questionnaire.inspirationWebsites || undefined,
+        preferredColors: questionnaire.preferredColors || undefined,
+        additionalNotes: questionnaire.additionalNotes || undefined,
+      };
+
       const pdfBuffer = await generateQuestionnairePdf({
-        questionnaire,
+        responses,
         client,
-        project: projects[0],
         contactName,
+        submittedAt: questionnaire.submittedAt,
       });
 
       res.setHeader("Content-Type", "application/pdf");

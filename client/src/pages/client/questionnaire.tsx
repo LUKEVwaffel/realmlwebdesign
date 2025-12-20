@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Building2, Target, Palette, Sparkles, HelpCircle } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Building2, Target, Palette, Sparkles, HelpCircle, Upload, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,27 +63,39 @@ const designStyleOptions = [
   { 
     value: "professional", 
     label: "Clean & Professional", 
-    examples: "Like Apple, Stripe"
+    examples: [
+      { name: "Apple", url: "https://apple.com" },
+      { name: "Stripe", url: "https://stripe.com" },
+    ]
   },
   { 
     value: "bold", 
     label: "Bold & Colorful", 
-    examples: "Like Nike, Spotify"
+    examples: [
+      { name: "Nike", url: "https://nike.com" },
+      { name: "Spotify", url: "https://spotify.com" },
+    ]
   },
   { 
     value: "elegant", 
     label: "Elegant & Minimal", 
-    examples: "Like luxury brands"
+    examples: [
+      { name: "Aesop", url: "https://aesop.com" },
+      { name: "Rolex", url: "https://rolex.com" },
+    ]
   },
   { 
     value: "friendly", 
     label: "Friendly & Approachable", 
-    examples: "Like local businesses"
+    examples: [
+      { name: "Mailchimp", url: "https://mailchimp.com" },
+      { name: "Slack", url: "https://slack.com" },
+    ]
   },
   { 
     value: "not_sure", 
     label: "Not Sure", 
-    examples: "Surprise me!"
+    examples: []
   },
 ];
 
@@ -217,20 +230,42 @@ export default function ClientQuestionnaire() {
   if (questionnaire?.status === "completed") {
     return (
       <PortalLayout requiredRole="client">
-        <div className="p-6 max-w-3xl mx-auto">
+        <div className="p-6 max-w-3xl mx-auto space-y-6">
           <Card>
             <CardContent className="py-12">
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
                   <Check className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="font-serif text-2xl font-bold mb-2">Questionnaire Completed</h2>
-                <p className="text-muted-foreground mb-6">
-                  Thank you! Our team is reviewing your responses and will use them to create your perfect website.
+                <h2 className="font-serif text-2xl font-bold mb-2">You're All Set!</h2>
+                <p className="text-muted-foreground mb-2">
+                  Your questionnaire has been submitted successfully.
                 </p>
-                <Button variant="outline" onClick={() => setCurrentStep(0)} data-testid="button-view-responses">
-                  View Your Responses
-                </Button>
+                <p className="text-muted-foreground mb-6">
+                  Our team is reviewing your responses and will reach out soon to discuss next steps.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="py-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Upload className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-semibold mb-1">Help Us Create Your Perfect Website</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    We highly recommend uploading your logo, brand guidelines, photos, or any other materials that will help us design the best website for you.
+                  </p>
+                  <Link href="/client/documents" asChild>
+                    <Button className="gap-2" data-testid="button-upload-documents">
+                      <Upload className="w-4 h-4" />
+                      Upload Documents
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -407,22 +442,42 @@ export default function ClientQuestionnaire() {
                   <Label>What style fits your brand?</Label>
                   <div className="grid gap-2">
                     {designStyleOptions.map((option) => (
-                      <button
+                      <div
                         key={option.value}
-                        type="button"
-                        onClick={() => updateField("designStyle", option.value)}
-                        className={`p-4 rounded-md border text-left transition-colors ${
+                        className={`p-4 rounded-md border text-left transition-colors cursor-pointer ${
                           formData.designStyle === option.value
                             ? "border-primary bg-primary/5"
                             : "border-border hover-elevate"
                         }`}
+                        onClick={() => updateField("designStyle", option.value)}
                         data-testid={`style-${option.value}`}
                       >
                         <div>
                           <span className="font-medium">{option.label}</span>
-                          <p className="text-sm text-muted-foreground mt-1">{option.examples}</p>
+                          {option.examples.length > 0 ? (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Like{" "}
+                              {option.examples.map((ex, i) => (
+                                <span key={ex.name}>
+                                  <a
+                                    href={ex.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-primary underline underline-offset-2 hover:text-primary/80 inline-flex items-center gap-0.5"
+                                  >
+                                    {ex.name}
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                  {i < option.examples.length - 1 && ", "}
+                                </span>
+                              ))}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground mt-1 italic">Surprise me!</p>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
