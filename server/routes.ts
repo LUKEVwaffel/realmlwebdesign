@@ -143,6 +143,18 @@ function requireClient(req: AuthRequest, res: Response, next: NextFunction) {
   next();
 }
 
+// Helper to check if admin can edit a specific client
+async function canAdminEditClientHelper(adminId: string, clientId: string): Promise<boolean> {
+  const client = await storage.getClient(clientId);
+  if (!client) return false;
+  
+  // Owner can always edit
+  if (client.createdBy === adminId) return true;
+  
+  // Check for granted edit access
+  return await storage.canAdminEditClient(adminId, clientId);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -750,11 +762,25 @@ export async function registerRoutes(
 
   app.get("/api/admin/clients", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
+      const adminId = req.user!.id;
       const clientsList = await storage.getClients();
+      
+      // Get access levels for this admin
+      const accessibleClients = await storage.getAccessibleClientIds(adminId);
+      const accessMap = new Map(accessibleClients.map(a => [a.clientId, a.accessLevel]));
+      
       const clientsWithUsers = await Promise.all(
         clientsList.map(async (client) => {
           const user = client.userId ? await storage.getUser(client.userId) : null;
-          return { ...client, user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email } : null };
+          const isOwner = client.createdBy === adminId;
+          const accessLevel = accessMap.get(client.id) || "view";
+          
+          return { 
+            ...client, 
+            user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email } : null,
+            isOwner,
+            editable: isOwner || accessLevel === "edit",
+          };
         })
       );
       res.json(clientsWithUsers);
@@ -850,6 +876,7 @@ export async function registerRoutes(
   app.get("/api/admin/clients/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
+      const adminId = req.user!.id;
       const client = await storage.getClient(id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -862,6 +889,13 @@ export async function registerRoutes(
       const activity = await storage.getActivityLogsByClientId(id);
       const uploads = await storage.getClientUploadsByClientId(id);
       
+      // Check edit permissions
+      const isOwner = client.createdBy === adminId;
+      const canEdit = await storage.canAdminEditClient(adminId, id);
+      
+      // Get owner info
+      const owner = client.createdBy ? await storage.getUser(client.createdBy) : null;
+      
       res.json({
         ...client,
         user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone } : null,
@@ -871,6 +905,9 @@ export async function registerRoutes(
         messages,
         activity,
         uploads,
+        isOwner,
+        editable: canEdit,
+        owner: owner ? { id: owner.id, firstName: owner.firstName, lastName: owner.lastName } : null,
       });
     } catch (error) {
       console.error("Get client error:", error);
@@ -1233,6 +1270,11 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Client not found" });
       }
 
+      // Only owner can delete clients
+      if (client.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "Only the owner can delete this client" });
+      }
+
       await storage.deleteClient(id);
 
       res.json({ success: true, message: "Client and all associated data deleted successfully" });
@@ -1252,6 +1294,12 @@ export async function registerRoutes(
       const client = await storage.getClient(clientId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
 
       const payment = await storage.createPayment({
@@ -1294,6 +1342,12 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Payment not found" });
       }
 
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, payment.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+
       // Don't allow deleting paid payments
       if (payment.status === "paid") {
         return res.status(400).json({ error: "Cannot delete a paid payment" });
@@ -1326,6 +1380,12 @@ export async function registerRoutes(
       const client = await storage.getClient(clientId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
 
       // Extract filename from URL if provided
@@ -1384,6 +1444,12 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Document not found" });
       }
 
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, doc.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+
       await storage.deleteDocument(id);
 
       await storage.createActivityLog({
@@ -1409,6 +1475,12 @@ export async function registerRoutes(
       const doc = await storage.getDocument(id);
       if (!doc) {
         return res.status(404).json({ error: "Document not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, doc.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
 
       if (!doc.isSigned || !doc.signatureData) {
@@ -1458,6 +1530,13 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
       }
+      
+      // Check edit permissions before creating project
+      const canEdit = await canAdminEditClientHelper(req.user!.id, parsed.data.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
       const project = await storage.createProject(parsed.data);
 
       await storage.createActivityLog({
@@ -1482,6 +1561,12 @@ export async function registerRoutes(
       const existingProject = await storage.getProject(id);
       if (!existingProject) {
         return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, existingProject.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
 
       const project = await storage.updateProject(id, req.body);
@@ -1517,6 +1602,13 @@ export async function registerRoutes(
       if (!existingProject) {
         return res.status(404).json({ error: "Project not found" });
       }
+      
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, existingProject.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
       const oldStatus = existingProject.status;
 
       const project = await storage.updateProject(id, { status });
@@ -1620,6 +1712,12 @@ export async function registerRoutes(
       const payment = await storage.getPayment(id);
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" });
+      }
+
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, payment.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
 
       if (payment.status === "paid") {
@@ -2147,6 +2245,494 @@ export async function registerRoutes(
       res.json({ uploads });
     } catch (error) {
       console.error("Get client uploads error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ ADMIN LEADERBOARD ============
+  
+  app.get("/api/admin/leaderboard", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const leaderboard = await storage.getAdminLeaderboard();
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Get leaderboard error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ ADMIN ACCESS CONTROL ============
+  
+  // Get all admins (for sharing UI)
+  app.get("/api/admin/admins", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const admins = await storage.getAdmins();
+      res.json(admins.map(a => ({ id: a.id, firstName: a.firstName, lastName: a.lastName, email: a.email })));
+    } catch (error) {
+      console.error("Get admins error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get access list for a client
+  app.get("/api/admin/clients/:id/access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Only owner can view/manage access
+      if (client.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "Only the client owner can manage access" });
+      }
+      
+      const accessList = await storage.getAdminClientAccess(id);
+      
+      // Enrich with admin names
+      const enrichedAccess = await Promise.all(accessList.map(async (access) => {
+        const admin = await storage.getUser(access.adminId);
+        return {
+          ...access,
+          adminName: admin ? `${admin.firstName} ${admin.lastName}` : "Unknown",
+        };
+      }));
+      
+      res.json(enrichedAccess);
+    } catch (error) {
+      console.error("Get client access error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Grant access to another admin
+  app.post("/api/admin/clients/:id/access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { adminId, accessLevel } = req.body;
+      
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Only owner can grant access
+      if (client.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "Only the client owner can grant access" });
+      }
+      
+      if (!adminId || !["view", "edit"].includes(accessLevel)) {
+        return res.status(400).json({ error: "Invalid admin ID or access level" });
+      }
+      
+      const access = await storage.grantClientAccess({
+        clientId: id,
+        adminId,
+        accessLevel,
+        grantedBy: req.user!.id,
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: id,
+        action: "access_granted",
+        description: `Granted ${accessLevel} access to admin`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(access);
+    } catch (error) {
+      console.error("Grant access error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Revoke access from another admin
+  app.delete("/api/admin/access/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await storage.revokeClientAccess(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Revoke access error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ QUOTES ============
+  
+  // Get quotes for a client
+  app.get("/api/admin/clients/:id/quotes", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const quotes = await storage.getQuotesByClientId(id);
+      res.json(quotes);
+    } catch (error) {
+      console.error("Get quotes error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create a quote
+  app.post("/api/admin/clients/:id/quotes", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, lineItems, subtotal, discountAmount, discountDescription, taxRate, taxAmount, totalAmount, validUntil, notes, termsAndConditions } = req.body;
+      
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await storage.canAdminEditClient(req.user!.id, id);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have permission to create quotes for this client" });
+      }
+      
+      const projects = await storage.getProjectsByClientId(id);
+      
+      const quote = await storage.createQuote({
+        clientId: id,
+        projectId: projects[0]?.id || null,
+        title,
+        description,
+        lineItems: JSON.stringify(lineItems),
+        subtotal,
+        discountAmount: discountAmount || "0",
+        discountDescription,
+        taxRate: taxRate || "0",
+        taxAmount: taxAmount || "0",
+        totalAmount,
+        validUntil,
+        notes,
+        termsAndConditions,
+        createdBy: req.user!.id,
+        status: "draft",
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: id,
+        action: "quote_created",
+        description: `Created quote: ${title}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(quote);
+    } catch (error) {
+      console.error("Create quote error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update a quote
+  app.patch("/api/admin/quotes/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      const canEdit = await storage.canAdminEditClient(req.user!.id, quote.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have permission to edit this quote" });
+      }
+      
+      const updateData: any = { ...req.body };
+      if (updateData.lineItems) {
+        updateData.lineItems = JSON.stringify(updateData.lineItems);
+      }
+      
+      const updated = await storage.updateQuote(id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update quote error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Send quote to client
+  app.post("/api/admin/quotes/:id/send", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, quote.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
+      const updated = await storage.updateQuote(id, {
+        status: "sent",
+        sentAt: new Date() as any,
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: quote.clientId,
+        action: "quote_sent",
+        description: `Sent quote: ${quote.title}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Send quote error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete a quote
+  app.delete("/api/admin/quotes/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      const canEdit = await storage.canAdminEditClient(req.user!.id, quote.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have permission to delete this quote" });
+      }
+      
+      await storage.deleteQuote(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete quote error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ CLIENT QUOTE ROUTES ============
+  
+  // Get quotes for client to review
+  app.get("/api/client/quotes", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const quotes = await storage.getQuotesByClientId(client.id);
+      // Only show sent quotes to clients
+      const visibleQuotes = quotes.filter(q => q.status !== "draft");
+      res.json(visibleQuotes);
+    } catch (error) {
+      console.error("Get client quotes error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // View a quote (marks as viewed)
+  app.get("/api/client/quotes/:id", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const quote = await storage.getQuote(id);
+      if (!quote || quote.clientId !== client.id) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      // Mark as viewed if not already
+      if (quote.status === "sent" && !quote.viewedAt) {
+        await storage.updateQuote(id, {
+          status: "viewed",
+          viewedAt: new Date() as any,
+        });
+      }
+      
+      res.json(quote);
+    } catch (error) {
+      console.error("Get client quote error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Respond to quote (approve/reject)
+  app.post("/api/client/quotes/:id/respond", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { response, message } = req.body;
+      
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const quote = await storage.getQuote(id);
+      if (!quote || quote.clientId !== client.id) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      if (!["approved", "rejected"].includes(response)) {
+        return res.status(400).json({ error: "Invalid response" });
+      }
+      
+      const updated = await storage.updateQuote(id, {
+        status: response,
+        clientResponse: message,
+        respondedAt: new Date() as any,
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: `quote_${response}`,
+        description: `${response === "approved" ? "Approved" : "Rejected"} quote: ${quote.title}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Quote response error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ PIN LOGIN ============
+  
+  // Set PIN for admin
+  app.post("/api/admin/pin/set", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { pin, password } = req.body;
+      
+      if (!pin || !/^\d{6}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+      }
+      
+      // Verify password first
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const validPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!validPassword) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+      
+      const pinHash = await bcrypt.hash(pin, 10);
+      await storage.updateUser(req.user!.id, {
+        pinHash,
+        pinEnabled: true,
+        pinFailedAttempts: 0,
+      } as any);
+      
+      res.json({ success: true, message: "PIN set successfully" });
+    } catch (error) {
+      console.error("Set PIN error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Disable PIN
+  app.post("/api/admin/pin/disable", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      await storage.updateUser(req.user!.id, {
+        pinEnabled: false,
+        pinHash: null,
+      } as any);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Disable PIN error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // PIN login endpoint
+  app.post("/api/auth/pin-login", async (req: AuthRequest, res) => {
+    try {
+      const { email, pin } = req.body;
+      
+      if (!email || !pin) {
+        return res.status(400).json({ error: "Email and PIN are required" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.role !== "admin") {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      if (!user.pinEnabled || !user.pinHash) {
+        return res.status(400).json({ error: "PIN login not enabled for this account" });
+      }
+      
+      // Check if locked out
+      if (user.pinLockedUntil && new Date(user.pinLockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(user.pinLockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(429).json({ error: `Too many attempts. Try again in ${remainingMinutes} minutes.` });
+      }
+      
+      const validPin = await bcrypt.compare(pin, user.pinHash);
+      if (!validPin) {
+        // Increment failed attempts
+        const attempts = (user.pinFailedAttempts || 0) + 1;
+        const updates: any = { pinFailedAttempts: attempts };
+        
+        // Lock after 5 failed attempts for 15 minutes
+        if (attempts >= 5) {
+          updates.pinLockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        
+        await storage.updateUser(user.id, updates);
+        return res.status(401).json({ error: "Invalid PIN" });
+      }
+      
+      // Success - reset failed attempts
+      await storage.updateUser(user.id, {
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
+        lastLogin: new Date(),
+      } as any);
+      
+      const token = jwt.sign({ id: user.id, role: user.role }, process.env.SESSION_SECRET!, { expiresIn: "7d" });
+      
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          mustChangePassword: user.mustChangePassword,
+        },
+      });
+    } catch (error) {
+      console.error("PIN login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Check if admin has PIN enabled
+  app.get("/api/auth/pin-status", async (req, res) => {
+    try {
+      const { email } = req.query;
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email required" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.role !== "admin") {
+        return res.json({ pinEnabled: false });
+      }
+      
+      res.json({ pinEnabled: user.pinEnabled || false });
+    } catch (error) {
+      console.error("Check PIN status error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

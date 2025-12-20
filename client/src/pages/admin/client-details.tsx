@@ -25,7 +25,9 @@ import {
   FileSignature,
   Eye,
   Send,
-  Download
+  Download,
+  Lock,
+  Share2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -367,9 +369,26 @@ export default function ClientDetails() {
     );
   }
 
+  const canEdit = client.editable !== false;
+  const isOwner = client.isOwner === true;
+  const ownerName = client.owner ? `${client.owner.firstName} ${client.owner.lastName}` : "Unknown";
+
   return (
     <PortalLayout requiredRole="admin">
       <div className="p-6 space-y-6">
+        {/* Read-only banner for cross-admin viewing */}
+        {!canEdit && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-amber-600 dark:text-amber-400">View-Only Mode</p>
+              <p className="text-sm text-muted-foreground">
+                This client is managed by {ownerName}. You can view details but cannot make changes.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild data-testid="button-back">
@@ -381,16 +400,25 @@ export default function ClientDetails() {
               <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-client-name">
                 {client.businessLegalName}
               </h1>
-              <p className="text-muted-foreground">{client.industry || "No industry specified"}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-muted-foreground">{client.industry || "No industry specified"}</p>
+                {!isOwner && (
+                  <Badge variant="outline" className="text-xs">
+                    <Share2 className="w-3 h-3 mr-1" />
+                    Shared by {ownerName}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-          <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2" data-testid="button-manage-credentials">
-                <Key className="w-4 h-4" />
-                Login Credentials
-              </Button>
-            </DialogTrigger>
+          {canEdit && (
+            <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2" data-testid="button-manage-credentials">
+                  <Key className="w-4 h-4" />
+                  Login Credentials
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Client Login Credentials</DialogTitle>
@@ -422,6 +450,7 @@ export default function ClientDetails() {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -967,6 +996,7 @@ export default function ClientDetails() {
                   </CardTitle>
                   <CardDescription>{client.projects?.length || 0} total projects</CardDescription>
                 </div>
+                {canEdit && (
                 <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="gap-2" data-testid="button-add-project">
@@ -1048,6 +1078,7 @@ export default function ClientDetails() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                )}
               </CardHeader>
               <CardContent>
                 {client.projects?.length > 0 ? (
@@ -1083,6 +1114,7 @@ export default function ClientDetails() {
                   </CardTitle>
                   <CardDescription>{client.payments?.length || 0} total payments</CardDescription>
                 </div>
+                {canEdit && (
                 <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="gap-2" data-testid="button-add-payment">
@@ -1135,6 +1167,7 @@ export default function ClientDetails() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                )}
               </CardHeader>
               <CardContent>
                 {client.payments?.length > 0 ? (
@@ -1154,7 +1187,7 @@ export default function ClientDetails() {
                               {payment.status}
                             </Badge>
                           </div>
-                          {payment.status !== "paid" && (
+                          {canEdit && payment.status !== "paid" && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1174,7 +1207,7 @@ export default function ClientDetails() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No payments yet. Click "Add Payment" to create one.</p>
+                  <p className="text-muted-foreground text-center py-8">No payments yet.{canEdit && ' Click "Add Payment" to create one.'}</p>
                 )}
               </CardContent>
             </Card>
@@ -1190,6 +1223,7 @@ export default function ClientDetails() {
                   </CardTitle>
                   <CardDescription>{client.documents?.length || 0} total documents</CardDescription>
                 </div>
+                {canEdit && (
                 <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="gap-2" data-testid="button-add-document">
@@ -1403,6 +1437,7 @@ export default function ClientDetails() {
                     </form>
                   </DialogContent>
                 </Dialog>
+              )}
               </CardHeader>
               <CardContent>
                 {client.documents?.length > 0 ? (
@@ -1462,6 +1497,7 @@ export default function ClientDetails() {
                               </DialogContent>
                             </Dialog>
                           )}
+                          {canEdit && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1475,6 +1511,7 @@ export default function ClientDetails() {
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
+                          )}
                         </div>
                       </div>
                     ))}

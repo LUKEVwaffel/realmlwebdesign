@@ -49,6 +49,8 @@ export const designStyleEnum = pgEnum("design_style", ["modern", "minimal", "bol
 export const uploadCategoryEnum = pgEnum("upload_category", ["logo", "brand_assets", "photos", "content", "documents", "inspiration", "other"]);
 export const questionnaireStatusEnum = pgEnum("questionnaire_status", ["not_started", "in_progress", "completed"]);
 export const documentStatusEnum = pgEnum("document_status", ["draft", "ready_for_signature", "pending_signature", "signed"]);
+export const quoteStatusEnum = pgEnum("quote_status", ["draft", "sent", "viewed", "approved", "rejected", "expired"]);
+export const accessLevelEnum = pgEnum("access_level", ["view", "edit"]);
 
 // Users Table
 export const users = pgTable("users", {
@@ -66,6 +68,12 @@ export const users = pgTable("users", {
   mustChangePassword: boolean("must_change_password").default(true),
   resetToken: varchar("reset_token", { length: 255 }),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+  
+  // Fast login PIN for admins
+  pinHash: varchar("pin_hash", { length: 255 }),
+  pinEnabled: boolean("pin_enabled").default(false),
+  pinFailedAttempts: integer("pin_failed_attempts").default(0),
+  pinLockedUntil: timestamp("pin_locked_until"),
 });
 
 // Clients Table
@@ -524,6 +532,68 @@ export const hostingCredentials = pgTable("hosting_credentials", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Admin Client Access (for cross-admin permissions)
+export const adminClientAccess = pgTable("admin_client_access", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  adminId: varchar("admin_id", { length: 36 }).references(() => users.id).notNull(),
+  
+  // Access Level
+  accessLevel: accessLevelEnum("access_level").notNull().default("view"),
+  
+  // Who granted access
+  grantedBy: varchar("granted_by", { length: 36 }).references(() => users.id).notNull(),
+  
+  // Metadata
+  grantedAt: timestamp("granted_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+});
+
+// Quotes (for pricing proposals to clients)
+export const quotes = pgTable("quotes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  
+  // Quote Info
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Line Items (stored as JSON)
+  lineItems: text("line_items"), // JSON: [{name, description, quantity, unitPrice, total}]
+  
+  // Totals
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
+  discountDescription: varchar("discount_description", { length: 255 }),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Status
+  status: quoteStatusEnum("status").notNull().default("draft"),
+  
+  // Validity
+  validUntil: date("valid_until"),
+  
+  // Terms
+  notes: text("notes"),
+  termsAndConditions: text("terms_and_conditions"),
+  
+  // Client Response
+  clientResponse: text("client_response"),
+  respondedAt: timestamp("responded_at"),
+  
+  // Created By
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id).notNull(),
+  sentAt: timestamp("sent_at"),
+  viewedAt: timestamp("viewed_at"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   clients: many(clients, { relationName: "userClient" }),
@@ -531,6 +601,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   documents: many(documents),
   messages: many(messages),
   activityLogs: many(activityLogs),
+  clientAccess: many(adminClientAccess, { relationName: "adminAccess" }),
+  grantedAccess: many(adminClientAccess, { relationName: "grantedAccess" }),
+  quotes: many(quotes),
 }));
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -655,6 +728,38 @@ export const portfolioItemsRelations = relations(portfolioItems, ({ one }) => ({
   }),
 }));
 
+export const adminClientAccessRelations = relations(adminClientAccess, ({ one }) => ({
+  client: one(clients, {
+    fields: [adminClientAccess.clientId],
+    references: [clients.id],
+  }),
+  admin: one(users, {
+    fields: [adminClientAccess.adminId],
+    references: [users.id],
+    relationName: "adminAccess",
+  }),
+  grantedByUser: one(users, {
+    fields: [adminClientAccess.grantedBy],
+    references: [users.id],
+    relationName: "grantedAccess",
+  }),
+}));
+
+export const quotesRelations = relations(quotes, ({ one }) => ({
+  client: one(clients, {
+    fields: [quotes.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [quotes.projectId],
+    references: [projects.id],
+  }),
+  createdByUser: one(users, {
+    fields: [quotes.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -732,6 +837,17 @@ export const insertHostingCredentialsSchema = createInsertSchema(hostingCredenti
   updatedAt: true,
 });
 
+export const insertAdminClientAccessSchema = createInsertSchema(adminClientAccess).omit({
+  id: true,
+  grantedAt: true,
+});
+
+export const insertQuoteSchema = createInsertSchema(quotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -746,6 +862,22 @@ export const changePasswordSchema = z.object({
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+});
+
+// PIN login schema (for fast admin login)
+export const pinLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  pin: z.string().length(6, "PIN must be exactly 6 digits").regex(/^\d{6}$/, "PIN must be 6 digits"),
+});
+
+// Set PIN schema
+export const setPinSchema = z.object({
+  pin: z.string().length(6, "PIN must be exactly 6 digits").regex(/^\d{6}$/, "PIN must be 6 digits"),
+  confirmPin: z.string().length(6),
+  password: z.string().min(6, "Password required to set PIN"),
+}).refine((data) => data.pin === data.confirmPin, {
+  message: "PINs don't match",
+  path: ["confirmPin"],
 });
 
 // Types
@@ -775,5 +907,11 @@ export type InsertEmailNotification = z.infer<typeof insertEmailNotificationSche
 export type EmailNotification = typeof emailNotifications.$inferSelect;
 export type InsertHostingCredentials = z.infer<typeof insertHostingCredentialsSchema>;
 export type HostingCredentials = typeof hostingCredentials.$inferSelect;
+export type InsertAdminClientAccess = z.infer<typeof insertAdminClientAccessSchema>;
+export type AdminClientAccess = typeof adminClientAccess.$inferSelect;
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type Quote = typeof quotes.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type PinLoginInput = z.infer<typeof pinLoginSchema>;
+export type SetPinInput = z.infer<typeof setPinSchema>;

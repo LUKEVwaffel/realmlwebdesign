@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, sql, count, sum } from "drizzle-orm";
+import { eq, and, desc, sql, count, sum, or, inArray } from "drizzle-orm";
 import {
   users,
   clients,
@@ -14,6 +14,8 @@ import {
   closingQuestionnaires,
   emailNotifications,
   hostingCredentials,
+  adminClientAccess,
+  quotes,
   type User,
   type InsertUser,
   type Client,
@@ -40,6 +42,10 @@ import {
   type InsertEmailNotification,
   type HostingCredentials,
   type InsertHostingCredentials,
+  type AdminClientAccess,
+  type InsertAdminClientAccess,
+  type Quote,
+  type InsertQuote,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -123,6 +129,33 @@ export interface IStorage {
   getHostingCredentialsByProjectId(projectId: string): Promise<HostingCredentials | undefined>;
   createHostingCredentials(data: InsertHostingCredentials): Promise<HostingCredentials>;
   updateHostingCredentials(id: string, data: Partial<InsertHostingCredentials>): Promise<HostingCredentials | undefined>;
+
+  // Admin Client Access (for multi-admin ownership)
+  getClientsByAdminId(adminId: string): Promise<Client[]>;
+  getAccessibleClientIds(adminId: string): Promise<{ clientId: string; accessLevel: string }[]>;
+  canAdminEditClient(adminId: string, clientId: string): Promise<boolean>;
+  getAdminClientAccess(clientId: string): Promise<AdminClientAccess[]>;
+  grantClientAccess(data: InsertAdminClientAccess): Promise<AdminClientAccess>;
+  revokeClientAccess(id: string): Promise<void>;
+  getAdmins(): Promise<User[]>;
+
+  // Quotes
+  getQuote(id: string): Promise<Quote | undefined>;
+  getQuotesByClientId(clientId: string): Promise<Quote[]>;
+  getQuotesByAdminId(adminId: string): Promise<Quote[]>;
+  createQuote(data: InsertQuote): Promise<Quote>;
+  updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
+  deleteQuote(id: string): Promise<void>;
+
+  // Leaderboard
+  getAdminLeaderboard(): Promise<{
+    adminId: string;
+    adminName: string;
+    totalClients: number;
+    totalRevenue: number;
+    completedProjects: number;
+    activeProjects: number;
+  }[]>;
 
   // Analytics & Dashboard
   getAdminStats(): Promise<{
@@ -534,6 +567,171 @@ export class DatabaseStorage implements IStorage {
   async updateHostingCredentials(id: string, data: Partial<InsertHostingCredentials>): Promise<HostingCredentials | undefined> {
     const [updated] = await db.update(hostingCredentials).set({ ...data, updatedAt: new Date() }).where(eq(hostingCredentials.id, id)).returning();
     return updated;
+  }
+
+  // Admin Client Access (for multi-admin ownership)
+  async getClientsByAdminId(adminId: string): Promise<Client[]> {
+    return db.select().from(clients).where(eq(clients.createdBy, adminId)).orderBy(desc(clients.createdAt));
+  }
+
+  async getAccessibleClientIds(adminId: string): Promise<{ clientId: string; accessLevel: string }[]> {
+    // Get clients owned by this admin (they have full edit access)
+    const ownedClients = await db.select({ clientId: clients.id }).from(clients).where(eq(clients.createdBy, adminId));
+    const ownedWithAccess = ownedClients.map(c => ({ clientId: c.clientId, accessLevel: "edit" }));
+
+    // Get clients granted access to
+    const grantedAccess = await db.select({
+      clientId: adminClientAccess.clientId,
+      accessLevel: adminClientAccess.accessLevel,
+    }).from(adminClientAccess).where(
+      and(
+        eq(adminClientAccess.adminId, adminId),
+        or(
+          sql`${adminClientAccess.expiresAt} IS NULL`,
+          sql`${adminClientAccess.expiresAt} > NOW()`
+        )
+      )
+    );
+
+    // Combine and dedupe, preferring edit over view
+    const accessMap = new Map<string, string>();
+    for (const item of [...ownedWithAccess, ...grantedAccess]) {
+      const existing = accessMap.get(item.clientId);
+      if (!existing || (existing === "view" && item.accessLevel === "edit")) {
+        accessMap.set(item.clientId, item.accessLevel);
+      }
+    }
+
+    return Array.from(accessMap.entries()).map(([clientId, accessLevel]) => ({ clientId, accessLevel }));
+  }
+
+  async canAdminEditClient(adminId: string, clientId: string): Promise<boolean> {
+    // Check if admin owns the client
+    const client = await this.getClient(clientId);
+    if (client?.createdBy === adminId) return true;
+
+    // Check for granted edit access
+    const [access] = await db.select().from(adminClientAccess).where(
+      and(
+        eq(adminClientAccess.adminId, adminId),
+        eq(adminClientAccess.clientId, clientId),
+        eq(adminClientAccess.accessLevel, "edit"),
+        or(
+          sql`${adminClientAccess.expiresAt} IS NULL`,
+          sql`${adminClientAccess.expiresAt} > NOW()`
+        )
+      )
+    );
+
+    return !!access;
+  }
+
+  async getAdminClientAccess(clientId: string): Promise<AdminClientAccess[]> {
+    return db.select().from(adminClientAccess).where(eq(adminClientAccess.clientId, clientId));
+  }
+
+  async grantClientAccess(data: InsertAdminClientAccess): Promise<AdminClientAccess> {
+    // Remove existing access first to avoid duplicates
+    await db.delete(adminClientAccess).where(
+      and(
+        eq(adminClientAccess.clientId, data.clientId),
+        eq(adminClientAccess.adminId, data.adminId)
+      )
+    );
+    const [access] = await db.insert(adminClientAccess).values(data).returning();
+    return access;
+  }
+
+  async revokeClientAccess(id: string): Promise<void> {
+    await db.delete(adminClientAccess).where(eq(adminClientAccess.id, id));
+  }
+
+  async getAdmins(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "admin")).orderBy(users.firstName);
+  }
+
+  // Quotes
+  async getQuote(id: string): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
+    return quote;
+  }
+
+  async getQuotesByClientId(clientId: string): Promise<Quote[]> {
+    return db.select().from(quotes).where(eq(quotes.clientId, clientId)).orderBy(desc(quotes.createdAt));
+  }
+
+  async getQuotesByAdminId(adminId: string): Promise<Quote[]> {
+    return db.select().from(quotes).where(eq(quotes.createdBy, adminId)).orderBy(desc(quotes.createdAt));
+  }
+
+  async createQuote(data: InsertQuote): Promise<Quote> {
+    const [quote] = await db.insert(quotes).values(data).returning();
+    return quote;
+  }
+
+  async updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined> {
+    const [updated] = await db.update(quotes).set({ ...data, updatedAt: new Date() }).where(eq(quotes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteQuote(id: string): Promise<void> {
+    await db.delete(quotes).where(eq(quotes.id, id));
+  }
+
+  // Leaderboard
+  async getAdminLeaderboard(): Promise<{
+    adminId: string;
+    adminName: string;
+    totalClients: number;
+    totalRevenue: number;
+    completedProjects: number;
+    activeProjects: number;
+  }[]> {
+    // Get all admins
+    const admins = await this.getAdmins();
+    
+    const leaderboard = await Promise.all(admins.map(async (admin) => {
+      // Count clients created by this admin
+      const clientList = await db.select({ id: clients.id }).from(clients).where(eq(clients.createdBy, admin.id));
+      const clientIds = clientList.map(c => c.id);
+      
+      let totalRevenue = 0;
+      let completedProjects = 0;
+      let activeProjects = 0;
+
+      if (clientIds.length > 0) {
+        // Get payments for these clients
+        const paidPayments = await db.select({ amount: payments.amount })
+          .from(payments)
+          .where(and(
+            inArray(payments.clientId, clientIds),
+            eq(payments.status, "paid")
+          ));
+        totalRevenue = paidPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+
+        // Get project counts
+        const projectStats = await db.select({ status: projects.status })
+          .from(projects)
+          .where(inArray(projects.clientId, clientIds));
+        
+        for (const p of projectStats) {
+          if (p.status === "completed") completedProjects++;
+          else if (p.status !== "cancelled" && p.status !== "on_hold") activeProjects++;
+        }
+      }
+
+      return {
+        adminId: admin.id,
+        adminName: `${admin.firstName} ${admin.lastName}`,
+        totalClients: clientIds.length,
+        totalRevenue,
+        completedProjects,
+        activeProjects,
+      };
+    }));
+
+    // Sort by total revenue descending
+    return leaderboard.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }
 }
 

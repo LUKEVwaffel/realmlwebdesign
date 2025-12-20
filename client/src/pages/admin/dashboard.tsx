@@ -8,7 +8,9 @@ import {
   Clock,
   ArrowRight,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trophy,
+  Medal
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { useAuth } from "@/lib/auth-context";
 import { formatDistanceToNow, format } from "date-fns";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const statusColors: Record<string, string> = {
   pending_payment: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
@@ -45,8 +48,12 @@ const statusLabels: Record<string, string> = {
 export default function AdminDashboard() {
   const { user } = useAuth();
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading } = useQuery<any>({
     queryKey: ["/api/admin/dashboard"],
+  });
+
+  const { data: leaderboard, isLoading: leaderboardLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/leaderboard"],
   });
 
   const stats = dashboardData?.stats || {
@@ -127,6 +134,83 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Team Leaderboard */}
+        {leaderboard && leaderboard.length > 1 && (
+          <Card className="border-border/50" data-testid="card-leaderboard">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div>
+                <CardTitle className="font-serif text-lg">Team Leaderboard</CardTitle>
+                <CardDescription>Compare performance across developers</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {leaderboardLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {leaderboard?.map((admin: any, index: number) => (
+                    <div
+                      key={admin.id}
+                      className={`flex items-center gap-4 p-3 rounded-lg ${
+                        admin.id === user?.id ? "bg-primary/5 border border-primary/20" : ""
+                      }`}
+                      data-testid={`leaderboard-item-${admin.id}`}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback className={index === 0 ? "bg-yellow-500/20 text-yellow-600" : "bg-muted"}>
+                            {admin.firstName?.[0]}{admin.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        {index === 0 && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                            <Medal className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">
+                          {admin.firstName} {admin.lastName}
+                          {admin.id === user?.id && (
+                            <Badge variant="outline" className="ml-2 text-xs">You</Badge>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {admin.totalClients} clients
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            ${admin.totalRevenue?.toLocaleString() || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {admin.completedProjects} completed
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Projects */}
