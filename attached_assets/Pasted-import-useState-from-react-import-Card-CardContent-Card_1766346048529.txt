@@ -1,0 +1,214 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Lock, Delete, CheckCircle2, XCircle } from 'lucide-react';
+
+const users = [
+  { name: "Luke Vetsch", email: "luke@pixelcraft.com", initials: "LV" },
+  { name: "Makaio Roos", email: "makaio@pixelcraft.com", initials: "MR" },
+  { name: "John Client", email: "john@client.com", initials: "JC" },
+];
+
+export default function PhoneLockscreenPin() {
+  const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
+  const [pin, setPin] = useState<string>('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const correctPin = '12345'; // Demo purposes
+
+  const handleNumberClick = (num: string) => {
+    if (pin.length < 6) {
+      const newPin = pin + num;
+      setPin(newPin);
+      setError(false);
+
+      // Auto-verify when 4-6 digits entered
+      if (newPin.length >= 4) {
+        verifyPin(newPin);
+      }
+    }
+  };
+
+  const handleBackspace = () => {
+    setPin(pin.slice(0, -1));
+    setError(false);
+  };
+
+  const verifyPin = (pinToVerify: string) => {
+    setIsVerifying(true);
+    
+    setTimeout(() => {
+      if (pinToVerify === correctPin) {
+        setSuccess(true);
+        setTimeout(() => {
+          // Would navigate to dashboard here
+          console.log('Login successful!');
+          resetPin();
+        }, 1000);
+      } else {
+        setError(true);
+        setTimeout(() => {
+          setPin('');
+          setError(false);
+        }, 500);
+      }
+      setIsVerifying(false);
+    }, 300);
+  };
+
+  const resetPin = () => {
+    setPin('');
+    setError(false);
+    setSuccess(false);
+    setSelectedUser(null);
+  };
+
+  if (!selectedUser) {
+    return (
+      <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-card-border">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 relative">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+              <div className="relative bg-primary/10 p-4 rounded-full inline-block">
+                <Lock className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-serif">Select Account</CardTitle>
+            <CardDescription>Choose your account to continue</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {users.map((user) => (
+              <button
+                key={user.email}
+                onClick={() => setSelectedUser(user)}
+                className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-border transition-all hover-elevate hover:border-primary/50"
+              >
+                <Avatar className="h-14 w-14">
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                    {user.initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-left flex-1">
+                  <p className="font-medium text-lg">{user.name}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-card-border">
+        <CardHeader className="text-center pb-6">
+          <Avatar className="h-20 w-20 mx-auto mb-4">
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
+              {selectedUser.initials}
+            </AvatarFallback>
+          </Avatar>
+          <CardTitle className="text-xl font-serif">{selectedUser.name}</CardTitle>
+          <CardDescription>Enter your PIN</CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-8">
+          {/* PIN Dots Display */}
+          <div className="flex justify-center gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                  i < pin.length
+                    ? success
+                      ? 'bg-green-500 scale-110'
+                      : error
+                      ? 'bg-red-500 animate-pulse'
+                      : 'bg-primary scale-110'
+                    : 'bg-muted border-2 border-border'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Status Messages */}
+          <div className="h-6 text-center">
+            {success && (
+              <div className="flex items-center justify-center gap-2 text-green-600">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Access granted</span>
+              </div>
+            )}
+            {error && (
+              <div className="flex items-center justify-center gap-2 text-red-600">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Incorrect PIN</span>
+              </div>
+            )}
+          </div>
+
+          {/* Number Pad */}
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <Button
+                key={num}
+                variant="outline"
+                size="lg"
+                onClick={() => handleNumberClick(num.toString())}
+                disabled={isVerifying || success}
+                className="h-16 text-2xl font-semibold hover-elevate active-elevate"
+              >
+                {num}
+              </Button>
+            ))}
+            
+            {/* Bottom Row: Empty, 0, Backspace */}
+            <div /> {/* Empty space */}
+            
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => handleNumberClick('0')}
+              disabled={isVerifying || success}
+              className="h-16 text-2xl font-semibold hover-elevate active-elevate"
+            >
+              0
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleBackspace}
+              disabled={pin.length === 0 || isVerifying || success}
+              className="h-16 hover-elevate active-elevate"
+            >
+              <Delete className="h-6 w-6" />
+            </Button>
+          </div>
+
+          {/* Cancel Button */}
+          <Button
+            variant="ghost"
+            onClick={resetPin}
+            className="w-full"
+            disabled={isVerifying}
+          >
+            Cancel
+          </Button>
+
+          {/* Demo Hint */}
+          <div className="pt-4 border-t border-border">
+            <p className="text-xs text-center text-muted-foreground">
+              Demo PIN: <span className="font-mono font-medium">12345</span>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
