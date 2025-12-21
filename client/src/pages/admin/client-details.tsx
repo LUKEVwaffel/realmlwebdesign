@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft,
   Building2,
@@ -28,7 +29,12 @@ import {
   Download,
   Lock,
   Share2,
-  XCircle
+  XCircle,
+  Sparkles,
+  LayoutGrid,
+  Receipt,
+  FolderOpen,
+  Activity
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,6 +103,32 @@ const paymentStatusColors: Record<string, string> = {
   paid: "bg-green-500/10 text-green-600 dark:text-green-400",
   overdue: "bg-red-500/10 text-red-600 dark:text-red-400",
   cancelled: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+};
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const scaleIn = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 }
+};
+
+const slideIn = {
+  initial: { opacity: 0, x: -20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 20 }
 };
 
 export default function ClientDetails() {
@@ -501,21 +533,39 @@ export default function ClientDetails() {
 
   return (
     <PortalLayout requiredRole="admin">
-      <div className="p-6 space-y-6">
+      <motion.div 
+        className="p-6 space-y-6"
+        initial="initial"
+        animate="animate"
+        variants={staggerContainer}
+      >
         {/* Read-only banner for cross-admin viewing */}
-        {!canEdit && (
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium text-amber-600 dark:text-amber-400">View-Only Mode</p>
-              <p className="text-sm text-muted-foreground">
-                This client is managed by {ownerName}. You can view details but cannot make changes.
-              </p>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {!canEdit && (
+            <motion.div 
+              className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20"
+              variants={fadeInUp}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3 }}
+            >
+              <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-amber-600 dark:text-amber-400">View-Only Mode</p>
+                <p className="text-sm text-muted-foreground">
+                  This client is managed by {ownerName}. You can view details but cannot make changes.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <motion.div 
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          variants={fadeInUp}
+          transition={{ duration: 0.4 }}
+        >
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild data-testid="button-back">
               <Link href="/admin/clients">
@@ -528,9 +578,15 @@ export default function ClientDetails() {
                   {client.businessLegalName}
                 </h1>
                 {(client.status === "completed" || client.status === "cancelled") && (
-                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                    Account Closed
-                  </Badge>
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                      Account Closed
+                    </Badge>
+                  </motion.div>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -584,87 +640,140 @@ export default function ClientDetails() {
             </DialogContent>
           </Dialog>
           )}
-        </div>
+        </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1">
-            <CardHeader>
-              <CardTitle className="font-serif text-lg flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Contact Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {client.user && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Primary Contact</p>
-                  <p className="font-medium">{client.user.firstName} {client.user.lastName}</p>
+        <motion.div 
+          className="grid gap-6 md:grid-cols-3"
+          variants={fadeInUp}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <Card className="md:col-span-1 h-full border-border/50 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  Contact Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {client.user && (
+                  <div className="p-3 rounded-lg bg-muted/30">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Primary Contact</p>
+                    <p className="font-medium mt-1">{client.user.firstName} {client.user.lastName}</p>
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{client.businessEmail || client.user?.email}</span>
+                  </div>
+                  {client.businessPhone && (
+                    <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors">
+                      <Phone className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">{client.businessPhone}</span>
+                    </div>
+                  )}
+                  {client.existingWebsite && (
+                    <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      <a href={client.existingWebsite} target="_blank" rel="noopener noreferrer" className="text-sm hover:underline text-primary">
+                        {client.existingWebsite}
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      Client since {client.createdAt ? format(new Date(client.createdAt), "MMM d, yyyy") : "N/A"}
+                    </span>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{client.businessEmail || client.user?.email}</span>
-              </div>
-              {client.businessPhone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">{client.businessPhone}</span>
-                </div>
-              )}
-              {client.existingWebsite && (
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-muted-foreground" />
-                  <a href={client.existingWebsite} target="_blank" rel="noopener noreferrer" className="text-sm hover:underline">
-                    {client.existingWebsite}
-                  </a>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">
-                  Client since {client.createdAt ? format(new Date(client.createdAt), "MMM d, yyyy") : "N/A"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="font-serif text-lg">Quick Stats</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">{client.projects?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Projects</p>
+          <motion.div
+            className="md:col-span-2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <Card className="h-full border-border/50 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  Quick Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: "Projects", value: client.projects?.length || 0, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+                    { label: "Payments", value: client.payments?.length || 0, color: "bg-green-500/10 text-green-600 dark:text-green-400" },
+                    { label: "Documents", value: client.documents?.length || 0, color: "bg-purple-500/10 text-purple-600 dark:text-purple-400" },
+                    { label: "Messages", value: client.messages?.length || 0, color: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
+                  ].map((stat, index) => (
+                    <motion.div
+                      key={stat.label}
+                      className={`text-center p-4 rounded-xl ${stat.color.split(' ')[0]} border border-transparent hover:border-border/50 hover-elevate transition-all`}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
+                    >
+                      <p className={`text-3xl font-bold ${stat.color.split(' ').slice(1).join(' ')}`}>{stat.value}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+                    </motion.div>
+                  ))}
                 </div>
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">{client.payments?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Payments</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">{client.documents?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Documents</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-bold">{client.messages?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Messages</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
 
-        <Tabs defaultValue="settings" className="w-full">
-          <TabsList className="flex-wrap gap-1">
-            <TabsTrigger value="settings" data-testid="tab-project-settings">Project Settings</TabsTrigger>
-            <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
-            <TabsTrigger value="quotes" data-testid="tab-quotes">Quotes</TabsTrigger>
-            <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
-            <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
-            <TabsTrigger value="uploads" data-testid="tab-uploads">Client Uploads</TabsTrigger>
-            <TabsTrigger value="activity" data-testid="tab-activity">Activity</TabsTrigger>
-          </TabsList>
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Tabs defaultValue="settings" className="w-full">
+            <TabsList className="flex-wrap gap-1 p-1 bg-muted/50 rounded-xl">
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-project-settings">
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Project Settings</span>
+                <span className="sm:hidden">Settings</span>
+              </TabsTrigger>
+              <TabsTrigger value="projects" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-projects">
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">Projects</span>
+              </TabsTrigger>
+              <TabsTrigger value="quotes" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-quotes">
+                <Receipt className="w-4 h-4" />
+                <span className="hidden sm:inline">Quotes</span>
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-payments">
+                <DollarSign className="w-4 h-4" />
+                <span className="hidden sm:inline">Payments</span>
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-documents">
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Documents</span>
+              </TabsTrigger>
+              <TabsTrigger value="uploads" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-uploads">
+                <FolderOpen className="w-4 h-4" />
+                <span className="hidden sm:inline">Uploads</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-activity">
+                <Activity className="w-4 h-4" />
+                <span className="hidden sm:inline">Activity</span>
+              </TabsTrigger>
+            </TabsList>
 
           <TabsContent value="settings" className="mt-4">
             <div className="space-y-6">
@@ -2090,8 +2199,9 @@ export default function ClientDetails() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
-      </div>
+          </Tabs>
+        </motion.div>
+      </motion.div>
     </PortalLayout>
   );
 }
