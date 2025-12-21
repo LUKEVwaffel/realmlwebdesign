@@ -147,6 +147,15 @@ export interface IStorage {
   updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<void>;
 
+  // Admin Users
+  getAdminUsers(): Promise<User[]>;
+  
+  // All Payments
+  getAllPayments(): Promise<Payment[]>;
+  
+  // All Quotes
+  getQuotes(): Promise<Quote[]>;
+
   // Leaderboard
   getAdminLeaderboard(): Promise<{
     adminId: string;
@@ -676,6 +685,21 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuote(id: string): Promise<void> {
     await db.delete(quotes).where(eq(quotes.id, id));
+  }
+
+  // Admin Users (alias for getAdmins for clarity)
+  async getAdminUsers(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "admin")).orderBy(users.firstName);
+  }
+
+  // All Payments
+  async getAllPayments(): Promise<Payment[]> {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
+  }
+
+  // All Quotes
+  async getQuotes(): Promise<Quote[]> {
+    return db.select().from(quotes).orderBy(desc(quotes.createdAt));
   }
 
   // Leaderboard

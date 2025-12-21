@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { 
   Users, 
   FolderKanban, 
@@ -10,14 +10,14 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
-  Trophy,
+  ArrowLeft,
   AlertCircle,
-  ArrowRight,
-  Crown,
   Target,
   Percent,
   Receipt,
-  UserPlus
+  UserPlus,
+  PauseCircle,
+  ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PortalLayout } from "@/components/portal/portal-layout";
-import { Separator } from "@/components/ui/separator";
 import {
   BarChart,
   Bar,
@@ -99,31 +98,36 @@ const sourceLabels: Record<string, string> = {
 
 const CHART_COLORS = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308"];
 
-export default function AdminAnalytics() {
+export default function AdminAnalyticsPage() {
+  const { adminId } = useParams<{ adminId: string }>();
+
   const { data: analyticsData, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/analytics"],
+    queryKey: ["/api/admin/analytics", adminId],
+    enabled: !!adminId,
   });
 
-  const { data: adminUsers } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
+  const { data: clientsData } = useQuery<any[]>({
+    queryKey: ["/api/admin/clients"],
   });
 
+  const admin = analyticsData?.admin || { id: "", name: "", email: "" };
   const stats = analyticsData?.stats || {
     totalClients: 0,
     activeProjects: 0,
     completedProjects: 0,
     totalRevenue: 0,
     pendingRevenue: 0,
+    overdueRevenue: 0,
     averageProjectValue: 0,
     completionRate: 0,
-    averageProjectDuration: 0,
+    cancelledProjects: 0,
+    onHoldProjects: 0,
   };
 
   const projectsByStatus = analyticsData?.projectsByStatus || [];
+  const projectsByType = analyticsData?.projectsByType || [];
   const revenueByMonth = analyticsData?.revenueByMonth || [];
   const clientAcquisition = analyticsData?.clientAcquisition || [];
-  const projectMetrics = analyticsData?.projectMetrics || { projectsByType: [] };
-  const topClients = analyticsData?.topClients || [];
   const quoteMetrics = analyticsData?.quoteMetrics || {
     total: 0,
     draft: 0,
@@ -133,33 +137,22 @@ export default function AdminAnalytics() {
     totalValue: 0,
     conversionRate: 0,
   };
-  const leaderboard = analyticsData?.leaderboard || [];
-  const paymentMetrics = analyticsData?.paymentMetrics || {
-    totalPaid: 0,
-    totalPending: 0,
-    totalOverdue: 0,
-    pendingCount: 0,
-    overdueCount: 0,
-  };
-  const clientSources = analyticsData?.clientSources || {};
+  const clientSources = analyticsData?.clientSources || [];
+  const topClients = analyticsData?.topClients || [];
+  const activeProjectsList = analyticsData?.activeProjectsList || [];
+  const pendingPaymentsList = analyticsData?.pendingPaymentsList || [];
 
-  const formattedRevenueData = [...revenueByMonth]
-    .reverse()
-    .slice(-12)
-    .map((item: any) => ({
-      month: item.month?.substring(5) || item.month,
-      revenue: parseFloat(item.revenue) || 0,
-    }));
+  const formattedRevenueData = revenueByMonth.map((item: any) => ({
+    month: item.month?.substring(5) || item.month,
+    revenue: parseFloat(item.revenue) || 0,
+  }));
 
-  const formattedClientData = [...clientAcquisition]
-    .reverse()
-    .slice(-12)
-    .map((item: any) => ({
-      month: item.month?.substring(5) || item.month,
-      clients: parseInt(item.count) || 0,
-    }));
+  const formattedClientData = clientAcquisition.map((item: any) => ({
+    month: item.month?.substring(5) || item.month,
+    clients: parseInt(item.count) || 0,
+  }));
 
-  const formattedProjectTypeData = (projectMetrics.projectsByType || []).map((item: any) => ({
+  const formattedProjectTypeData = projectsByType.map((item: any) => ({
     name: projectTypeLabels[item.type] || item.type,
     value: parseInt(item.count) || 0,
   }));
@@ -170,10 +163,15 @@ export default function AdminAnalytics() {
     fill: statusColors[item.status] || "#6b7280",
   }));
 
-  const formattedSourceData = Object.entries(clientSources).map(([source, count]) => ({
-    name: sourceLabels[source] || source,
-    value: count as number,
+  const formattedSourceData = clientSources.map((item: any) => ({
+    name: sourceLabels[item.source] || item.source,
+    value: item.count as number,
   }));
+
+  const getClientName = (clientId: string) => {
+    const client = (clientsData || []).find((c: any) => c.id === clientId);
+    return client?.businessLegalName || "Unknown Client";
+  };
 
   const metricCards = [
     {
@@ -182,15 +180,15 @@ export default function AdminAnalytics() {
       icon: DollarSign,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-500/10",
-      description: `$${paymentMetrics.totalPending.toLocaleString()} pending`,
+      description: `$${stats.pendingRevenue.toLocaleString()} pending`,
     },
     {
-      title: "Total Clients",
+      title: "Clients",
       value: stats.totalClients,
       icon: Users,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10",
-      description: "Active clients in system",
+      description: "Assigned clients",
     },
     {
       title: "Active Projects",
@@ -206,7 +204,7 @@ export default function AdminAnalytics() {
       icon: Target,
       color: "text-orange-600 dark:text-orange-400",
       bgColor: "bg-orange-500/10",
-      description: `${quoteMetrics.approved} of ${quoteMetrics.approved + quoteMetrics.rejected} approved`,
+      description: `${quoteMetrics.approved} approved`,
     },
   ];
 
@@ -215,22 +213,18 @@ export default function AdminAnalytics() {
       <div className="p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
+            <Link href="/admin/analytics">
+              <Button variant="ghost" size="sm" className="mb-2" data-testid="button-back-analytics">
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Overview
+              </Button>
+            </Link>
             <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-page-title">
-              Business Analytics
+              {isLoading ? <Skeleton className="h-8 w-48" /> : `${admin.name}'s Analytics`}
             </h1>
             <p className="text-muted-foreground mt-1">
-              Performance overview and insights
+              {isLoading ? <Skeleton className="h-4 w-32" /> : admin.email}
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(adminUsers || []).map((admin: any) => (
-              <Link key={admin.id} href={`/admin/analytics/${admin.id}`}>
-                <Button variant="outline" size="sm" data-testid={`button-view-admin-${admin.id}`}>
-                  {admin.firstName}'s Analytics
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </Link>
-            ))}
           </div>
         </div>
 
@@ -262,87 +256,44 @@ export default function AdminAnalytics() {
           ))}
         </div>
 
-        {/* Admin Leaderboard */}
-        <Card className="border-border/50" data-testid="card-leaderboard">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              Team Leaderboard
-            </CardTitle>
-            <CardDescription>Performance comparison by revenue</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
-              </div>
-            ) : leaderboard.length > 0 ? (
-              <div className="space-y-4">
-                {leaderboard.map((admin: any, index: number) => {
-                  const maxRevenue = Math.max(...leaderboard.map((a: any) => a.totalRevenue));
-                  const percentage = maxRevenue > 0 ? (admin.totalRevenue / maxRevenue) * 100 : 0;
-                  return (
-                    <div
-                      key={admin.id}
-                      className="p-4 rounded-lg bg-muted/30 hover-elevate"
-                      data-testid={`leaderboard-admin-${index + 1}`}
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                            index === 0 ? 'bg-yellow-500/20 text-yellow-600' : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {index === 0 ? <Crown className="w-5 h-5" /> : index + 1}
-                          </div>
-                          <div>
-                            <p className="font-medium">{admin.name}</p>
-                            <p className="text-sm text-muted-foreground">{admin.email}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-serif text-xl font-bold text-green-600 dark:text-green-400">
-                            ${admin.totalRevenue.toLocaleString()}
-                          </p>
-                          <Link href={`/admin/analytics/${admin.id}`}>
-                            <Button variant="ghost" size="sm" className="mt-1">
-                              View Details <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                      <Progress value={percentage} className="h-2 mb-3" />
-                      <div className="grid grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Clients</p>
-                          <p className="font-semibold">{admin.clientCount}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Projects</p>
-                          <p className="font-semibold">{admin.projectCount}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Completed</p>
-                          <p className="font-semibold text-green-600">{admin.completedProjects}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Active</p>
-                          <p className="font-semibold text-blue-600">{admin.activeProjects}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Trophy className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-muted-foreground">No team data yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Performance Summary Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <Card className="border-border/50">
+            <CardContent className="p-4 text-center">
+              <Percent className="w-6 h-6 mx-auto mb-1 text-orange-600" />
+              <p className="text-2xl font-bold">{stats.completionRate}%</p>
+              <p className="text-xs text-muted-foreground">Completion Rate</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4 text-center">
+              <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-600" />
+              <p className="text-2xl font-bold">${Math.round(stats.averageProjectValue).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Avg Project Value</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4 text-center">
+              <CheckCircle2 className="w-6 h-6 mx-auto mb-1 text-green-600" />
+              <p className="text-2xl font-bold">{stats.completedProjects}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4 text-center">
+              <PauseCircle className="w-6 h-6 mx-auto mb-1 text-gray-500" />
+              <p className="text-2xl font-bold">{stats.onHoldProjects}</p>
+              <p className="text-xs text-muted-foreground">On Hold</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-4 text-center">
+              <XCircle className="w-6 h-6 mx-auto mb-1 text-red-600" />
+              <p className="text-2xl font-bold">{stats.cancelledProjects}</p>
+              <p className="text-xs text-muted-foreground">Cancelled</p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Quote & Payment Metrics Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -353,7 +304,7 @@ export default function AdminAnalytics() {
                 <FileText className="w-5 h-5" />
                 Quote Performance
               </CardTitle>
-              <CardDescription>Quote conversion and status breakdown</CardDescription>
+              <CardDescription>Your quote conversion stats</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -410,32 +361,32 @@ export default function AdminAnalytics() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="p-4 rounded-lg bg-green-500/10 text-center">
                       <DollarSign className="w-6 h-6 mx-auto mb-1 text-green-600" />
-                      <p className="text-xl font-bold text-green-600">${paymentMetrics.totalPaid.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-green-600">${stats.totalRevenue.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Collected</p>
                     </div>
                     <div className="p-4 rounded-lg bg-yellow-500/10 text-center">
                       <Clock className="w-6 h-6 mx-auto mb-1 text-yellow-600" />
-                      <p className="text-xl font-bold text-yellow-600">${paymentMetrics.totalPending.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{paymentMetrics.pendingCount} Pending</p>
+                      <p className="text-xl font-bold text-yellow-600">${stats.pendingRevenue.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Pending</p>
                     </div>
                     <div className="p-4 rounded-lg bg-red-500/10 text-center">
                       <AlertCircle className="w-6 h-6 mx-auto mb-1 text-red-600" />
-                      <p className="text-xl font-bold text-red-600">${paymentMetrics.totalOverdue.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{paymentMetrics.overdueCount} Overdue</p>
+                      <p className="text-xl font-bold text-red-600">${stats.overdueRevenue.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Overdue</p>
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Collection Progress</span>
                       <span className="font-medium">
-                        {paymentMetrics.totalPaid + paymentMetrics.totalPending > 0
-                          ? Math.round((paymentMetrics.totalPaid / (paymentMetrics.totalPaid + paymentMetrics.totalPending)) * 100)
+                        {stats.totalRevenue + stats.pendingRevenue > 0
+                          ? Math.round((stats.totalRevenue / (stats.totalRevenue + stats.pendingRevenue)) * 100)
                           : 0}%
                       </span>
                     </div>
                     <Progress 
-                      value={paymentMetrics.totalPaid + paymentMetrics.totalPending > 0
-                        ? (paymentMetrics.totalPaid / (paymentMetrics.totalPaid + paymentMetrics.totalPending)) * 100
+                      value={stats.totalRevenue + stats.pendingRevenue > 0
+                        ? (stats.totalRevenue / (stats.totalRevenue + stats.pendingRevenue)) * 100
                         : 0} 
                       className="h-3" 
                     />
@@ -455,11 +406,11 @@ export default function AdminAnalytics() {
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-80 w-full" />
-            ) : formattedRevenueData.length > 0 ? (
+            ) : formattedRevenueData.some((d: any) => d.revenue > 0) ? (
               <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={formattedRevenueData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorRevenue2" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                     </linearGradient>
@@ -490,7 +441,7 @@ export default function AdminAnalytics() {
                     stroke="hsl(var(--primary))" 
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorRevenue)"
+                    fill="url(#colorRevenue2)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -518,7 +469,7 @@ export default function AdminAnalytics() {
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-64 w-full" />
-              ) : formattedClientData.length > 0 ? (
+              ) : formattedClientData.some((d: any) => d.clients > 0) ? (
                 <ResponsiveContainer width="100%" height={256}>
                   <LineChart data={formattedClientData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -566,7 +517,7 @@ export default function AdminAnalytics() {
           <Card className="border-border/50" data-testid="card-client-sources">
             <CardHeader>
               <CardTitle className="font-serif text-lg">Client Sources</CardTitle>
-              <CardDescription>How clients found you</CardDescription>
+              <CardDescription>How your clients found you</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -712,23 +663,135 @@ export default function AdminAnalytics() {
           </Card>
         </div>
 
+        {/* Active Projects & Pending Payments */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Active Projects List */}
+          <Card className="border-border/50" data-testid="card-active-projects">
+            <CardHeader>
+              <CardTitle className="font-serif text-lg flex items-center gap-2">
+                <FolderKanban className="w-5 h-5" />
+                Active Projects
+              </CardTitle>
+              <CardDescription>Projects currently in progress</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : activeProjectsList.length > 0 ? (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {activeProjectsList.map((project: any) => (
+                    <div 
+                      key={project.id} 
+                      className="p-3 rounded-lg bg-muted/30 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{getClientName(project.clientId)}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {statusLabels[project.status] || project.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {project.progressPercentage}% complete
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold">${parseFloat(project.totalCost || "0").toLocaleString()}</p>
+                        <Link href={`/admin/clients/${project.clientId}`}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2">
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground">No active projects</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pending Payments */}
+          <Card className="border-border/50" data-testid="card-pending-payments">
+            <CardHeader>
+              <CardTitle className="font-serif text-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Pending Payments
+              </CardTitle>
+              <CardDescription>Payments awaiting collection</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : pendingPaymentsList.length > 0 ? (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {pendingPaymentsList.map((payment: any) => (
+                    <div 
+                      key={payment.id} 
+                      className="p-3 rounded-lg bg-muted/30 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{getClientName(payment.clientId)}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge 
+                            variant={payment.status === "overdue" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {payment.status === "overdue" ? "Overdue" : "Pending"}
+                          </Badge>
+                          {payment.dueDate && (
+                            <span className="text-xs text-muted-foreground">
+                              Due: {new Date(payment.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`font-semibold ${payment.status === "overdue" ? "text-red-600" : "text-yellow-600"}`}>
+                          ${parseFloat(payment.amount || "0").toLocaleString()}
+                        </p>
+                        <Link href={`/admin/clients/${payment.clientId}`}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2">
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-green-500/50 mb-2" />
+                  <p className="text-muted-foreground">All caught up!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Top Clients */}
         <Card className="border-border/50" data-testid="card-top-clients">
           <CardHeader>
             <CardTitle className="font-serif text-lg">Top Clients</CardTitle>
-            <CardDescription>Clients by total project value</CardDescription>
+            <CardDescription>Your highest value clients</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1">
-                      <Skeleton className="h-4 w-32 mb-1" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
             ) : topClients.length > 0 ? (
@@ -767,46 +830,6 @@ export default function AdminAnalytics() {
             )}
           </CardContent>
         </Card>
-
-        {/* Secondary Stats Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="border-border/50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-muted-foreground shrink-0" />
-              <div className="min-w-0">
-                <p className="text-2xl font-bold truncate">${stats.averageProjectValue.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground truncate">Avg Project Value</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
-              <div className="min-w-0">
-                <p className="text-2xl font-bold truncate">{stats.averageProjectDuration} wks</p>
-                <p className="text-xs text-muted-foreground truncate">Avg Duration</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-2xl font-bold truncate">{stats.completedProjects}</p>
-                <p className="text-xs text-muted-foreground truncate">Completed</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Percent className="w-5 h-5 text-orange-600 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-2xl font-bold truncate">{stats.completionRate}%</p>
-                <p className="text-xs text-muted-foreground truncate">Completion Rate</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </PortalLayout>
   );

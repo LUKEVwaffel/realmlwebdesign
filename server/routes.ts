@@ -1834,6 +1834,72 @@ export async function registerRoutes(
 
       const cancelledCount = projectsByStatus.find(p => p.status === "cancelled")?.count || 0;
 
+      // Get quote metrics
+      const allQuotes = await storage.getQuotes();
+      const quoteMetrics = {
+        total: allQuotes.length,
+        draft: allQuotes.filter(q => q.status === "draft").length,
+        sent: allQuotes.filter(q => q.status === "sent" || q.status === "viewed").length,
+        approved: allQuotes.filter(q => q.status === "approved").length,
+        rejected: allQuotes.filter(q => q.status === "rejected").length,
+        totalValue: allQuotes.filter(q => q.status === "approved").reduce((sum, q) => sum + parseFloat(q.totalAmount || "0"), 0),
+        conversionRate: allQuotes.filter(q => ["approved", "rejected"].includes(q.status)).length > 0
+          ? Math.round((allQuotes.filter(q => q.status === "approved").length / allQuotes.filter(q => ["approved", "rejected"].includes(q.status)).length) * 100)
+          : 0,
+      };
+
+      // Get admin leaderboard
+      const admins = await storage.getAdminUsers();
+      const leaderboard = await Promise.all(
+        admins.map(async (admin) => {
+          const adminClients = clientsList.filter(c => c.assignedTo === admin.id);
+          const adminClientIds = adminClients.map(c => c.id);
+          
+          // Get projects for admin's clients
+          const adminProjects = (await Promise.all(
+            adminClientIds.map(clientId => storage.getProjectsByClientId(clientId))
+          )).flat();
+          
+          // Get payments for admin's clients
+          const adminPayments = (await Promise.all(
+            adminClientIds.map(clientId => storage.getPaymentsByClientId(clientId))
+          )).flat();
+          
+          const paidPayments = adminPayments.filter(p => p.status === "paid");
+          const totalRevenue = paidPayments.reduce((sum, p) => sum + parseFloat(p.paidAmount || p.amount || "0"), 0);
+          const completedProjects = adminProjects.filter(p => p.status === "completed").length;
+          
+          return {
+            id: admin.id,
+            name: `${admin.firstName} ${admin.lastName}`,
+            email: admin.email,
+            clientCount: adminClients.length,
+            projectCount: adminProjects.length,
+            completedProjects,
+            totalRevenue,
+            activeProjects: adminProjects.filter(p => !["completed", "cancelled", "on_hold"].includes(p.status)).length,
+          };
+        })
+      );
+      leaderboard.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      // Get payments overview
+      const allPayments = await storage.getAllPayments();
+      const paymentMetrics = {
+        totalPaid: allPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + parseFloat(p.paidAmount || p.amount || "0"), 0),
+        totalPending: allPayments.filter(p => p.status === "pending").reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0),
+        totalOverdue: allPayments.filter(p => p.status === "overdue").reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0),
+        pendingCount: allPayments.filter(p => p.status === "pending").length,
+        overdueCount: allPayments.filter(p => p.status === "overdue").length,
+      };
+
+      // Client sources breakdown
+      const clientSources = clientsList.reduce((acc: Record<string, number>, client) => {
+        const source = client.source || "unknown";
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {});
+
       res.json({
         stats,
         projectsByStatus,
@@ -1842,9 +1908,208 @@ export async function registerRoutes(
         clientAcquisition,
         projectMetrics,
         cancelledProjects: cancelledCount,
+        quoteMetrics,
+        leaderboard,
+        paymentMetrics,
+        clientSources,
       });
     } catch (error) {
       console.error("Analytics error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Per-admin analytics endpoint
+  app.get("/api/admin/analytics/:adminId", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { adminId } = req.params;
+      const admin = await storage.getUser(adminId);
+      if (!admin || admin.role !== "admin") {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      const allClients = await storage.getClients();
+      const adminClients = allClients.filter(c => c.assignedTo === adminId);
+      const adminClientIds = adminClients.map(c => c.id);
+
+      // Get all projects for admin's clients
+      const adminProjects = (await Promise.all(
+        adminClientIds.map(clientId => storage.getProjectsByClientId(clientId))
+      )).flat();
+
+      // Get all payments for admin's clients
+      const adminPayments = (await Promise.all(
+        adminClientIds.map(clientId => storage.getPaymentsByClientId(clientId))
+      )).flat();
+
+      // Get all quotes created by this admin
+      const allQuotes = await storage.getQuotes();
+      const adminQuotes = allQuotes.filter(q => q.createdBy === adminId);
+
+      // Calculate stats
+      const paidPayments = adminPayments.filter(p => p.status === "paid");
+      const pendingPayments = adminPayments.filter(p => p.status === "pending");
+      const overduePayments = adminPayments.filter(p => p.status === "overdue");
+
+      const stats = {
+        totalClients: adminClients.length,
+        activeProjects: adminProjects.filter(p => !["completed", "cancelled", "on_hold"].includes(p.status)).length,
+        completedProjects: adminProjects.filter(p => p.status === "completed").length,
+        totalRevenue: paidPayments.reduce((sum, p) => sum + parseFloat(p.paidAmount || p.amount || "0"), 0),
+        pendingRevenue: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0),
+        overdueRevenue: overduePayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0),
+        averageProjectValue: adminProjects.length > 0
+          ? adminProjects.reduce((sum, p) => sum + parseFloat(p.totalCost || "0"), 0) / adminProjects.length
+          : 0,
+        completionRate: adminProjects.length > 0
+          ? Math.round((adminProjects.filter(p => p.status === "completed").length / adminProjects.length) * 100)
+          : 0,
+        cancelledProjects: adminProjects.filter(p => p.status === "cancelled").length,
+        onHoldProjects: adminProjects.filter(p => p.status === "on_hold").length,
+      };
+
+      // Projects by status
+      const projectsByStatus = Object.entries(
+        adminProjects.reduce((acc: Record<string, number>, p) => {
+          acc[p.status] = (acc[p.status] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([status, count]) => ({ status, count }));
+
+      // Projects by type
+      const projectsByType = Object.entries(
+        adminProjects.reduce((acc: Record<string, number>, p) => {
+          acc[p.projectType] = (acc[p.projectType] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([type, count]) => ({ type, count }));
+
+      // Revenue by month (last 12 months)
+      const now = new Date();
+      const revenueByMonth = [];
+      for (let i = 11; i >= 0; i--) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const monthPayments = paidPayments.filter(p => {
+          if (!p.paidAt) return false;
+          const paidDate = new Date(p.paidAt);
+          return paidDate >= monthDate && paidDate <= monthEnd;
+        });
+        const monthRevenue = monthPayments.reduce((sum, p) => sum + parseFloat(p.paidAmount || p.amount || "0"), 0);
+        revenueByMonth.push({
+          month: monthDate.toISOString().substring(0, 7),
+          revenue: monthRevenue,
+        });
+      }
+
+      // Client acquisition by month
+      const clientAcquisition = [];
+      for (let i = 11; i >= 0; i--) {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const monthClients = adminClients.filter(c => {
+          if (!c.createdAt) return false;
+          const createdDate = new Date(c.createdAt);
+          return createdDate >= monthDate && createdDate <= monthEnd;
+        });
+        clientAcquisition.push({
+          month: monthDate.toISOString().substring(0, 7),
+          count: monthClients.length,
+        });
+      }
+
+      // Quote metrics
+      const quoteMetrics = {
+        total: adminQuotes.length,
+        draft: adminQuotes.filter(q => q.status === "draft").length,
+        sent: adminQuotes.filter(q => q.status === "sent" || q.status === "viewed").length,
+        approved: adminQuotes.filter(q => q.status === "approved").length,
+        rejected: adminQuotes.filter(q => q.status === "rejected").length,
+        totalValue: adminQuotes.filter(q => q.status === "approved").reduce((sum, q) => sum + parseFloat(q.totalAmount || "0"), 0),
+        conversionRate: adminQuotes.filter(q => ["approved", "rejected"].includes(q.status)).length > 0
+          ? Math.round((adminQuotes.filter(q => q.status === "approved").length / adminQuotes.filter(q => ["approved", "rejected"].includes(q.status)).length) * 100)
+          : 0,
+      };
+
+      // Client sources
+      const clientSources = Object.entries(
+        adminClients.reduce((acc: Record<string, number>, c) => {
+          const source = c.source || "unknown";
+          acc[source] = (acc[source] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([source, count]) => ({ source, count }));
+
+      // Top clients by revenue
+      const topClients = await Promise.all(
+        adminClients.slice(0, 10).map(async (client) => {
+          const clientProjects = adminProjects.filter(p => p.clientId === client.id);
+          const clientPayments = adminPayments.filter(p => p.clientId === client.id && p.status === "paid");
+          const totalValue = clientPayments.reduce((sum, p) => sum + parseFloat(p.paidAmount || p.amount || "0"), 0);
+          return { ...client, projectCount: clientProjects.length, totalValue };
+        })
+      );
+      topClients.sort((a, b) => b.totalValue - a.totalValue);
+
+      // Active projects list
+      const activeProjectsList = adminProjects
+        .filter(p => !["completed", "cancelled", "on_hold"].includes(p.status))
+        .map(p => ({
+          id: p.id,
+          clientId: p.clientId,
+          status: p.status,
+          totalCost: p.totalCost,
+          progressPercentage: p.progressPercentage,
+          startDate: p.startDate,
+          expectedCompletionDate: p.expectedCompletionDate,
+        }));
+
+      // Pending payments
+      const pendingPaymentsList = adminPayments
+        .filter(p => p.status === "pending" || p.status === "overdue")
+        .map(p => ({
+          id: p.id,
+          clientId: p.clientId,
+          amount: p.amount,
+          status: p.status,
+          dueDate: p.dueDate,
+        }));
+
+      res.json({
+        admin: {
+          id: admin.id,
+          name: `${admin.firstName} ${admin.lastName}`,
+          email: admin.email,
+        },
+        stats,
+        projectsByStatus,
+        projectsByType,
+        revenueByMonth,
+        clientAcquisition,
+        quoteMetrics,
+        clientSources,
+        topClients: topClients.slice(0, 5),
+        activeProjectsList,
+        pendingPaymentsList,
+      });
+    } catch (error) {
+      console.error("Admin analytics error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get admin users for analytics selection
+  app.get("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const admins = await storage.getAdminUsers();
+      res.json(admins.map(a => ({
+        id: a.id,
+        firstName: a.firstName,
+        lastName: a.lastName,
+        email: a.email,
+      })));
+    } catch (error) {
+      console.error("Get admin users error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
