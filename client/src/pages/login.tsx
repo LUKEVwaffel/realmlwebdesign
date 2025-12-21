@@ -72,10 +72,10 @@ export default function LoginPage() {
   };
 
   const handlePinLogin = async () => {
-    if (pin.length !== 6) {
+    if (pin.length !== 5) {
       toast({
         title: "Invalid PIN",
-        description: "Please enter a 6-digit PIN",
+        description: "Please enter a 5-digit PIN",
         variant: "destructive",
       });
       return;
@@ -324,13 +324,13 @@ export default function LoginPage() {
                         <div className="space-y-4">
                           <div className="text-center">
                             <p className="text-sm text-muted-foreground mb-4">
-                              Enter your 6-digit PIN
+                              Enter your 5-digit PIN
                             </p>
                           </div>
 
                           <div className="flex justify-center">
                             <InputOTP
-                              maxLength={6}
+                              maxLength={5}
                               value={pin}
                               onChange={setPin}
                               data-testid="input-pin"
@@ -341,14 +341,13 @@ export default function LoginPage() {
                                 <InputOTPSlot index={2} />
                                 <InputOTPSlot index={3} />
                                 <InputOTPSlot index={4} />
-                                <InputOTPSlot index={5} />
                               </InputOTPGroup>
                             </InputOTP>
                           </div>
 
                           <Button
                             className="w-full"
-                            disabled={isLoading || pin.length !== 6}
+                            disabled={isLoading || pin.length !== 5}
                             onClick={handlePinLogin}
                             data-testid="button-pin-login"
                           >

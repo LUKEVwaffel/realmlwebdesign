@@ -2797,8 +2797,8 @@ export async function registerRoutes(
     try {
       const { pin, password } = req.body;
       
-      if (!pin || !/^\d{6}$/.test(pin)) {
-        return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+      if (!pin || !/^\d{5}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 5 digits" });
       }
       
       // Verify password first
@@ -2850,9 +2850,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Email and PIN are required" });
       }
       
-      // Validate PIN is exactly 6 digits
-      if (!/^\d{6}$/.test(pin)) {
-        return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+      // Validate PIN is exactly 5 digits
+      if (!/^\d{5}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 5 digits" });
       }
       
       const user = await storage.getUserByEmail(email);
