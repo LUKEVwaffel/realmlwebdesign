@@ -56,9 +56,19 @@ export default function LoginPage() {
       try {
         const response = await fetch(`/api/auth/pin-status?email=${encodeURIComponent(selectedAdmin.email)}`);
         const data = await response.json();
-        setPinEnabled(data.pinEnabled || false);
+        const hasPinEnabled = data.pinEnabled || false;
+        setPinEnabled(hasPinEnabled);
+        // Auto-switch to PIN mode if PIN is enabled
+        if (hasPinEnabled && loginMode === "select") {
+          setLoginMode("pin");
+        } else if (!hasPinEnabled && loginMode === "select") {
+          setLoginMode("password");
+        }
       } catch {
         setPinEnabled(false);
+        if (loginMode === "select") {
+          setLoginMode("password");
+        }
       } finally {
         setCheckingPin(false);
       }
@@ -70,7 +80,10 @@ export default function LoginPage() {
   const handleAdminSelect = (admin: typeof adminUsers[0]) => {
     setSelectedAdmin(admin);
     form.setValue("email", admin.email);
-    setLoginMode("select");
+    setLoginMode("select"); // Will be updated by the effect after checking PIN status
+    setPin("");
+    setPinError(false);
+    setPinSuccess(false);
   };
 
   const handleNumberClick = (num: string) => {
