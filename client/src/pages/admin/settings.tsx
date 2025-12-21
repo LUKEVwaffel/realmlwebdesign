@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { User, Lock, Building2, Loader2, Check, Bell, Palette } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { User, Lock, Building2, Loader2, Check, Bell, Palette, KeyRound, Delete, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,24 @@ export default function AdminSettings() {
     emailPaymentReceived: true,
     emailDocumentSigned: true,
     emailNewMessage: false,
+  });
+
+  const [pinSetupMode, setPinSetupMode] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinStep, setPinStep] = useState<"enter" | "confirm">("enter");
+  const [pinPassword, setPinPassword] = useState("");
+  const [pinError, setPinError] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+
+  const { data: pinStatus, refetch: refetchPinStatus } = useQuery({
+    queryKey: ["/api/auth/pin-status", user?.email],
+    queryFn: async () => {
+      if (!user?.email) return { pinEnabled: false };
+      const res = await fetch(`/api/auth/pin-status?email=${encodeURIComponent(user.email)}`);
+      return res.json();
+    },
+    enabled: !!user?.email,
   });
 
   const profileMutation = useMutation({
@@ -93,6 +111,107 @@ export default function AdminSettings() {
       });
     },
   });
+
+  const pinMutation = useMutation({
+    mutationFn: async (data: { pin: string; password: string }) => {
+      return apiRequest("POST", "/api/admin/pin/set", data);
+    },
+    onSuccess: () => {
+      setPinSuccess(true);
+      refetchPinStatus();
+      setTimeout(() => {
+        resetPinSetup();
+        toast({
+          title: "PIN set successfully",
+          description: "You can now use your PIN to log in quickly.",
+        });
+      }, 1000);
+    },
+    onError: (error: any) => {
+      setPinError(true);
+      setTimeout(() => {
+        setPinError(false);
+      }, 500);
+      toast({
+        title: "Failed to set PIN",
+        description: error.message || "Please check your password and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disablePinMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/admin/pin/disable", {});
+    },
+    onSuccess: () => {
+      refetchPinStatus();
+      toast({
+        title: "PIN disabled",
+        description: "You will now log in with your password only.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to disable PIN",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePinNumberClick = (num: string) => {
+    if (pinStep === "enter") {
+      if (newPin.length < 5) {
+        const updated = newPin + num;
+        setNewPin(updated);
+        if (updated.length === 5) {
+          setTimeout(() => setPinStep("confirm"), 300);
+        }
+      }
+    } else {
+      if (confirmPin.length < 5) {
+        const updated = confirmPin + num;
+        setConfirmPin(updated);
+        if (updated.length === 5) {
+          if (updated === newPin) {
+            setPinStep("enter");
+          } else {
+            setPinError(true);
+            setTimeout(() => {
+              setConfirmPin("");
+              setPinError(false);
+            }, 500);
+          }
+        }
+      }
+    }
+  };
+
+  const handlePinBackspace = () => {
+    if (pinStep === "enter") {
+      setNewPin(newPin.slice(0, -1));
+    } else {
+      setConfirmPin(confirmPin.slice(0, -1));
+    }
+    setPinError(false);
+  };
+
+  const resetPinSetup = () => {
+    setPinSetupMode(false);
+    setNewPin("");
+    setConfirmPin("");
+    setPinStep("enter");
+    setPinPassword("");
+    setPinError(false);
+    setPinSuccess(false);
+  };
+
+  const handleSetPin = () => {
+    if (newPin.length === 5 && confirmPin === newPin && pinPassword) {
+      pinMutation.mutate({ pin: newPin, password: pinPassword });
+    }
+  };
 
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -417,6 +536,196 @@ export default function AdminSettings() {
                 Change Password
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* PIN Setup */}
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg flex items-center gap-2">
+              <KeyRound className="w-5 h-5" />
+              Quick Login PIN
+            </CardTitle>
+            <CardDescription>
+              {pinStatus?.pinEnabled
+                ? "Your PIN is enabled. You can log in quickly using your 5-digit PIN."
+                : "Set up a 5-digit PIN for faster login"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!pinSetupMode ? (
+              <div className="space-y-4">
+                {pinStatus?.pinEnabled ? (
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">PIN is active</p>
+                        <p className="text-sm text-muted-foreground">You can use your PIN to log in</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => setPinSetupMode(true)}
+                    data-testid="button-setup-pin"
+                  >
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    {pinStatus?.pinEnabled ? "Change PIN" : "Set Up PIN"}
+                  </Button>
+                  {pinStatus?.pinEnabled && (
+                    <Button
+                      variant="outline"
+                      onClick={() => disablePinMutation.mutate()}
+                      disabled={disablePinMutation.isPending}
+                      data-testid="button-disable-pin"
+                    >
+                      {disablePinMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      Disable PIN
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {pinStep === "enter" ? "Enter your new 5-digit PIN" : "Confirm your PIN"}
+                  </p>
+                </div>
+
+                <div className="flex justify-center gap-4">
+                  {[...Array(5)].map((_, i) => {
+                    const currentPin = pinStep === "enter" ? newPin : confirmPin;
+                    return (
+                      <div
+                        key={i}
+                        className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                          i < currentPin.length
+                            ? pinSuccess
+                              ? 'bg-green-500 scale-110'
+                              : pinError
+                              ? 'bg-destructive animate-pulse'
+                              : 'bg-primary scale-110'
+                            : 'bg-muted border-2 border-border'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="h-6 text-center">
+                  {pinSuccess && (
+                    <div className="flex items-center justify-center gap-2 text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="text-sm font-medium">PIN set successfully</span>
+                    </div>
+                  )}
+                  {pinError && pinStep === "confirm" && (
+                    <div className="flex items-center justify-center gap-2 text-destructive">
+                      <XCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">PINs don't match</span>
+                    </div>
+                  )}
+                  {pinMutation.isPending && (
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Setting PIN...</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <Button
+                      key={num}
+                      variant="outline"
+                      size="lg"
+                      onClick={() => handlePinNumberClick(num.toString())}
+                      disabled={pinMutation.isPending || pinSuccess}
+                      className="h-14 text-xl font-semibold"
+                      data-testid={`button-pin-setup-${num}`}
+                    >
+                      {num}
+                    </Button>
+                  ))}
+                  
+                  <div />
+                  
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handlePinNumberClick('0')}
+                    disabled={pinMutation.isPending || pinSuccess}
+                    className="h-14 text-xl font-semibold"
+                    data-testid="button-pin-setup-0"
+                  >
+                    0
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handlePinBackspace}
+                    disabled={(pinStep === "enter" ? newPin.length : confirmPin.length) === 0 || pinMutation.isPending || pinSuccess}
+                    className="h-14"
+                    data-testid="button-pin-setup-backspace"
+                  >
+                    <Delete className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                {newPin.length === 5 && confirmPin.length === 5 && confirmPin === newPin && (
+                  <div className="space-y-4 pt-4 border-t max-w-xs mx-auto">
+                    <div className="space-y-2">
+                      <Label htmlFor="pinPassword">Confirm with your password</Label>
+                      <Input
+                        id="pinPassword"
+                        type="password"
+                        value={pinPassword}
+                        onChange={(e) => setPinPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        data-testid="input-pin-password"
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={handleSetPin}
+                      disabled={!pinPassword || pinMutation.isPending}
+                      data-testid="button-confirm-pin"
+                    >
+                      {pinMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Setting PIN...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Set PIN
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={resetPinSetup}
+                  disabled={pinMutation.isPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
