@@ -1,36 +1,64 @@
-import nodemailer from "nodemailer";
+import sgMail from '@sendgrid/mail';
 import { storage } from "./storage";
 
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : undefined;
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER;
-const FROM_NAME = process.env.FROM_NAME || "Web Design Studio";
+// SendGrid integration helper - uses Replit connection
+// WARNING: Never cache this client. Access tokens expire.
+// Always call this function again to get a fresh client.
+// Reference: connection:conn_sendgrid_01K9PPH4TP3MGMD9HDRC8MWSHC
+async function getCredentials() {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
 
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter(): nodemailer.Transporter | null {
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+  if (!xReplitToken) {
     return null;
   }
 
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-    });
+  const connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then(data => data.items?.[0]);
+
+  if (!connectionSettings || !connectionSettings.settings?.api_key || !connectionSettings.settings?.from_email) {
+    return null;
   }
-  return transporter;
+  
+  return {
+    apiKey: connectionSettings.settings.api_key,
+    email: connectionSettings.settings.from_email
+  };
 }
 
+async function getUncachableSendGridClient() {
+  try {
+    const creds = await getCredentials();
+    if (!creds) {
+      console.log('[Email] SendGrid not configured');
+      return null;
+    }
+    sgMail.setApiKey(creds.apiKey);
+    return {
+      client: sgMail,
+      fromEmail: creds.email
+    };
+  } catch (error) {
+    console.error('[Email] Failed to get SendGrid client:', error);
+    return null;
+  }
+}
+
+// Check if SendGrid appears to be available (no network call)
 export function isEmailConfigured(): boolean {
-  return !!(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
+  return !!(process.env.REPLIT_CONNECTORS_HOSTNAME && 
+    (process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL));
 }
 
 interface EmailOptions {
@@ -48,23 +76,27 @@ function maskEmail(email: string): string {
 }
 
 async function sendEmail(options: EmailOptions): Promise<boolean> {
-  const transport = getTransporter();
-  if (!transport) {
-    return false;
-  }
-
   try {
-    await transport.sendMail({
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+    const sendgrid = await getUncachableSendGridClient();
+    if (!sendgrid) {
+      console.log('[Email] SendGrid not available, email not sent');
+      return false;
+    }
+
+    await sendgrid.client.send({
       to: options.to,
+      from: {
+        email: sendgrid.fromEmail,
+        name: 'PixelCraft Design'
+      },
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ""),
     });
-    console.log(`Email sent: ${maskEmail(options.to)}`);
+    console.log(`[Email] Sent successfully to: ${maskEmail(options.to)}`);
     return true;
-  } catch (error) {
-    console.error("Failed to send email");
+  } catch (error: any) {
+    console.error("[Email] Failed to send:", error?.response?.body || error?.message || error);
     return false;
   }
 }
@@ -76,23 +108,205 @@ function baseTemplate(content: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web Design Studio</title>
+  <title>PixelCraft Design</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 24px;">Web Design Studio</h1>
+    <h1 style="color: #fff; margin: 0; font-size: 24px;">PixelCraft Design</h1>
   </div>
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
     ${content}
   </div>
   <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-    <p>This is an automated message from Web Design Studio.</p>
+    <p>This is an automated message from PixelCraft Design.</p>
     <p>Please do not reply directly to this email.</p>
+    <p>Contact us at: hello@pixelcraft.design</p>
   </div>
 </body>
 </html>`;
 }
 
+// ============ Password Reset Code Email ============
+export async function sendPasswordResetCodeEmail(
+  email: string,
+  firstName: string,
+  code: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Password Reset Code</h2>
+    <p>Hi ${firstName},</p>
+    <p>You requested to reset your password. Use the code below to complete the process:</p>
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin: 20px 0; text-align: center;">
+      <p style="margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1a2e;">${code}</p>
+    </div>
+    <p style="color: #dc3545;"><strong>This code expires in 10 minutes.</strong></p>
+    <p>If you didn't request this, please ignore this email or contact us if you have concerns.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Your Password Reset Code: ${code}`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Client Activity Notifications ============
+export async function sendActivityNotificationToClient(
+  email: string,
+  firstName: string,
+  activityType: string,
+  activityDescription: string,
+  portalUrl: string
+): Promise<boolean> {
+  const activityLabels: Record<string, string> = {
+    document_uploaded: "New Document",
+    payment_received: "Payment Confirmation",
+    payment_created: "Payment Request",
+    message_received: "New Message",
+    project_status_updated: "Project Update",
+    quote_sent: "New Quote",
+    document_ready: "Document Ready",
+    milestone_completed: "Milestone Completed"
+  };
+
+  const title = activityLabels[activityType] || "Activity Update";
+
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">${title}</h2>
+    <p>Hi ${firstName},</p>
+    <p>${activityDescription}</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View in Portal</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `${title} - PixelCraft Design`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Admin Activity Notifications ============
+export async function sendActivityNotificationToAdmin(
+  adminEmail: string,
+  adminFirstName: string,
+  clientName: string,
+  activityType: string,
+  activityDescription: string,
+  dashboardUrl: string
+): Promise<boolean> {
+  const activityLabels: Record<string, string> = {
+    document_uploaded: "Client Uploaded Document",
+    payment_completed: "Payment Received",
+    message_sent: "New Client Message",
+    questionnaire_completed: "Questionnaire Completed",
+    document_signed: "Document Signed",
+    quote_approved: "Quote Approved",
+    quote_rejected: "Quote Rejected"
+  };
+
+  const title = activityLabels[activityType] || "Client Activity";
+
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">${title}</h2>
+    <p>Hi ${adminFirstName},</p>
+    <p>There's new activity from your client <strong>${clientName}</strong>:</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0;">${activityDescription}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${dashboardUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View in Dashboard</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `[${clientName}] ${title}`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Unified Notification Sender ============
+export async function notifyClientActivity(
+  clientId: string,
+  activityType: string,
+  description: string
+): Promise<void> {
+  try {
+    const client = await storage.getClient(clientId);
+    if (!client?.userId) return;
+
+    const user = await storage.getUser(client.userId);
+    if (!user?.email || !user.isActive) return;
+
+    const baseUrl = process.env.APP_URL || "https://your-app.replit.app";
+    const portalUrl = `${baseUrl}/client`;
+
+    await sendActivityNotificationToClient(
+      user.email,
+      user.firstName || "Client",
+      activityType,
+      description,
+      portalUrl
+    );
+  } catch (error) {
+    console.error("[Email] Failed to notify client:", error);
+  }
+}
+
+export async function notifyAdminActivity(
+  clientId: string,
+  activityType: string,
+  description: string
+): Promise<void> {
+  try {
+    const client = await storage.getClient(clientId);
+    if (!client) return;
+
+    // Get the owning admin
+    const ownerId = client.createdBy;
+    if (!ownerId) return;
+
+    const admin = await storage.getUser(ownerId);
+    if (!admin?.email || admin.role !== "admin") return;
+
+    const baseUrl = process.env.APP_URL || "https://your-app.replit.app";
+    const dashboardUrl = `${baseUrl}/admin/clients/${clientId}`;
+
+    await sendActivityNotificationToAdmin(
+      admin.email,
+      admin.firstName || "Admin",
+      client.businessLegalName || "Client",
+      activityType,
+      description,
+      dashboardUrl
+    );
+
+    // Also notify any editors granted access
+    const accessGrants = await storage.getAdminClientAccess(clientId);
+    for (const grant of accessGrants) {
+      // Skip if this is the same admin as the owner
+      if (grant.adminId === ownerId) continue;
+      
+      const grantedAdmin = await storage.getUser(grant.adminId);
+      if (grantedAdmin?.email && grantedAdmin.role === "admin") {
+        await sendActivityNotificationToAdmin(
+          grantedAdmin.email,
+          grantedAdmin.firstName || "Admin",
+          client.businessLegalName || "Client",
+          activityType,
+          description,
+          dashboardUrl
+        );
+      }
+    }
+  } catch (error) {
+    console.error("[Email] Failed to notify admin:", error);
+  }
+}
+
+// ============ Welcome Email ============
 export async function sendWelcomeEmail(
   email: string,
   firstName: string,
@@ -121,6 +335,7 @@ export async function sendWelcomeEmail(
   });
 }
 
+// ============ Payment Emails ============
 export async function sendPaymentReminderEmail(
   email: string,
   firstName: string,
@@ -147,77 +362,6 @@ export async function sendPaymentReminderEmail(
   return sendEmail({
     to: email,
     subject: `Payment Reminder: $${amount} due ${dueDate}`,
-    html: baseTemplate(content),
-  });
-}
-
-export async function sendDocumentSignatureRequestEmail(
-  email: string,
-  firstName: string,
-  documentTitle: string,
-  documentUrl: string
-): Promise<boolean> {
-  const content = `
-    <h2 style="color: #1a1a2e; margin-top: 0;">Document Signature Required</h2>
-    <p>Hi ${firstName},</p>
-    <p>A document requires your signature to proceed with your project.</p>
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-      <p style="margin: 5px 0;"><strong>Document:</strong> ${documentTitle}</p>
-    </div>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${documentUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Sign Document</a>
-    </div>
-    <p>Please review the document carefully before signing. If you have any questions, reach out to our team.</p>
-  `;
-
-  return sendEmail({
-    to: email,
-    subject: `Signature Required: ${documentTitle}`,
-    html: baseTemplate(content),
-  });
-}
-
-export async function sendProjectStatusUpdateEmail(
-  email: string,
-  firstName: string,
-  projectName: string,
-  oldStatus: string,
-  newStatus: string,
-  dashboardUrl: string
-): Promise<boolean> {
-  const statusLabels: Record<string, string> = {
-    pending_payment: "Pending Payment",
-    in_progress: "In Progress",
-    design_review: "Design Review",
-    development: "Development",
-    client_review: "Client Review",
-    revisions: "Revisions",
-    completed: "Completed",
-    on_hold: "On Hold",
-    cancelled: "Cancelled",
-  };
-
-  const newStatusLabel = statusLabels[newStatus] || newStatus;
-  const oldStatusLabel = statusLabels[oldStatus] || oldStatus;
-
-  const content = `
-    <h2 style="color: #1a1a2e; margin-top: 0;">Project Update</h2>
-    <p>Hi ${firstName},</p>
-    <p>Your project status has been updated.</p>
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-      <p style="margin: 5px 0;"><strong>Project:</strong> ${projectName}</p>
-      <p style="margin: 5px 0;"><strong>Previous Status:</strong> ${oldStatusLabel}</p>
-      <p style="margin: 5px 0;"><strong>New Status:</strong> <span style="background: #1a1a2e; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 14px;">${newStatusLabel}</span></p>
-    </div>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${dashboardUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a>
-    </div>
-    <p>Log in to your portal for more details about your project progress.</p>
-  `;
-
-  return sendEmail({
-    to: email,
-    subject: `Project Update: ${projectName} - ${newStatusLabel}`,
     html: baseTemplate(content),
   });
 }
@@ -252,6 +396,86 @@ export async function sendPaymentConfirmationEmail(
   });
 }
 
+// ============ Document Emails ============
+export async function sendDocumentSignatureRequestEmail(
+  email: string,
+  firstName: string,
+  documentTitle: string,
+  documentUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Document Signature Required</h2>
+    <p>Hi ${firstName},</p>
+    <p>A document requires your signature to proceed with your project.</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Document:</strong> ${documentTitle}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${documentUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Sign Document</a>
+    </div>
+    <p>Please review the document carefully before signing. If you have any questions, reach out to our team.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Signature Required: ${documentTitle}`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Project Status Emails ============
+export async function sendProjectStatusUpdateEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  oldStatus: string,
+  newStatus: string,
+  dashboardUrl: string
+): Promise<boolean> {
+  const statusLabels: Record<string, string> = {
+    created: "Created",
+    questionnaire_pending: "Questionnaire Pending",
+    questionnaire_complete: "Questionnaire Complete",
+    tos_pending: "Terms of Service Pending",
+    tos_signed: "Terms of Service Signed",
+    design_pending: "Design Pending",
+    design_approved: "Design Approved",
+    in_development: "In Development",
+    hosting_setup: "Hosting Setup",
+    deployed: "Deployed",
+    delivery: "Delivery",
+    client_review: "Client Review",
+    completed: "Completed",
+    on_hold: "On Hold",
+    cancelled: "Cancelled",
+  };
+
+  const newStatusLabel = statusLabels[newStatus] || newStatus;
+  const oldStatusLabel = statusLabels[oldStatus] || oldStatus;
+
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Project Update</h2>
+    <p>Hi ${firstName},</p>
+    <p>Your project status has been updated.</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Project:</strong> ${projectName}</p>
+      <p style="margin: 5px 0;"><strong>Previous Status:</strong> ${oldStatusLabel}</p>
+      <p style="margin: 5px 0;"><strong>New Status:</strong> <span style="background: #1a1a2e; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 14px;">${newStatusLabel}</span></p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${dashboardUrl}" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a>
+    </div>
+    <p>Log in to your portal for more details about your project progress.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Project Update: ${projectName} - ${newStatusLabel}`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Message Notification ============
 export async function sendNewMessageNotificationEmail(
   email: string,
   firstName: string,
@@ -282,6 +506,36 @@ export async function sendNewMessageNotificationEmail(
   });
 }
 
+// ============ Quote Emails ============
+export async function sendQuoteNotificationEmail(
+  email: string,
+  firstName: string,
+  quoteTitle: string,
+  totalAmount: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">New Quote Available</h2>
+    <p>Hi ${firstName},</p>
+    <p>A new quote has been prepared for your review.</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Quote:</strong> ${quoteTitle}</p>
+      <p style="margin: 5px 0;"><strong>Total:</strong> $${totalAmount}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/quotes" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Quote</a>
+    </div>
+    <p>Please review and respond to the quote at your earliest convenience.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `New Quote: ${quoteTitle}`,
+    html: baseTemplate(content),
+  });
+}
+
+// ============ Workflow Emails ============
 export type WorkflowEmailType = 
   | "questionnaire_reminder"
   | "tos_ready"

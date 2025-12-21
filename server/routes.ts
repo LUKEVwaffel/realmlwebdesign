@@ -18,6 +18,10 @@ import {
   sendPaymentConfirmationEmail,
   sendNewMessageNotificationEmail,
   sendWorkflowEmail,
+  sendPasswordResetCodeEmail,
+  sendQuoteNotificationEmail,
+  notifyClientActivity,
+  notifyAdminActivity,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import { generateQuestionnairePdf } from "./questionnairePdfService";
@@ -266,18 +270,84 @@ export async function registerRoutes(
       const { email } = req.body;
       const user = await storage.getUserByEmail(email);
 
-      if (user) {
+      if (user && user.isActive) {
+        // Generate 6-digit code
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const resetCodeHash = await bcrypt.hash(resetCode, 10);
+        const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        await storage.updateUser(user.id, {
+          resetToken: resetCodeHash,
+          resetTokenExpiry: expiry,
+        } as any);
+
         await storage.createActivityLog({
           userId: user.id,
           action: "password_reset_requested",
-          description: "Password reset requested",
+          description: "Password reset code sent via email",
           ipAddress: req.ip,
         });
+
+        // Send email with code
+        await sendPasswordResetCodeEmail(user.email, user.firstName || "User", resetCode);
       }
 
-      res.json({ success: true, message: "If the email exists, a reset link has been sent" });
+      // Always return success to prevent email enumeration
+      res.json({ success: true, message: "If the email exists, a reset code has been sent" });
     } catch (error) {
       console.error("Forgot password error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Verify reset code and reset password
+  app.post("/api/auth/verify-reset-code", async (req, res) => {
+    try {
+      const { email, code, newPassword } = req.body;
+
+      if (!email || !code || !newPassword) {
+        return res.status(400).json({ error: "Email, code, and new password are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.resetToken || !user.resetTokenExpiry) {
+        return res.status(400).json({ error: "Invalid or expired reset code" });
+      }
+
+      // Check if code expired
+      if (new Date(user.resetTokenExpiry) < new Date()) {
+        return res.status(400).json({ error: "Reset code has expired. Please request a new one." });
+      }
+
+      // Verify code
+      const validCode = await bcrypt.compare(code, user.resetToken);
+      if (!validCode) {
+        return res.status(400).json({ error: "Invalid reset code" });
+      }
+
+      // Update password and clear reset token
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiry: null,
+        mustChangePassword: false,
+      } as any);
+
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "password_reset_completed",
+        description: "Password reset via email code",
+        ipAddress: req.ip,
+      });
+
+      res.json({ success: true, message: "Password has been reset successfully" });
+    } catch (error) {
+      console.error("Verify reset code error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -542,6 +612,13 @@ export async function registerRoutes(
         ipAddress: req.ip,
       });
 
+      // Notify admin about client upload
+      await notifyAdminActivity(
+        client.id,
+        "document_uploaded",
+        `Client uploaded a new document: "${title}"`
+      );
+
       res.json(document);
     } catch (error) {
       console.error("Client document upload error:", error);
@@ -596,6 +673,13 @@ export async function registerRoutes(
         senderName: `${req.user!.firstName} ${req.user!.lastName}`,
         preview: messageText.substring(0, 100),
       });
+
+      // Notify admin via email
+      await notifyAdminActivity(
+        client.id,
+        "message_sent",
+        `New message: "${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}"`
+      );
 
       res.json(message);
     } catch (error) {
@@ -1383,6 +1467,13 @@ export async function registerRoutes(
         status: "pending",
       });
 
+      // Notify client about new payment request
+      await notifyClientActivity(
+        clientId,
+        "payment_created",
+        `A new payment of $${amount} is due${dueDate ? ` by ${new Date(dueDate).toLocaleDateString()}` : ""}: ${description}`
+      );
+
       res.json(payment);
     } catch (error) {
       console.error("Create payment error:", error);
@@ -1483,6 +1574,15 @@ export async function registerRoutes(
           title,
           requiresSignature: requiresSignature || false,
         });
+
+        // Notify client about new document
+        await notifyClientActivity(
+          clientId,
+          requiresSignature ? "document_ready" : "document_uploaded",
+          requiresSignature 
+            ? `A document "${title}" is ready for your review and signature.`
+            : `A new document "${title}" has been added to your portal.`
+        );
       }
 
       res.json(document);
@@ -1954,6 +2054,13 @@ export async function registerRoutes(
             `${baseUrl}/client/payments`
           ).catch(console.error);
         }
+
+        // Notify admin about payment received
+        await notifyAdminActivity(
+          client.id,
+          "payment_completed",
+          `Payment of $${payment.amount} received for "${payment.description || `Payment #${payment.paymentNumber}`}"`
+        );
 
         return res.json({ success: true, status: "paid" });
       }
@@ -2539,6 +2646,23 @@ export async function registerRoutes(
         description: `Sent quote: ${quote.title}`,
         ipAddress: req.ip,
       });
+
+      // Send email notification to client
+      const client = await storage.getClient(quote.clientId);
+      if (client?.userId) {
+        const user = await storage.getUser(client.userId);
+        if (user?.email) {
+          const totalAmount = typeof quote.totalAmount === 'string' ? quote.totalAmount : String(quote.totalAmount || 0);
+          const baseUrl = process.env.APP_URL || "https://your-app.replit.app";
+          await sendQuoteNotificationEmail(
+            user.email,
+            user.firstName || "Client",
+            quote.title,
+            totalAmount,
+            baseUrl
+          );
+        }
+      }
       
       res.json(updated);
     } catch (error) {
@@ -2651,6 +2775,13 @@ export async function registerRoutes(
         description: `${response === "approved" ? "Approved" : "Rejected"} quote: ${quote.title}`,
         ipAddress: req.ip,
       });
+
+      // Notify admin about quote response
+      await notifyAdminActivity(
+        client.id,
+        response === "approved" ? "quote_approved" : "quote_rejected",
+        `Client ${response === "approved" ? "approved" : "rejected"} quote "${quote.title}"${message ? `: ${message}` : ""}`
+      );
       
       res.json(updated);
     } catch (error) {
@@ -2717,6 +2848,11 @@ export async function registerRoutes(
       
       if (!email || !pin) {
         return res.status(400).json({ error: "Email and PIN are required" });
+      }
+      
+      // Validate PIN is exactly 6 digits
+      if (!/^\d{6}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 6 digits" });
       }
       
       const user = await storage.getUserByEmail(email);
