@@ -43,3 +43,8 @@ integrations = ["javascript_object_storage:1.0.0", "javascript_database:1.0.0", 
 
 [objectStorage]
 defaultBucketID = "replit-objstore-49379be5-1156-429b-9f6a-11a2a5fb2076"
+
+[userenv]
+
+[userenv.shared]
+VITE_STRIPE_PUBLISHABLE_KEY = "pk_test_51Shb6IQWs4BTfr70KGDZBO97MxMjjNaAxZT7RqEIsThAQldbOwQtkfYovHfwq3B2UNkEyS5fSLVGs0jnV2q2VNmF00EHMYg8kf"
