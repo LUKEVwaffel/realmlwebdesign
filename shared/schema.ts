@@ -983,6 +983,61 @@ export const insertResourceSchema = createInsertSchema(resources).omit({
 export type InsertResource = z.infer<typeof insertResourceSchema>;
 export type Resource = typeof resources.$inferSelect;
 
+// Cancellation reason enum
+export const cancellationReasonEnum = pgEnum("cancellation_reason", [
+  "client_request",        // Client requested cancellation
+  "non_payment",           // Client failed to pay
+  "scope_change",          // Major scope changes not agreed
+  "unresponsive_client",   // Client stopped communicating
+  "mutual_agreement",      // Both parties agreed
+  "admin_decision",        // Business decision
+  "other"
+]);
+
+// Cancellations/Refunds Table
+export const cancellations = pgTable("cancellations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  
+  // Cancellation Details
+  reason: cancellationReasonEnum("reason").notNull(),
+  reasonNotes: text("reason_notes"),
+  
+  // Financial Summary at time of cancellation
+  totalPaid: decimal("total_paid", { precision: 10, scale: 2 }).default("0"),
+  workCompleted: integer("work_completed_percentage").default(0), // % of work done
+  
+  // Fee Calculation
+  cancellationFeePercentage: integer("cancellation_fee_percentage").default(25), // Default 25%
+  cancellationFeeAmount: decimal("cancellation_fee_amount", { precision: 10, scale: 2 }),
+  
+  // Refund Details
+  refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default("0"),
+  refundStatus: paymentStatusEnum("refund_status").default("pending"),
+  refundedAt: timestamp("refunded_at"),
+  refundNotes: text("refund_notes"),
+  
+  // Stripe Refund Tracking
+  stripeRefundId: varchar("stripe_refund_id", { length: 255 }),
+  
+  // Who initiated
+  cancelledBy: varchar("cancelled_by", { length: 36 }),
+  cancelledAt: timestamp("cancelled_at").defaultNow(),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCancellationSchema = createInsertSchema(cancellations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCancellation = z.infer<typeof insertCancellationSchema>;
+export type Cancellation = typeof cancellations.$inferSelect;
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),

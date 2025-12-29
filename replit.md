@@ -105,6 +105,13 @@ Preferred communication style: Simple, everyday language.
 - Deposit gating: Development phase requires deposit to be paid first
 - Admin can override deposit check with skipDepositCheck: true parameter
 
+### Cancellation & Refund Tracking
+- Cancellation reasons: client_request, non_payment, scope_change, unresponsive_client, mutual_agreement, admin_decision, other
+- Automatic fee calculation based on percentage of total paid (default 25%)
+- Tracks totalPaid, workCompletedPercentage, cancellationFeeAmount, refundAmount
+- API routes: POST /api/admin/projects/:id/cancel, PATCH /api/admin/cancellations/:id/refund
+- Activity logging for cancellations and refund processing
+
 ## External Dependencies
 
 ### Payment Processing

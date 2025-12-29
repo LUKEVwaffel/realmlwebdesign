@@ -3397,6 +3397,140 @@ export async function registerRoutes(
     }
   });
 
+  // ============ CANCELLATION ROUTES ============
+  
+  // Get all cancellations (admin)
+  app.get("/api/admin/cancellations", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const cancellationList = await storage.getCancellations();
+      
+      const enrichedCancellations = await Promise.all(cancellationList.map(async (cancellation) => {
+        const client = await storage.getClient(cancellation.clientId);
+        const project = await storage.getProject(cancellation.projectId);
+        const cancelledByUser = cancellation.cancelledBy ? await storage.getUser(cancellation.cancelledBy) : null;
+        return {
+          ...cancellation,
+          clientName: client?.businessLegalName || "Unknown",
+          projectName: project?.projectType || "Unknown",
+          cancelledByName: cancelledByUser ? `${cancelledByUser.firstName} ${cancelledByUser.lastName}` : "Unknown",
+        };
+      }));
+      
+      res.json(enrichedCancellations);
+    } catch (error) {
+      console.error("Get cancellations error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Cancel a project and log cancellation (admin)
+  app.post("/api/admin/projects/:id/cancel", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, reasonNotes, cancellationFeePercentage = 25, workCompletedPercentage = 0 } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ error: "Cancellation reason is required" });
+      }
+      
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, project.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
+      // Calculate total paid for this project
+      const projectPayments = await storage.getPaymentsByProjectId(id);
+      const totalPaid = projectPayments
+        .filter(p => p.status === "paid")
+        .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+      
+      // Calculate cancellation fee
+      const feePercentage = Math.min(Math.max(cancellationFeePercentage, 0), 100);
+      const cancellationFeeAmount = (totalPaid * feePercentage) / 100;
+      const refundAmount = totalPaid - cancellationFeeAmount;
+      
+      // Create cancellation record
+      const cancellation = await storage.createCancellation({
+        projectId: id,
+        clientId: project.clientId,
+        reason,
+        reasonNotes,
+        totalPaid: totalPaid.toString(),
+        workCompleted: workCompletedPercentage,
+        cancellationFeePercentage: feePercentage,
+        cancellationFeeAmount: cancellationFeeAmount.toString(),
+        refundAmount: refundAmount.toString(),
+        refundStatus: refundAmount > 0 ? "pending" : "paid",
+        cancelledBy: req.user!.id,
+        cancelledAt: new Date(),
+      });
+      
+      // Update project status to cancelled
+      await storage.updateProject(id, { status: "cancelled" });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: project.clientId,
+        action: "project_cancelled",
+        description: `Project cancelled. Reason: ${reason}. Fee: $${cancellationFeeAmount.toFixed(2)}, Refund: $${refundAmount.toFixed(2)}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json({
+        cancellation,
+        summary: {
+          totalPaid,
+          cancellationFeeAmount,
+          refundAmount,
+          feePercentage,
+        }
+      });
+    } catch (error) {
+      console.error("Cancel project error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Mark refund as processed (admin)
+  app.patch("/api/admin/cancellations/:id/refund", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { refundStatus, stripeRefundId, refundNotes } = req.body;
+      
+      const cancellation = await storage.getCancellation(id);
+      if (!cancellation) {
+        return res.status(404).json({ error: "Cancellation not found" });
+      }
+      
+      const updateData: any = {};
+      if (refundStatus) updateData.refundStatus = refundStatus;
+      if (stripeRefundId) updateData.stripeRefundId = stripeRefundId;
+      if (refundNotes) updateData.refundNotes = refundNotes;
+      if (refundStatus === "paid" || refundStatus === "refunded") updateData.refundedAt = new Date();
+      
+      const updated = await storage.updateCancellation(id, updateData);
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: cancellation.clientId,
+        action: "refund_processed",
+        description: `Refund status updated to ${refundStatus}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update cancellation refund error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ RESOURCE LIBRARY ROUTES ============
   
   // Get all resources (admin)

@@ -18,6 +18,7 @@ import {
   quotes,
   revisions,
   resources,
+  cancellations,
   type User,
   type InsertUser,
   type Client,
@@ -52,6 +53,8 @@ import {
   type InsertRevision,
   type Resource,
   type InsertResource,
+  type Cancellation,
+  type InsertCancellation,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -855,6 +858,35 @@ export class DatabaseStorage implements IStorage {
 
   async getPaymentsByProjectId(projectId: string): Promise<Payment[]> {
     return db.select().from(payments).where(eq(payments.projectId, projectId)).orderBy(desc(payments.createdAt));
+  }
+
+  // Cancellations
+  async getCancellation(id: string): Promise<Cancellation | undefined> {
+    const [cancellation] = await db.select().from(cancellations).where(eq(cancellations.id, id));
+    return cancellation;
+  }
+
+  async getCancellationByProjectId(projectId: string): Promise<Cancellation | undefined> {
+    const [cancellation] = await db.select().from(cancellations).where(eq(cancellations.projectId, projectId));
+    return cancellation;
+  }
+
+  async getCancellations(): Promise<Cancellation[]> {
+    return db.select().from(cancellations).orderBy(desc(cancellations.createdAt));
+  }
+
+  async createCancellation(data: InsertCancellation): Promise<Cancellation> {
+    const [cancellation] = await db.insert(cancellations).values(data).returning();
+    return cancellation;
+  }
+
+  async updateCancellation(id: string, data: Partial<InsertCancellation>): Promise<Cancellation | undefined> {
+    const [updated] = await db.update(cancellations).set({ ...data, updatedAt: new Date() }).where(eq(cancellations.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCancellation(id: string): Promise<void> {
+    await db.delete(cancellations).where(eq(cancellations.id, id));
   }
 }
 
