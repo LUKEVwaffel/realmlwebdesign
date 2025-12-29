@@ -1231,17 +1231,6 @@ function Phase5Content({ client, project, onAdvancePhase, onUpdateProject, isUpd
   const [notes, setNotes] = useState(project.developmentNotes || '');
   const [platform, setPlatform] = useState(project.websitePlatform || 'wix');
 
-  const { data: feedbackMessages = [], isLoading: feedbackLoading } = useQuery<any[]>({
-    queryKey: ['/api/admin/projects', project.id, 'messages', 'development_feedback'],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/projects/${project.id}/messages?category=development_feedback`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-
   const hasChanges = stagingUrl !== (project.stagingUrl || '') || 
                      progress !== (project.developmentProgress || 0) ||
                      notes !== (project.developmentNotes || '') ||
@@ -1339,53 +1328,6 @@ function Phase5Content({ client, project, onAdvancePhase, onUpdateProject, isUpd
               rows={3}
               data-testid="textarea-dev-notes"
             />
-          </div>
-
-          {/* Client Feedback */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                Client Feedback
-              </Label>
-              {feedbackMessages.length > 0 && (
-                <Badge variant="secondary">{feedbackMessages.length} message{feedbackMessages.length !== 1 ? 's' : ''}</Badge>
-              )}
-            </div>
-            
-            {feedbackLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading feedback...
-              </div>
-            ) : feedbackMessages.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg text-center">
-                No client feedback yet. Clients can share thoughts during development.
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {feedbackMessages.map((msg: any) => (
-                  <div 
-                    key={msg.id} 
-                    className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg"
-                    data-testid={`feedback-message-${msg.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-sm font-medium">{msg.senderName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit'
-                        }) : ''}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{msg.messageText}</p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Actions */}
@@ -1509,6 +1451,17 @@ function Phase6Content({ client, project, onAdvancePhase, onSendReminder, isUpda
 function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
   const status = project.status;
 
+  const { data: feedbackMessages = [], isLoading: feedbackLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/projects', project.id, 'messages', 'development_feedback'],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/projects/${project.id}/messages?category=development_feedback`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const getWarrantyDays = () => {
     if (!project.warrantyEndDate) return 25;
     const end = new Date(project.warrantyEndDate);
@@ -1533,6 +1486,55 @@ function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
           <div className="p-4 rounded-lg bg-muted/50">
             <p className="font-medium">Current Status: {getStatusLabel(status)}</p>
           </div>
+
+          {/* Client Feedback */}
+          {(status === "client_review" || status === "revisions_pending" || status === "revisions_complete") && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Client Feedback
+                </Label>
+                {feedbackMessages.length > 0 && (
+                  <Badge variant="secondary">{feedbackMessages.length} message{feedbackMessages.length !== 1 ? 's' : ''}</Badge>
+                )}
+              </div>
+              
+              {feedbackLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading feedback...
+                </div>
+              ) : feedbackMessages.length === 0 ? (
+                <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg text-center">
+                  No client feedback yet. Clients can share their thoughts during review.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {feedbackMessages.map((msg: any) => (
+                    <div 
+                      key={msg.id} 
+                      className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg"
+                      data-testid={`feedback-message-${msg.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-sm font-medium">{msg.senderName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          }) : ''}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{msg.messageText}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {status === "client_review" && (
             <div className="text-center space-y-4 py-4">

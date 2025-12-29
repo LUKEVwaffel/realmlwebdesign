@@ -424,7 +424,7 @@ function DevelopmentFeedbackPanel({ projectId }: { projectId: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/client/messages"] });
       toast({
         title: "Feedback sent",
-        description: "Your feedback has been sent to the development team.",
+        description: "Your feedback has been sent to the team.",
       });
     },
     onError: () => {
@@ -454,16 +454,16 @@ function DevelopmentFeedbackPanel({ projectId }: { projectId: string }) {
               <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <CardTitle className="text-lg">Share Your Thoughts</CardTitle>
+              <CardTitle className="text-lg">Share Your Feedback</CardTitle>
               <CardDescription>
-                Have feedback during development? Let us know here.
+                Reviewing your website? Share any feedback or revision requests here.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Share any ideas, concerns, or feedback about your website development..."
+            placeholder="Share any feedback, revision requests, or comments about your website..."
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             className="min-h-[100px] resize-none"
@@ -622,7 +622,7 @@ export default function ClientDashboard() {
 
         <NextActionCard action={nextAction} isLoading={isLoading} />
 
-        {project?.status === "in_development" && project?.id && (
+        {(project?.status === "client_review" || project?.status === "revisions_pending" || project?.status === "revisions_complete") && project?.id && (
           <DevelopmentFeedbackPanel projectId={project.id} />
         )}
 
