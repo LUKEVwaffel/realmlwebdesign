@@ -159,6 +159,27 @@ async function canAdminEditClientHelper(adminId: string, clientId: string): Prom
   return await storage.canAdminEditClient(adminId, clientId);
 }
 
+// Helper to calculate project progress percentage based on status
+// Returns -1 for on_hold/cancelled to indicate "paused" state (UI should handle display)
+function calculateProjectProgress(status: string): number {
+  const progressMap: Record<string, number> = {
+    created: 5,
+    questionnaire_pending: 10,
+    questionnaire_complete: 20,
+    tos_pending: 30,
+    tos_signed: 40,
+    in_development: 55,
+    hosting_setup: 70,
+    deployed: 80,
+    delivery: 85,
+    client_review: 90,
+    completed: 100,
+    on_hold: -1,   // Paused - UI shows "On Hold" instead of %
+    cancelled: -1, // Cancelled - UI shows "Cancelled" instead of %
+  };
+  return progressMap[status] ?? 0;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -369,8 +390,15 @@ export async function registerRoutes(
       const unsignedDocuments = docs.filter(d => d.requiresSignature && !d.isSigned);
       const recentActivity = await storage.getActivityLogsByClientId(client.id);
 
+      // Add calculated progress percentage
+      const projectWithProgress = project ? {
+        ...project,
+        client,
+        progressPercentage: calculateProjectProgress(project.status),
+      } : null;
+
       res.json({
-        project: project ? { ...project, client } : null,
+        project: projectWithProgress,
         pendingPayments,
         unsignedDocuments,
         recentActivity,
@@ -822,7 +850,11 @@ export async function registerRoutes(
       const projectsWithClients = await Promise.all(
         recentProjects.map(async (project) => {
           const client = await storage.getClient(project.clientId);
-          return { ...project, client };
+          return { 
+            ...project, 
+            client,
+            progressPercentage: calculateProjectProgress(project.status),
+          };
         })
       );
 
@@ -984,10 +1016,16 @@ export async function registerRoutes(
       // Get owner info
       const owner = client.createdBy ? await storage.getUser(client.createdBy) : null;
       
+      // Add progress percentage to each project
+      const projectsWithProgress = projects.map(p => ({
+        ...p,
+        progressPercentage: calculateProjectProgress(p.status),
+      }));
+      
       res.json({
         ...client,
         user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone } : null,
-        projects,
+        projects: projectsWithProgress,
         payments,
         documents,
         messages,

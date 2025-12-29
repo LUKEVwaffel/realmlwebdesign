@@ -132,9 +132,17 @@ export default function ClientDashboard() {
               <div>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium">{project.progressPercentage || 0}%</span>
+                  <span className="font-medium">
+                    {project.progressPercentage === -1 
+                      ? (project.status === "on_hold" ? "On Hold" : "Cancelled")
+                      : `${project.progressPercentage || 0}%`
+                    }
+                  </span>
                 </div>
-                <Progress value={project.progressPercentage || 0} className="h-2" />
+                <Progress 
+                  value={project.progressPercentage === -1 ? 0 : (project.progressPercentage || 0)} 
+                  className="h-2" 
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
