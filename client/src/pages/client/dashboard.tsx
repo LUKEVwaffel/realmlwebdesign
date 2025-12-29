@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Clock, 
   CreditCard, 
@@ -9,7 +10,17 @@ import {
   Calendar,
   User,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  ClipboardList,
+  Palette,
+  Code,
+  Rocket,
+  Eye,
+  PartyPopper,
+  FileText,
+  MessageSquare,
+  ExternalLink,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,41 +31,378 @@ import { PortalLayout } from "@/components/portal/portal-layout";
 import { useAuth } from "@/lib/auth-context";
 import { formatDistanceToNow, format } from "date-fns";
 
-const statusColors: Record<string, string> = {
-  created: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
-  questionnaire_pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  questionnaire_complete: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  tos_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  tos_signed: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  in_development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  hosting_setup: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  deployed: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  delivery: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-  client_review: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  completed: "bg-green-500/10 text-green-600 dark:text-green-400",
-  on_hold: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-  cancelled: "bg-red-500/10 text-red-600 dark:text-red-400",
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
 };
 
-const phaseInfo: Record<string, { label: string; phase: number; action: string; description: string }> = {
-  created: { label: "Getting Started", phase: 1, action: "Complete your profile", description: "Your account is set up! Complete the questionnaire to help us understand your vision." },
-  questionnaire_pending: { label: "Questionnaire", phase: 2, action: "Complete questionnaire", description: "Please fill out the project questionnaire so we can understand your needs." },
-  questionnaire_complete: { label: "Questionnaire Complete", phase: 2, action: "Awaiting review", description: "Thank you! We're reviewing your questionnaire responses." },
-  tos_pending: { label: "Terms of Service", phase: 3, action: "Sign terms", description: "Please review and sign the Terms of Service to proceed with your project." },
-  tos_signed: { label: "TOS Complete", phase: 3, action: "Development starting", description: "Great! Development will begin shortly." },
-  in_development: { label: "In Development", phase: 4, action: "Building your site", description: "Our team is actively building your website. We'll notify you when it's ready for review." },
-  hosting_setup: { label: "Hosting Setup", phase: 5, action: "Setting up hosting", description: "We're configuring your hosting and domain settings." },
-  deployed: { label: "Deployed", phase: 5, action: "Site is live", description: "Your website has been deployed to the hosting server." },
-  delivery: { label: "Final Delivery", phase: 6, action: "Review final site", description: "Your website is ready for final review before handoff." },
-  client_review: { label: "Your Review", phase: 6, action: "Approve final delivery", description: "Please review your completed website and let us know of any final changes." },
-  completed: { label: "Project Complete", phase: 7, action: "Site is yours!", description: "Congratulations! Your project is complete and your website is live." },
-  on_hold: { label: "On Hold", phase: 0, action: "Contact us", description: "Your project is currently on hold. Please contact us for more information." },
-  cancelled: { label: "Cancelled", phase: 0, action: "Contact us", description: "This project has been cancelled. Please contact us if you have questions." },
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
 };
 
-const statusLabels: Record<string, string> = Object.fromEntries(
-  Object.entries(phaseInfo).map(([key, val]) => [key, val.label])
-);
+const scaleIn = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 }
+};
+
+const slideInLeft = {
+  initial: { opacity: 0, x: -20 },
+  animate: { opacity: 1, x: 0 }
+};
+
+const phases = [
+  { id: 1, name: "Onboarding", icon: User, statuses: ["created", "draft"] },
+  { id: 2, name: "Questionnaire", icon: ClipboardList, statuses: ["questionnaire_pending", "questionnaire_complete"] },
+  { id: 3, name: "Agreement", icon: FileSignature, statuses: ["quote_draft", "quote_sent", "quote_approved", "tos_pending", "tos_signed", "deposit_pending", "deposit_paid"] },
+  { id: 4, name: "Design", icon: Palette, statuses: ["design_pending", "design_sent", "design_approved"] },
+  { id: 5, name: "Development", icon: Code, statuses: ["in_development"] },
+  { id: 6, name: "Review", icon: Eye, statuses: ["ready_for_review", "client_review", "revisions_pending", "revisions_complete", "awaiting_final_payment", "payment_complete"] },
+  { id: 7, name: "Complete", icon: PartyPopper, statuses: ["hosting_setup_pending", "hosting_configured", "completed"] },
+];
+
+const getPhaseFromStatus = (status: string): number => {
+  const phase = phases.find(p => p.statuses.includes(status));
+  return phase?.id || 1;
+};
+
+const getNextAction = (status: string, hasUnsignedDocs: boolean, hasPendingPayments: boolean): {
+  title: string;
+  description: string;
+  buttonText: string;
+  href: string;
+  icon: any;
+  priority: "high" | "medium" | "low";
+  pulse?: boolean;
+} | null => {
+  if (hasPendingPayments) {
+    return {
+      title: "Payment Required",
+      description: "You have an outstanding payment that needs to be completed to continue with your project.",
+      buttonText: "Make Payment",
+      href: "/client/payments",
+      icon: CreditCard,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (hasUnsignedDocs || status === "tos_pending") {
+    return {
+      title: "Document Signature Needed",
+      description: "Please review and sign the Terms of Service to proceed with your project.",
+      buttonText: "Review & Sign",
+      href: "/client/documents",
+      icon: FileSignature,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "questionnaire_pending") {
+    return {
+      title: "Complete Your Questionnaire",
+      description: "Help us understand your vision by answering a few questions about your project.",
+      buttonText: "Start Questionnaire",
+      href: "/client/questionnaire",
+      icon: ClipboardList,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "design_sent") {
+    return {
+      title: "Choose Your Design",
+      description: "We've prepared design options for you! Check your documents for the design options.",
+      buttonText: "View Designs",
+      href: "/client/documents",
+      icon: Palette,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "client_review") {
+    return {
+      title: "Review Your Website",
+      description: "Your website is ready for review! Take a look and let us know if you need any changes.",
+      buttonText: "Send Feedback",
+      href: "/client/documents",
+      icon: Eye,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "in_development") {
+    return {
+      title: "We're Building Your Site",
+      description: "Our team is hard at work creating your website. We'll notify you when it's ready for review.",
+      buttonText: "View Documents",
+      href: "/client/documents",
+      icon: Code,
+      priority: "low"
+    };
+  }
+
+  if (status === "completed") {
+    return {
+      title: "Your Website is Live!",
+      description: "Congratulations! Your project is complete. Your 25-day warranty is now active.",
+      buttonText: "View Documents",
+      href: "/client/documents",
+      icon: PartyPopper,
+      priority: "low"
+    };
+  }
+
+  return {
+    title: "We're Working On It",
+    description: "Your project is progressing. We'll reach out when we need anything from you.",
+    buttonText: "View Documents",
+    href: "/client/documents",
+    icon: Clock,
+    priority: "low"
+  };
+};
+
+const statusLabels: Record<string, string> = {
+  created: "Getting Started",
+  draft: "Getting Started",
+  questionnaire_pending: "Questionnaire Pending",
+  questionnaire_complete: "Questionnaire Complete",
+  quote_draft: "Preparing Quote",
+  quote_sent: "Quote Sent",
+  quote_approved: "Quote Approved",
+  tos_pending: "Awaiting Signature",
+  tos_signed: "Agreement Signed",
+  deposit_pending: "Awaiting Deposit",
+  deposit_paid: "Deposit Received",
+  design_pending: "Preparing Designs",
+  design_sent: "Designs Ready",
+  design_approved: "Design Approved",
+  in_development: "In Development",
+  ready_for_review: "Ready for QA",
+  client_review: "Your Review",
+  revisions_pending: "Revisions in Progress",
+  revisions_complete: "Revisions Complete",
+  awaiting_final_payment: "Awaiting Final Payment",
+  payment_complete: "Payment Complete",
+  hosting_setup_pending: "Setting Up Hosting",
+  hosting_configured: "Hosting Ready",
+  completed: "Project Complete",
+  on_hold: "On Hold",
+  cancelled: "Cancelled",
+};
+
+function JourneyTimeline({ currentPhase, status }: { currentPhase: number; status: string }) {
+  return (
+    <div className="w-full py-4">
+      <div className="flex items-center justify-between relative">
+        <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted -translate-y-1/2 rounded-full" />
+        <motion.div 
+          className="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/50 -translate-y-1/2 rounded-full"
+          initial={{ width: "0%" }}
+          animate={{ width: `${Math.max(0, ((currentPhase - 1) / 6) * 100)}%` }}
+          transition={{ duration: 1, ease: "easeOut", delay: 0.5 }}
+        />
+        
+        {phases.map((phase, index) => {
+          const isComplete = currentPhase > phase.id;
+          const isCurrent = currentPhase === phase.id;
+          const Icon = phase.icon;
+          
+          return (
+            <motion.div
+              key={phase.id}
+              className="relative z-10 flex flex-col items-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + index * 0.1 }}
+            >
+              <motion.div
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isComplete
+                    ? "bg-green-500 text-white"
+                    : isCurrent
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      : "bg-muted text-muted-foreground"
+                }`}
+                animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
+                transition={{ repeat: isCurrent ? Infinity : 0, duration: 2 }}
+              >
+                {isComplete ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : (
+                  <Icon className="w-5 h-5" />
+                )}
+              </motion.div>
+              <span className={`mt-2 text-xs font-medium hidden sm:block ${
+                isCurrent ? "text-primary" : isComplete ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+              }`}>
+                {phase.name}
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NextActionCard({ action, isLoading }: { action: ReturnType<typeof getNextAction>; isLoading?: boolean }) {
+  if (isLoading) {
+    return (
+      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/5">
+        <CardContent className="p-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <Skeleton className="w-16 h-16 rounded-2xl" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-7 w-48" />
+              <Skeleton className="h-4 w-full max-w-md" />
+            </div>
+            <Skeleton className="h-12 w-40" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!action) return null;
+
+  const Icon = action.icon;
+  const priorityStyles = {
+    high: "border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-primary/5",
+    medium: "border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-background to-amber-500/5",
+    low: "border border-border/50"
+  };
+
+  return (
+    <motion.div
+      variants={scaleIn}
+      initial="initial"
+      animate="animate"
+      transition={{ duration: 0.4, delay: 0.2 }}
+    >
+      <Card className={`${priorityStyles[action.priority]} overflow-hidden relative`}>
+        {action.pulse && (
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent"
+            animate={{ x: ["-100%", "200%"] }}
+            transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+          />
+        )}
+        <CardContent className="p-6 md:p-8 relative">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Your Next Step</span>
+          </div>
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <motion.div 
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${
+                action.priority === "high" 
+                  ? "bg-primary/10" 
+                  : action.priority === "medium" 
+                    ? "bg-amber-500/10" 
+                    : "bg-muted"
+              }`}
+              animate={action.pulse ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ repeat: action.pulse ? Infinity : 0, duration: 2 }}
+            >
+              <Icon className={`w-8 h-8 ${
+                action.priority === "high" 
+                  ? "text-primary" 
+                  : action.priority === "medium" 
+                    ? "text-amber-600 dark:text-amber-400" 
+                    : "text-muted-foreground"
+              }`} />
+            </motion.div>
+            <div className="flex-1 space-y-1">
+              <h2 className="text-xl font-semibold">{action.title}</h2>
+              <p className="text-muted-foreground">{action.description}</p>
+            </div>
+            <Link href={action.href}>
+              <Button 
+                size="lg" 
+                className={`gap-2 min-w-[160px] ${action.priority === "high" ? "" : "variant-outline"}`}
+                variant={action.priority === "high" ? "default" : "outline"}
+                data-testid="button-next-action"
+              >
+                {action.buttonText}
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function QuickLinkCard({ 
+  icon: Icon, 
+  title, 
+  description, 
+  href, 
+  badge 
+}: { 
+  icon: any; 
+  title: string; 
+  description: string; 
+  href: string; 
+  badge?: string;
+}) {
+  return (
+    <motion.div variants={fadeInUp}>
+      <Link href={href}>
+        <Card className="hover-elevate cursor-pointer h-full transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">{title}</h3>
+                  {badge && (
+                    <Badge variant="secondary" className="text-xs">{badge}</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </motion.div>
+  );
+}
+
+function ActivityItem({ activity, index }: { activity: any; index: number }) {
+  return (
+    <motion.div
+      className="flex items-start gap-4 py-3"
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm">{activity.description}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -88,186 +436,135 @@ export default function ClientDashboard() {
   });
   
   const warranty = warrantyData?.warranty;
+  const currentPhase = project ? getPhaseFromStatus(project.status) : 1;
+  const nextAction = project ? getNextAction(
+    project.status, 
+    unsignedDocuments.length > 0, 
+    pendingPayments.length > 0
+  ) : null;
 
   return (
     <PortalLayout requiredRole="client">
-      <div className="p-6 space-y-6">
-        {/* Welcome Header */}
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-welcome">
-            Welcome back, {user?.firstName}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Here's an overview of your project
-          </p>
-        </div>
-
-        {/* Project Overview */}
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6">
-              <Skeleton className="h-6 w-48 mb-4" />
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-8 w-full" />
-            </CardContent>
-          </Card>
-        ) : project ? (
-          <Card className="border-border/50" data-testid="card-project-overview">
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <CardTitle className="font-serif text-xl">
-                    {project.client?.businessLegalName || "Your Project"}
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    {project.projectType?.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())} Website
-                  </CardDescription>
-                </div>
-                <Badge className={statusColors[project.status] || "bg-muted"}>
-                  {statusLabels[project.status] || project.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium">
+      <motion.div 
+        className="p-6 space-y-8 max-w-6xl mx-auto"
+        initial="initial"
+        animate="animate"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <motion.h1 
+                className="font-serif text-3xl sm:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                data-testid="text-welcome"
+              >
+                Welcome back, {user?.firstName}
+              </motion.h1>
+              <motion.p 
+                className="text-muted-foreground mt-2 text-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                {project ? (
+                  <>Your project is in <span className="font-medium text-foreground">{statusLabels[project.status] || project.status}</span> phase</>
+                ) : (
+                  "Let's get started on your project"
+                )}
+              </motion.p>
+            </div>
+            {project && (
+              <motion.div 
+                className="flex items-center gap-3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Progress</p>
+                  <p className="text-2xl font-bold text-primary">
                     {project.progressPercentage === -1 
-                      ? (project.status === "on_hold" ? "On Hold" : "Cancelled")
+                      ? (project.status === "on_hold" ? "Paused" : "--")
                       : `${project.progressPercentage || 0}%`
                     }
-                  </span>
-                </div>
-                <Progress 
-                  value={project.progressPercentage === -1 ? 0 : (project.progressPercentage || 0)} 
-                  className="h-2" 
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Designer:</span>
-                  <span className="font-medium">Alex Rivera</span>
-                </div>
-                {project.startDate && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Started:</span>
-                    <span className="font-medium">
-                      {format(new Date(project.startDate), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                )}
-                {project.expectedCompletionDate && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Expected:</span>
-                    <span className="font-medium">
-                      {format(new Date(project.expectedCompletionDate), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {phaseInfo[project.status] && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Current Phase:</span>
-                      <Badge variant="outline" className="font-medium">
-                        Phase {phaseInfo[project.status]?.phase || 0} of 7
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Next Action:</span>
-                      <span className="text-sm font-medium">{phaseInfo[project.status]?.action}</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {phaseInfo[project.status]?.description}
                   </p>
-                  <div className="flex gap-1 mt-3">
-                    {[1, 2, 3, 4, 5, 6, 7].map((phase) => {
-                      const currentPhase = phaseInfo[project.status]?.phase || 0;
-                      const isComplete = currentPhase > phase;
-                      const isCurrent = currentPhase === phase;
-                      return (
-                        <div
-                          key={phase}
-                          className={`flex-1 h-2 rounded-full transition-all ${
-                            isCurrent 
-                              ? "bg-primary" 
-                              : isComplete 
-                                ? "bg-green-500" 
-                                : "bg-muted"
-                          }`}
-                          data-testid={`phase-bar-${phase}`}
-                        />
-                      );
-                    })}
-                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-border/50">
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">No active project found.</p>
-            </CardContent>
-          </Card>
+                <div className="w-16 h-16 relative">
+                  <svg className="w-16 h-16 -rotate-90">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                      className="text-muted"
+                    />
+                    <motion.circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                      className="text-primary"
+                      strokeLinecap="round"
+                      initial={{ pathLength: 0 }}
+                      animate={{ 
+                        pathLength: project.progressPercentage === -1 ? 0 : (project.progressPercentage || 0) / 100 
+                      }}
+                      transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+                    />
+                  </svg>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+
+        {project && (
+          <motion.div variants={fadeInUp}>
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="p-6">
+                <JourneyTimeline currentPhase={currentPhase} status={project.status} />
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
-        {/* Warranty Countdown - Only show for completed projects with active warranty */}
-        {project?.status === "completed" && warrantyLoading && (
-          <Card className="border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <Skeleton className="w-12 h-12 rounded-full" />
-                <div className="flex-1">
-                  <Skeleton className="h-5 w-32 mb-2" />
-                  <Skeleton className="h-4 w-48" />
-                </div>
-                <Skeleton className="w-20 h-16" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {project?.status === "completed" && !warrantyLoading && warranty && (
-          <Card 
-            className={`border-border/50 ${
-              warranty.isExpired 
-                ? "bg-muted/30" 
-                : warranty.isExpiringSoon 
-                  ? "border-amber-500/30 bg-amber-500/5" 
-                  : "border-green-500/30 bg-green-500/5"
-            }`}
-            data-testid="card-warranty"
-          >
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
-                    warranty.isExpired 
-                      ? "bg-muted" 
-                      : warranty.isExpiringSoon 
-                        ? "bg-amber-500/10" 
-                        : "bg-green-500/10"
-                  }`}>
-                    {warranty.isExpired ? (
-                      <Shield className="w-6 h-6 text-muted-foreground" />
-                    ) : warranty.isExpiringSoon ? (
-                      <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2">
-                      25-Day Warranty
-                      {!warranty.isExpired && (
+        <NextActionCard action={nextAction} isLoading={isLoading} />
+
+        {project?.status === "completed" && warranty && !warranty.isExpired && (
+          <motion.div variants={fadeInUp}>
+            <Card 
+              className={`overflow-hidden ${
+                warranty.isExpiringSoon 
+                  ? "border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-background" 
+                  : "border-green-500/30 bg-gradient-to-br from-green-500/5 to-background"
+              }`}
+              data-testid="card-warranty"
+            >
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <motion.div 
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
+                        warranty.isExpiringSoon ? "bg-amber-500/10" : "bg-green-500/10"
+                      }`}
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ repeat: Infinity, duration: 3 }}
+                    >
+                      {warranty.isExpiringSoon ? (
+                        <AlertTriangle className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <Shield className="w-7 h-7 text-green-600 dark:text-green-400" />
+                      )}
+                    </motion.div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-lg">25-Day Warranty</h3>
                         <Badge variant="outline" className={
                           warranty.isExpiringSoon 
                             ? "border-amber-500/50 text-amber-600 dark:text-amber-400" 
@@ -275,196 +572,143 @@ export default function ClientDashboard() {
                         }>
                           Active
                         </Badge>
-                      )}
-                      {warranty.isExpired && (
-                        <Badge variant="outline" className="border-muted-foreground/50 text-muted-foreground">
-                          Expired
-                        </Badge>
-                      )}
-                    </h3>
-                    {warranty.isExpired ? (
-                      <p className="text-sm text-muted-foreground">
-                        Your warranty period has ended. Future support will be billed separately.
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Free bug fixes until {warranty.endDate && format(new Date(warranty.endDate), "MMMM d, yyyy")}
                       </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Free bug fixes and support included until{" "}
-                        {warranty.endDate && format(new Date(warranty.endDate), "MMMM d, yyyy")}
-                      </p>
-                    )}
+                    </div>
                   </div>
-                </div>
-                {!warranty.isExpired && (
-                  <div className="flex flex-col items-center justify-center px-6 py-3 bg-background rounded-md border">
-                    <span className={`text-3xl font-bold ${
+                  <motion.div 
+                    className="flex flex-col items-center justify-center px-8 py-4 bg-background rounded-xl border"
+                    animate={warranty.isExpiringSoon ? { scale: [1, 1.02, 1] } : {}}
+                    transition={{ repeat: warranty.isExpiringSoon ? Infinity : 0, duration: 2 }}
+                  >
+                    <span className={`text-4xl font-bold ${
                       warranty.isExpiringSoon 
                         ? "text-amber-600 dark:text-amber-400" 
                         : "text-green-600 dark:text-green-400"
                     }`}>
                       {warranty.daysRemaining}
                     </span>
-                    <span className="text-xs text-muted-foreground">days left</span>
-                  </div>
-                )}
-              </div>
-              {!warranty.isExpired && warranty.isExpiringSoon && (
-                <div className="mt-4 pt-4 border-t border-amber-500/20">
-                  <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Your warranty is ending soon. If you have any issues with your website, please contact us before the warranty expires.
-                  </p>
-                  <Link href="/client/messages">
-                    <Button variant="outline" size="sm" className="mt-2 gap-2" data-testid="button-contact-warranty">
-                      Contact Us
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                    <span className="text-sm text-muted-foreground">days left</span>
+                  </motion.div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
-        {/* Action Items */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Pending Payments */}
-          {pendingPayments.length > 0 ? (
-            <Card className="border-destructive/30 bg-destructive/5" data-testid="card-pending-payment">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <CreditCard className="w-4 h-4 text-destructive" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Payment Due</CardTitle>
-                    <CardDescription>Action required</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {pendingPayments.slice(0, 1).map((payment: any) => (
-                  <div key={payment.id} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-sm">{payment.description}</span>
-                      <span className="font-serif font-bold text-lg">
-                        ${parseFloat(payment.amount).toLocaleString()}
-                      </span>
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          variants={staggerContainer}
+        >
+          <QuickLinkCard
+            icon={FileText}
+            title="Documents"
+            description="View contracts and agreements"
+            href="/client/documents"
+            badge={unsignedDocuments.length > 0 ? `${unsignedDocuments.length} pending` : undefined}
+          />
+          <QuickLinkCard
+            icon={CreditCard}
+            title="Payments"
+            description="View invoices and payment history"
+            href="/client/payments"
+            badge={pendingPayments.length > 0 ? `${pendingPayments.length} due` : undefined}
+          />
+          <QuickLinkCard
+            icon={MessageSquare}
+            title="Messages"
+            description="Contact our team"
+            href="/client/messages"
+          />
+        </motion.div>
+
+        <motion.div variants={fadeInUp}>
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-muted-foreground" />
+                  Recent Activity
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AnimatePresence mode="wait">
+                {isLoading ? (
+                  <motion.div 
+                    className="space-y-4 py-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-start gap-4">
+                        <Skeleton className="w-2 h-2 rounded-full mt-2" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-3/4 mb-1" />
+                          <Skeleton className="h-3 w-1/4" />
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                ) : recentActivity.length > 0 ? (
+                  <motion.div 
+                    className="divide-y divide-border/50"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    {recentActivity.slice(0, 5).map((activity: any, index: number) => (
+                      <ActivityItem key={activity.id} activity={activity} index={index} />
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.p 
+                    className="text-muted-foreground text-sm text-center py-8"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    No recent activity to show
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {project?.stagingUrl && project.status !== "completed" && (
+          <motion.div variants={fadeInUp}>
+            <Card className="border-border/50 bg-gradient-to-r from-blue-500/5 via-background to-purple-500/5">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <ExternalLink className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    {payment.dueDate && (
+                    <div>
+                      <h3 className="font-semibold">Preview Your Website</h3>
                       <p className="text-sm text-muted-foreground">
-                        Due: {format(new Date(payment.dueDate), "MMMM d, yyyy")}
-                      </p>
-                    )}
-                    <Link href="/client/payments">
-                      <Button className="w-full gap-2" data-testid="button-pay-now">
-                        Pay Now
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-border/50" data-testid="card-no-payments">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">No Payments Due</h3>
-                  <p className="text-sm text-muted-foreground">
-                    You're all caught up with payments
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Documents Needing Signature */}
-          {unsignedDocuments.length > 0 ? (
-            <Card className="border-primary/30 bg-primary/5" data-testid="card-unsigned-docs">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <FileSignature className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Signature Required</CardTitle>
-                    <CardDescription>Document awaiting your signature</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {unsignedDocuments.slice(0, 1).map((doc: any) => (
-                  <div key={doc.id} className="space-y-3">
-                    <p className="font-medium">{doc.title}</p>
-                    <Link href="/client/documents">
-                      <Button variant="outline" className="w-full gap-2" data-testid="button-review-sign">
-                        Review & Sign
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-border/50" data-testid="card-no-docs">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">All Documents Signed</h3>
-                  <p className="text-sm text-muted-foreground">
-                    No documents need your attention
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Recent Activity */}
-        <Card className="border-border/50" data-testid="card-recent-activity">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-start gap-4">
-                    <Skeleton className="w-2 h-2 rounded-full mt-2" />
-                    <div className="flex-1">
-                      <Skeleton className="h-4 w-3/4 mb-1" />
-                      <Skeleton className="h-3 w-1/4" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : recentActivity.length > 0 ? (
-              <div className="space-y-4">
-                {recentActivity.map((activity: any) => (
-                  <div key={activity.id} className="flex items-start gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{activity.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                        View the current development version
                       </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm text-center py-4">
-                No recent activity to show
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <a 
+                    href={project.stagingUrl.startsWith('http') ? project.stagingUrl : `https://${project.stagingUrl}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" className="gap-2" data-testid="button-preview-site">
+                      Open Preview
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </motion.div>
     </PortalLayout>
   );
 }

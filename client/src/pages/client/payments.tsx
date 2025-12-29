@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { CreditCard, Download, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,20 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { EmbeddedCheckout } from "@/components/payment/embedded-checkout";
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
 
 function downloadInvoice(paymentId: string, token: string) {
   const url = `/api/payments/${paymentId}/invoice`;
@@ -97,15 +112,20 @@ export default function ClientPayments() {
 
   return (
     <PortalLayout requiredRole="client">
-      <div className="p-6 space-y-6">
-        <div>
+      <motion.div 
+        className="p-6 space-y-6 max-w-6xl mx-auto"
+        initial="initial"
+        animate="animate"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp}>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-payments-title">
             Payments
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your project payments and invoices
           </p>
-        </div>
+        </motion.div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -247,7 +267,7 @@ export default function ClientPayments() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {selectedPayment && (
         <Dialog open={true} onOpenChange={(open) => !open && handlePaymentCancel()}>

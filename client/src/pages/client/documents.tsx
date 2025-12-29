@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Download, FileSignature, Eye, Check, X, Loader2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Upload, Image } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,20 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
 
 const documentTypeIcons: Record<string, any> = {
   contract: FileSignature,
@@ -221,8 +236,13 @@ export default function ClientDocuments() {
 
   return (
     <PortalLayout requiredRole="client">
-      <div className="p-6 space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+      <motion.div 
+        className="p-6 space-y-6 max-w-6xl mx-auto"
+        initial="initial"
+        animate="animate"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp} className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-documents-title">
               Documents
@@ -235,7 +255,7 @@ export default function ClientDocuments() {
             <Upload className="w-4 h-4 mr-2" />
             Upload File
           </Button>
-        </div>
+        </motion.div>
 
         <Tabs defaultValue="all" className="space-y-6">
           <TabsList>
@@ -457,7 +477,7 @@ export default function ClientDocuments() {
             )}
           </TabsContent>
         </Tabs>
-      </div>
+      </motion.div>
 
       {/* Document Review & Sign Dialog - Full Screen with PDF Viewer */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
