@@ -121,8 +121,8 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="flex items-center gap-2">
             <img 
               src={isDark ? duoLogoDark : duoLogoLight} 
-              alt="DUO by ML WebDesign"
-              className="h-10 w-auto object-contain"
+              alt="DUO"
+              className="h-14 w-auto object-contain"
             />
           </Link>
           <ThemeToggle />

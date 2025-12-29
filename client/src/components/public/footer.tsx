@@ -44,7 +44,7 @@ export function PublicFooter() {
               <img 
                 src={isDark ? duoLogoDark : duoLogoLight} 
                 alt="ML WebDesign"
-                className="h-10 w-auto object-contain"
+                className="h-12 w-auto object-contain"
               />
             </div>
             <p className="text-muted-foreground max-w-md mb-4">

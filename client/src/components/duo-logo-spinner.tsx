@@ -29,7 +29,7 @@ export function DuoLogoSpinner({ size = "md", showText = true }: DuoLogoSpinnerP
         <div className={`${sizeClasses[size]} relative`}>
           <img 
             src={isDark ? duoLogoDark : duoLogoLight} 
-            alt="DUO by ML WebDesign"
+            alt="DUO"
             className="w-full h-full object-contain animate-pulse"
           />
         </div>

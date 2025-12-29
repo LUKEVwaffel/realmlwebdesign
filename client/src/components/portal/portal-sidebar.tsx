@@ -81,8 +81,8 @@ export function PortalSidebar() {
         <Link href="/" className="flex items-center gap-2">
           <img 
             src={isDark ? duoLogoDark : duoLogoLight} 
-            alt="DUO by ML WebDesign"
-            className="h-8 w-auto object-contain"
+            alt="DUO"
+            className="h-12 w-auto object-contain"
           />
         </Link>
       </SidebarHeader>

@@ -586,7 +586,7 @@ export default function LoginPage() {
       </main>
 
       <footer className="text-center p-4 text-sm text-muted-foreground">
-        <p>DUO by ML WebDesign - Crafting Digital Excellence</p>
+        <p>DUO - Client Portal by ML WebDesign</p>
       </footer>
     </div>
   );

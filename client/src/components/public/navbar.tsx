@@ -37,7 +37,7 @@ export function PublicNavbar() {
               <img 
                 src={isDark ? duoLogoDark : duoLogoLight} 
                 alt="ML WebDesign"
-                className="h-10 w-auto object-contain"
+                className="h-12 w-auto object-contain"
                 data-testid="text-logo"
               />
             </motion.div>
