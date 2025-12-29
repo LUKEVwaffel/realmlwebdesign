@@ -11,9 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiRequest } from "@/lib/queryClient";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -37,8 +35,6 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const emailForm = useForm<EmailInput>({
     resolver: zodResolver(emailSchema),
@@ -120,9 +116,9 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center justify-between mb-8">
           <Link href="/" className="flex items-center gap-2">
             <img 
-              src={isDark ? duoLogoDark : duoLogoLight} 
+              src={duoLogo} 
               alt="DUO"
-              className="h-14 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
           </Link>
           <ThemeToggle />

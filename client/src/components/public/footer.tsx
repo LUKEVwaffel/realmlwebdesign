@@ -1,9 +1,7 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -22,8 +20,6 @@ const staggerContainer = {
 };
 
 export function PublicFooter() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   
   return (
     <footer className="bg-card border-t border-border">
@@ -42,9 +38,9 @@ export function PublicFooter() {
           >
             <div className="mb-4">
               <img 
-                src={isDark ? duoLogoDark : duoLogoLight} 
+                src={duoLogo} 
                 alt="ML WebDesign"
-                className="h-12 w-auto object-contain"
+                className="h-14 w-auto object-contain"
               />
             </div>
             <p className="text-muted-foreground max-w-md mb-4">

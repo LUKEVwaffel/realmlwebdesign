@@ -14,9 +14,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 import {
   Sidebar,
   SidebarContent,
@@ -59,8 +57,6 @@ const adminNavItems = [
 export function PortalSidebar() {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const isAdmin = user?.role === "admin";
   const navItems = isAdmin ? adminNavItems : clientNavItems;
@@ -77,12 +73,12 @@ export function PortalSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <Link href="/" className="flex items-center gap-2">
+      <SidebarHeader className="border-b border-sidebar-border p-6">
+        <Link href="/" className="flex items-center justify-center">
           <img 
-            src={isDark ? duoLogoDark : duoLogoLight} 
+            src={duoLogo} 
             alt="DUO"
-            className="h-12 w-auto object-contain"
+            className="h-20 w-auto object-contain"
           />
         </Link>
       </SidebarHeader>

@@ -3,9 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2, KeyRound, Shield, User, Delete, CheckCircle2, XCircle, Lock } from "lucide-react";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +35,6 @@ export default function LoginPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),

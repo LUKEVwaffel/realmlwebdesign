@@ -4,15 +4,11 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 export function PublicNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -35,9 +31,9 @@ export function PublicNavbar() {
               whileTap={{ scale: 0.98 }}
             >
               <img 
-                src={isDark ? duoLogoDark : duoLogoLight} 
+                src={duoLogo} 
                 alt="ML WebDesign"
-                className="h-12 w-auto object-contain"
+                className="h-14 w-auto object-contain"
                 data-testid="text-logo"
               />
             </motion.div>

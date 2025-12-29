@@ -12,9 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { changePasswordSchema, type ChangePasswordInput } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useTheme } from "@/lib/theme-provider";
-import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
-import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
+import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 export default function ChangePasswordPage() {
   const [, setLocation] = useLocation();
@@ -26,8 +24,6 @@ export default function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { user, updateUser, token } = useAuth();
   const { toast } = useToast();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const form = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
@@ -78,9 +74,9 @@ export default function ChangePasswordPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <img 
-              src={isDark ? duoLogoDark : duoLogoLight} 
+              src={duoLogo} 
               alt="DUO"
-              className="h-14 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
           </div>
           <ThemeToggle />
