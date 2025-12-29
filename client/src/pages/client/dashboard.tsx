@@ -488,39 +488,18 @@ function DevelopmentFeedbackPanel({ projectId }: { projectId: string }) {
   );
 }
 
-function WebsiteReviewPanel({ project, onApprove, onRequestChanges, isApproving }: { 
+function WebsiteReviewPanel({ project, onApprove, onRequestChanges, isApproving, isRequestingChanges }: { 
   project: any; 
   onApprove: () => void; 
-  onRequestChanges: () => void;
+  onRequestChanges: (feedback: string) => void;
   isApproving: boolean;
+  isRequestingChanges: boolean;
 }) {
   const [feedback, setFeedback] = useState("");
-  const { toast } = useToast();
-
-  const sendFeedbackMutation = useMutation({
-    mutationFn: async (data: { messageText: string; category: string; projectId: string }) => {
-      const res = await apiRequest("POST", "/api/client/messages", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      setFeedback("");
-      queryClient.invalidateQueries({ queryKey: ["/api/client/messages"] });
-      toast({
-        title: "Feedback sent",
-        description: "Your feedback has been sent to the team.",
-      });
-    },
-  });
 
   const handleRequestChanges = () => {
-    if (feedback.trim()) {
-      sendFeedbackMutation.mutate({
-        messageText: feedback.trim(),
-        category: "development_feedback",
-        projectId: project.id,
-      });
-    }
-    onRequestChanges();
+    onRequestChanges(feedback.trim());
+    setFeedback("");
   };
 
   return (
@@ -581,16 +560,20 @@ function WebsiteReviewPanel({ project, onApprove, onRequestChanges, isApproving 
               variant="outline"
               className="flex-1 gap-2"
               onClick={handleRequestChanges}
-              disabled={isApproving || sendFeedbackMutation.isPending}
+              disabled={isApproving || isRequestingChanges}
               data-testid="button-request-changes"
             >
-              <ThumbsDown className="w-4 h-4" />
+              {isRequestingChanges ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ThumbsDown className="w-4 h-4" />
+              )}
               Request Changes
             </Button>
             <Button
               className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
               onClick={onApprove}
-              disabled={isApproving}
+              disabled={isApproving || isRequestingChanges}
               data-testid="button-approve-website"
             >
               {isApproving ? (
@@ -774,12 +757,13 @@ export default function ClientDashboard() {
   });
 
   const requestChangesMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/client/projects/${project?.id}/request-changes`);
+    mutationFn: async (feedback: string) => {
+      const res = await apiRequest("POST", `/api/client/projects/${project?.id}/request-changes`, { feedback });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/messages"] });
       toast({
         title: "Revision request sent",
         description: "We'll get started on the changes right away.",
@@ -892,8 +876,9 @@ export default function ClientDashboard() {
           <WebsiteReviewPanel 
             project={project}
             onApprove={() => approveMutation.mutate()}
-            onRequestChanges={() => requestChangesMutation.mutate()}
+            onRequestChanges={(feedback: string) => requestChangesMutation.mutate(feedback)}
             isApproving={approveMutation.isPending}
+            isRequestingChanges={requestChangesMutation.isPending}
           />
         )}
 

@@ -3666,6 +3666,7 @@ export async function registerRoutes(
   app.post("/api/client/projects/:id/request-changes", authenticateToken, requireClient, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
+      const { feedback } = req.body;
       const client = await storage.getClientByUserId(req.user!.id);
       
       if (!client) {
@@ -3681,6 +3682,18 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Project is not in review status" });
       }
       
+      // Save feedback as a message if provided
+      if (feedback && feedback.trim()) {
+        await storage.createMessage({
+          clientId: client.id,
+          projectId: id,
+          userId: req.user!.id,
+          messageText: feedback.trim(),
+          direction: "client_to_admin",
+          category: "development_feedback",
+        });
+      }
+      
       // Update project status to revisions_pending
       await storage.updateProject(id, { status: "revisions_pending" });
       
@@ -3689,8 +3702,10 @@ export async function registerRoutes(
         clientId: client.id,
         userId: req.user!.id,
         action: "revisions_requested",
-        description: "Client requested website revisions",
-        metadata: { projectId: id },
+        description: feedback?.trim() 
+          ? `Client requested website revisions: ${feedback.trim().substring(0, 100)}${feedback.trim().length > 100 ? '...' : ''}`
+          : "Client requested website revisions",
+        metadata: { projectId: id, hasFeedback: !!feedback?.trim() },
       });
       
       res.json({ success: true, message: "Revision request submitted. We'll get to work on the changes." });
