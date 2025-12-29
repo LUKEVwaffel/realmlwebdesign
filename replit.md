@@ -112,11 +112,22 @@ Preferred communication style: Simple, everyday language.
 - API routes: POST /api/admin/projects/:id/cancel, PATCH /api/admin/cancellations/:id/refund
 - Activity logging for cancellations and refund processing
 
+### 7-Phase Development Process
+| Phase | Status Values | Description |
+|-------|---------------|-------------|
+| Phase 1 | `created` | **Client Onboarding** - Admin creates client account, fills out basic business/contact info |
+| Phase 2 | `questionnaire_pending` → `questionnaire_complete` | **Client Questionnaire** - Client fills out project questionnaire (goals, style preferences, content needs) |
+| Phase 3 | `quote_sent` → `quote_approved` | **Quote & Agreement** - Admin sends quote, client approves/rejects. Upon approval: TOS signed + 50% deposit paid |
+| Phase 4 | `design_pending` → `design_approved` | **Design Consultation** - Design requirements finalized and approved by client |
+| Phase 5 | `in_development` | **Website Development** - Website actively being built on staging environment |
+| Phase 6 | `ready_for_review` | **Ready for Review** - Development complete, ready for client preview on staging |
+| Phase 7 | `client_review` → `completed` | **Client Review & Delivery** - Client reviews, requests revisions within warranty, final approval, 50% payment, then credentials handed over |
+
 ### Progress Tracking
 - Automatic progress calculation based on project status
-- Progress values: created=5%, questionnaire=10-20%, tos=30-40%, development=55%, hosting=70-80%, delivery=85-90%, completed=100%
+- Phase 1: 5%, Phase 2: 10-20%, Phase 3: 30-40%, Phase 4: 45-50%, Phase 5: 55-65%, Phase 6: 70-80%, Phase 7: 85-100%
 - On-hold and cancelled projects show -1 (UI displays "On Hold" or "Cancelled" instead of percentage)
-- Client dashboard shows visual progress bar and phase indicator (7-phase workflow)
+- Client dashboard shows visual progress bar and phase indicator
 - Admin dashboard and client details include progressPercentage for each project
 
 ## External Dependencies
