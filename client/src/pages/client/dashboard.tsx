@@ -162,15 +162,26 @@ const getNextAction = (status: string, hasUnsignedDocs: boolean, hasPendingPayme
   }
 
   if (status === "awaiting_final_payment") {
-    return {
-      title: "Final Payment Required",
-      description: "Your website is approved and ready! Complete your final payment to receive your website.",
-      buttonText: "Pay Now",
-      href: "/client/dashboard",
-      icon: CreditCard,
-      priority: "high",
-      pulse: true
-    };
+    if (hasPendingPayments) {
+      return {
+        title: "Final Payment Required",
+        description: "Your website is approved! Scroll down to the Payments Due section to complete your final payment.",
+        buttonText: "See Payment Below",
+        href: "#payments-section",
+        icon: CreditCard,
+        priority: "high",
+        pulse: true
+      };
+    } else {
+      return {
+        title: "Invoice Being Prepared",
+        description: "Your website is approved and ready! We're preparing your final invoice - you'll be notified shortly.",
+        buttonText: "View Status",
+        href: "/client/dashboard",
+        icon: Clock,
+        priority: "medium"
+      };
+    }
   }
 
   if (status === "payment_complete" || status === "hosting_setup_pending" || status === "hosting_configured") {
@@ -593,11 +604,67 @@ function WebsiteReviewPanel({ project, onApprove, onRequestChanges, isApproving,
   );
 }
 
+function PaymentItem({ payment }: { payment: any }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handlePayNow = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/payments/${payment.id}/checkout`);
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      toast({
+        title: "Payment Error",
+        description: "Unable to start payment. Please try again or contact support.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div 
+      className="flex items-center justify-between p-4 rounded-lg bg-background border"
+      data-testid={`payment-item-${payment.id}`}
+    >
+      <div>
+        <p className="font-medium capitalize">{payment.paymentType?.replace('_', ' ') || 'Payment'}</p>
+        <p className="text-sm text-muted-foreground">
+          Due: {payment.dueDate ? format(new Date(payment.dueDate), 'MMM d, yyyy') : 'Soon'}
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-lg font-bold">${parseFloat(payment.amount || 0).toFixed(2)}</span>
+        <Button 
+          size="sm" 
+          className="gap-2" 
+          onClick={handlePayNow}
+          disabled={isLoading}
+          data-testid={`button-pay-${payment.id}`}
+        >
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CreditCard className="w-4 h-4" />
+          )}
+          Pay Now
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function PendingPaymentsPanel({ payments }: { payments: any[] }) {
   if (payments.length === 0) return null;
 
   return (
-    <motion.div variants={fadeInUp}>
+    <motion.div variants={fadeInUp} id="payments-section">
       <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
@@ -614,31 +681,7 @@ function PendingPaymentsPanel({ payments }: { payments: any[] }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {payments.map((payment: any) => (
-            <div 
-              key={payment.id} 
-              className="flex items-center justify-between p-4 rounded-lg bg-background border"
-              data-testid={`payment-item-${payment.id}`}
-            >
-              <div>
-                <p className="font-medium capitalize">{payment.paymentType?.replace('_', ' ') || 'Payment'}</p>
-                <p className="text-sm text-muted-foreground">
-                  Due: {payment.dueDate ? format(new Date(payment.dueDate), 'MMM d, yyyy') : 'Soon'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold">${parseFloat(payment.amount || 0).toFixed(2)}</span>
-                {payment.stripePaymentUrl ? (
-                  <a href={payment.stripePaymentUrl} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" className="gap-2" data-testid={`button-pay-${payment.id}`}>
-                      <CreditCard className="w-4 h-4" />
-                      Pay Now
-                    </Button>
-                  </a>
-                ) : (
-                  <Badge variant="secondary">Invoice Pending</Badge>
-                )}
-              </div>
-            </div>
+            <PaymentItem key={payment.id} payment={payment} />
           ))}
         </CardContent>
       </Card>
