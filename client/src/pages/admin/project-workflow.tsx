@@ -264,6 +264,30 @@ export default function ProjectWorkflow() {
     },
   });
 
+  const createPaymentMutation = useMutation({
+    mutationFn: async (data: { clientId: string; projectId: string; amount: string; description: string; paymentType: string }) => {
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 7);
+      const res = await apiRequest("POST", "/api/admin/payments", {
+        clientId: data.clientId,
+        projectId: data.projectId,
+        description: data.description,
+        amount: data.amount,
+        paymentType: data.paymentType,
+        dueDate: dueDate.toISOString().split('T')[0],
+        status: "pending",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Invoice sent", description: "The client can now pay through their portal." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create invoice", description: error.message, variant: "destructive" });
+    },
+  });
+
   const verifyPinMutation = useMutation({
     mutationFn: async (pin: string) => {
       const res = await apiRequest("POST", "/api/admin/pin/verify", { pin });
@@ -551,8 +575,11 @@ export default function ProjectWorkflow() {
                 <Phase7Content 
                   client={client} 
                   project={project}
+                  payments={client?.payments || []}
                   onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  onCreatePayment={(data: any) => createPaymentMutation.mutate(data)}
                   isUpdating={updateStatusMutation.isPending}
+                  isCreatingPayment={createPaymentMutation.isPending}
                 />
               )}
               {currentPhase === 0 && (
@@ -1448,8 +1475,34 @@ function Phase6Content({ client, project, onAdvancePhase, onSendReminder, isUpda
 }
 
 // Phase 7: Review & Delivery
-function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
+function Phase7Content({ client, project, payments, onAdvancePhase, onCreatePayment, isUpdating, isCreatingPayment }: any) {
   const status = project.status;
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  
+  // Check if there's a pending final payment
+  const hasPendingFinalPayment = payments.some((p: any) => 
+    p.paymentType === "final" && p.status === "pending" && p.projectId === project.id
+  );
+  
+  // Calculate suggested amount (50% of total cost or remaining balance)
+  const totalCost = parseFloat(project.totalCost || "0");
+  const paidAmount = payments
+    .filter((p: any) => p.status === "paid" && p.projectId === project.id)
+    .reduce((sum: number, p: any) => sum + parseFloat(p.amount || "0"), 0);
+  const suggestedAmount = Math.max(totalCost - paidAmount, totalCost / 2);
+  
+  const handleSendInvoice = () => {
+    const amount = invoiceAmount || suggestedAmount.toFixed(2);
+    if (!amount || parseFloat(amount) <= 0) return;
+    
+    onCreatePayment({
+      clientId: client.id,
+      projectId: project.id,
+      amount: amount,
+      description: "Final Payment - Website Delivery",
+      paymentType: "final",
+    });
+  };
 
   const { data: feedbackMessages = [], isLoading: feedbackLoading } = useQuery<any[]>({
     queryKey: ['/api/admin/projects', project.id, 'messages', 'development_feedback'],
@@ -1610,18 +1663,62 @@ function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
             <div className="text-center space-y-4 py-4">
               <DollarSign className="w-12 h-12 mx-auto text-primary" />
               <h3 className="font-semibold">Awaiting Final Payment</h3>
-              <p className="text-sm text-muted-foreground">
-                Waiting for remaining 50% payment (${(parseFloat(project.totalCost || "0") / 2).toFixed(2)})
-              </p>
-              <Button 
-                className="gap-2" 
-                onClick={() => onAdvancePhase("payment_complete")}
-                disabled={isUpdating}
-                data-testid="button-mark-payment-complete"
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Mark Payment Complete
-              </Button>
+              
+              {!hasPendingFinalPayment ? (
+                <div className="space-y-4 max-w-sm mx-auto">
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <AlertCircle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      No invoice has been sent yet. Create one below.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="text-left">
+                        <Label className="text-xs">Invoice Amount ($)</Label>
+                        <Input
+                          type="number"
+                          placeholder={suggestedAmount > 0 ? suggestedAmount.toFixed(2) : "Enter amount"}
+                          value={invoiceAmount}
+                          onChange={(e) => setInvoiceAmount(e.target.value)}
+                          className="mt-1"
+                          data-testid="input-invoice-amount"
+                        />
+                        {suggestedAmount > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Suggested: ${suggestedAmount.toFixed(2)} based on project cost
+                          </p>
+                        )}
+                      </div>
+                      <Button 
+                        className="w-full gap-2" 
+                        onClick={handleSendInvoice}
+                        disabled={isCreatingPayment || (!invoiceAmount && suggestedAmount <= 0)}
+                        data-testid="button-send-invoice"
+                      >
+                        {isCreatingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        Send Final Invoice
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Invoice sent! Waiting for client to pay through their portal.
+                    </p>
+                  </div>
+                  <Button 
+                    className="gap-2" 
+                    onClick={() => onAdvancePhase("payment_complete")}
+                    disabled={isUpdating}
+                    data-testid="button-mark-payment-complete"
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Mark Payment Complete
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

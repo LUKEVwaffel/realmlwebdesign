@@ -1893,6 +1893,42 @@ export async function registerRoutes(
         ipAddress: req.ip,
       });
       
+      // Auto-create final payment when transitioning to awaiting_final_payment
+      if (status === "awaiting_final_payment" && oldStatus !== "awaiting_final_payment") {
+        // Check if a final payment already exists for this project
+        const existingPayments = await storage.getPaymentsByProjectId(id);
+        const hasFinalPayment = existingPayments.some(p => p.paymentType === "final" && p.status === "pending");
+        
+        if (!hasFinalPayment) {
+          // Calculate final payment amount (50% of total cost, or use remaining balance)
+          const totalCost = parseFloat(project.totalCost || "0");
+          const paidAmount = existingPayments
+            .filter(p => p.status === "paid")
+            .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+          const finalAmount = Math.max(totalCost - paidAmount, totalCost / 2);
+          
+          // Only create payment if there's an amount to pay
+          if (finalAmount > 0) {
+            const paymentNumber = existingPayments.length + 1;
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 7); // Due in 7 days
+            
+            await storage.createPayment({
+              projectId: id,
+              clientId: project.clientId,
+              paymentNumber,
+              amount: finalAmount.toFixed(2),
+              description: "Final Payment - Website Delivery",
+              paymentType: "final",
+              status: "pending",
+              dueDate: dueDate.toISOString().split('T')[0],
+            });
+            
+            console.log(`[Payments] Auto-created final payment of $${finalAmount.toFixed(2)} for project ${id}`);
+          }
+        }
+      }
+      
       // Send warranty start email if project just completed
       if (status === "completed" && oldStatus !== "completed") {
         const client = await storage.getClient(project.clientId);
