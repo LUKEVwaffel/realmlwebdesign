@@ -112,6 +112,13 @@ Preferred communication style: Simple, everyday language.
 - API routes: POST /api/admin/projects/:id/cancel, PATCH /api/admin/cancellations/:id/refund
 - Activity logging for cancellations and refund processing
 
+### Progress Tracking
+- Automatic progress calculation based on project status
+- Progress values: created=5%, questionnaire=10-20%, tos=30-40%, development=55%, hosting=70-80%, delivery=85-90%, completed=100%
+- On-hold and cancelled projects show -1 (UI displays "On Hold" or "Cancelled" instead of percentage)
+- Client dashboard shows visual progress bar and phase indicator (7-phase workflow)
+- Admin dashboard and client details include progressPercentage for each project
+
 ## External Dependencies
 
 ### Payment Processing
