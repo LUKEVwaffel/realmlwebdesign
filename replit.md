@@ -1,13 +1,19 @@
-# Web Design Business Platform
+# ML WebDesign Business Platform
 
 ## Overview
 
-A full-stack web application for a web design business consisting of three main parts:
+A full-stack web application for ML WebDesign consisting of three main parts:
 1. **Public Portfolio Website** - Showcases work and builds credibility for potential clients
-2. **Client Portal** - Allows invited clients to manage their projects, view payments, documents, and communicate with the team
-3. **Admin Dashboard** - Enables business owners to manage all clients, projects, and business analytics
+2. **DUO Client Portal** - The client-facing portal branded as "DUO by ML WebDesign" where invited clients can manage their projects, view payments, documents, and communicate with the team
+3. **Admin Dashboard** - Enables business owners (Luke Vetsch & Makaio Roos) to manage all clients, projects, and business analytics
 
 This is NOT a marketplace or application system. Clients are manually added by admins after offline conversations. The public site is purely for portfolio showcase.
+
+## Branding
+- **Company**: ML WebDesign
+- **Client Portal Name**: DUO
+- **Contact Email**: hello@mlwebdesign.com
+- **Logos**: Light and dark mode variants in `attached_assets/` directory
 
 ## User Preferences
 

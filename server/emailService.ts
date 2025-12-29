@@ -87,7 +87,7 @@ async function sendEmail(options: EmailOptions): Promise<boolean> {
       to: options.to,
       from: {
         email: sendgrid.fromEmail,
-        name: 'PixelCraft Design'
+        name: 'ML WebDesign'
       },
       subject: options.subject,
       html: options.html,
@@ -108,19 +108,19 @@ function baseTemplate(content: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PixelCraft Design</title>
+  <title>ML WebDesign</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 24px;">PixelCraft Design</h1>
+  <div style="background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%); padding: 30px; border-radius: 8px 8px 0 0;">
+    <h1 style="color: #fff; margin: 0; font-size: 24px;">DUO by ML WebDesign</h1>
   </div>
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
     ${content}
   </div>
   <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-    <p>This is an automated message from PixelCraft Design.</p>
+    <p>This is an automated message from ML WebDesign.</p>
     <p>Please do not reply directly to this email.</p>
-    <p>Contact us at: hello@pixelcraft.design</p>
+    <p>Contact us at: hello@mlwebdesign.com</p>
   </div>
 </body>
 </html>`;
@@ -182,7 +182,7 @@ export async function sendActivityNotificationToClient(
 
   return sendEmail({
     to: email,
-    subject: `${title} - PixelCraft Design`,
+    subject: `${title} - ML WebDesign`,
     html: baseTemplate(content),
   });
 }

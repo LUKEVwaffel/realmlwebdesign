@@ -1,6 +1,9 @@
-import { Sparkles, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useTheme } from "@/lib/theme-provider";
+import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
+import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -19,6 +22,9 @@ const staggerContainer = {
 };
 
 export function PublicFooter() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  
   return (
     <footer className="bg-card border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -34,22 +40,16 @@ export function PublicFooter() {
             variants={fadeInUp}
             transition={{ duration: 0.5 }}
           >
-            <motion.div 
-              className="flex items-center gap-2 mb-4"
-              whileHover={{ scale: 1.02 }}
-            >
-              <motion.div 
-                className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"
-                whileHover={{ scale: 1.1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Sparkles className="w-5 h-5 text-primary-foreground" />
-              </motion.div>
-              <span className="font-serif font-bold text-xl">PixelCraft</span>
-            </motion.div>
+            <div className="mb-4">
+              <img 
+                src={isDark ? duoLogoDark : duoLogoLight} 
+                alt="ML WebDesign"
+                className="h-10 w-auto object-contain"
+              />
+            </div>
             <p className="text-muted-foreground max-w-md mb-4">
               We create stunning, modern websites that help businesses grow online. 
-              Our team combines beautiful design with powerful functionality.
+              Our team at ML WebDesign combines beautiful design with powerful functionality.
             </p>
             <p className="text-sm text-muted-foreground">
               We work by invitation. Interested? Let's chat!
@@ -96,8 +96,8 @@ export function PublicFooter() {
                 transition={{ duration: 0.2 }}
               >
                 <Mail className="w-4 h-4" />
-                <a href="mailto:hello@pixelcraft.studio" className="hover:text-foreground transition-colors" data-testid="link-email">
-                  hello@pixelcraft.studio
+                <a href="mailto:hello@mlwebdesign.com" className="hover:text-foreground transition-colors" data-testid="link-email">
+                  hello@mlwebdesign.com
                 </a>
               </motion.li>
               <motion.li 
@@ -129,7 +129,7 @@ export function PublicFooter() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <p>&copy; {new Date().getFullYear()} PixelCraft Studio. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ML WebDesign. All rights reserved.</p>
         </motion.div>
       </div>
     </footer>

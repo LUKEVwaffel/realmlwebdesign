@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Sparkles, Loader2, Eye, EyeOff, Lock } from "lucide-react";
+import { Loader2, Eye, EyeOff, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,9 @@ import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { changePasswordSchema, type ChangePasswordInput } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useTheme } from "@/lib/theme-provider";
+import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
+import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
 
 export default function ChangePasswordPage() {
   const [, setLocation] = useLocation();
@@ -23,6 +26,8 @@ export default function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { user, updateUser, token } = useAuth();
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const form = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
@@ -72,10 +77,11 @@ export default function ChangePasswordPage() {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-serif font-bold text-xl">PixelCraft</span>
+            <img 
+              src={isDark ? duoLogoDark : duoLogoLight} 
+              alt="DUO by ML WebDesign"
+              className="h-10 w-auto object-contain"
+            />
           </div>
           <ThemeToggle />
         </div>

@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/lib/theme-provider";
+import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
+import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
 
 export function PublicNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -27,19 +32,14 @@ export function PublicNavbar() {
           <Link href="/">
             <motion.div 
               className="flex items-center gap-2 cursor-pointer"
-              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
             >
-              <motion.div 
-                className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"
-                whileHover={{ scale: 1.1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Sparkles className="w-5 h-5 text-primary-foreground" />
-              </motion.div>
-              <span className="font-serif font-bold text-xl" data-testid="text-logo">
-                PixelCraft
-              </span>
+              <img 
+                src={isDark ? duoLogoDark : duoLogoLight} 
+                alt="ML WebDesign"
+                className="h-10 w-auto object-contain"
+                data-testid="text-logo"
+              />
             </motion.div>
           </Link>
 

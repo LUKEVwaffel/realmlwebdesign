@@ -193,7 +193,7 @@ export default function AboutPage() {
                 viewport={{ once: true }}
               >
                 <motion.p variants={fadeInUp} transition={{ duration: 0.5 }}>
-                  PixelCraft was founded with a simple mission: to help businesses 
+                  ML WebDesign was founded with a simple mission: to help businesses 
                   thrive online through beautiful, functional websites.
                 </motion.p>
                 <motion.p variants={fadeInUp} transition={{ duration: 0.5 }}>

@@ -4,7 +4,7 @@ import { PortalSidebar } from "./portal-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth-context";
 import { Redirect } from "wouter";
-import { Loader2 } from "lucide-react";
+import { DuoLogoSpinner } from "@/components/duo-logo-spinner";
 
 interface PortalLayoutProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ export function PortalLayout({ children, requiredRole }: PortalLayoutProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <DuoLogoSpinner size="md" />
       </div>
     );
   }

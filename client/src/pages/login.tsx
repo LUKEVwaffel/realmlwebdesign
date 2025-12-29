@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Sparkles, Loader2, KeyRound, Shield, User, Delete, CheckCircle2, XCircle, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, KeyRound, Shield, User, Delete, CheckCircle2, XCircle, Lock } from "lucide-react";
+import { useTheme } from "@/lib/theme-provider";
+import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
+import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +19,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const adminUsers = [
-  { name: "Luke Vetsch", email: "luke@pixelcraft.com", initials: "LV" },
-  { name: "Makaio Roos", email: "makaio@pixelcraft.com", initials: "MR" },
+  { name: "Luke Vetsch", email: "luke@mlwebdesign.com", initials: "LV" },
+  { name: "Makaio Roos", email: "makaio@mlwebdesign.com", initials: "MR" },
 ];
 
 export default function LoginPage() {
@@ -34,6 +37,8 @@ export default function LoginPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -192,7 +197,7 @@ export default function LoginPage() {
         } catch {
           toast({
             title: "Account Closed",
-            description: "Your account has been closed. If you have questions, please contact us at hello@pixelcraft.design.",
+            description: "Your account has been closed. If you have questions, please contact us at hello@mlwebdesign.com.",
             variant: "default",
             duration: 10000,
           });
@@ -213,10 +218,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex flex-col">
       <header className="flex items-center justify-between p-4 sm:p-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <span className="font-serif font-bold text-2xl">PixelCraft</span>
+          <img 
+            src={isDark ? duoLogoDark : duoLogoLight} 
+            alt="DUO by ML WebDesign"
+            className="h-10 w-auto object-contain"
+          />
         </Link>
         <ThemeToggle />
       </header>
@@ -587,7 +593,7 @@ export default function LoginPage() {
       </main>
 
       <footer className="text-center p-4 text-sm text-muted-foreground">
-        <p>PixelCraft Design - Crafting Digital Excellence</p>
+        <p>DUO by ML WebDesign - Crafting Digital Excellence</p>
       </footer>
     </div>
   );

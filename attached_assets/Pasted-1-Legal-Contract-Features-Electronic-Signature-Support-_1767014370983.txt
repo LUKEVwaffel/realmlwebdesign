@@ -1,0 +1,149 @@
+1. Legal & Contract Features
+Electronic Signature Support
+
+What it is: Allows clients to sign TOS, quotes, and agreements digitally.
+
+How it works:
+
+Signature fields embedded in PDFs or forms.
+
+Each signature is timestamped to create an audit trail.
+
+Optional PDF copies saved for client and company records.
+
+Why it matters: Legally enforceable under U.S. law (E-SIGN Act + UETA) even if you’re an individual. Reduces paper handling and ensures acceptance is trackable.
+
+Quote & Contract Linking
+
+What it is: Approved quotes are stored and linked to the project.
+
+How it works:
+
+Approval in Duo automatically triggers the deposit/payment workflow.
+
+Keeps contracts attached for easy reference.
+
+Why it matters: Ensures all project documents are centrally stored and tied to the workflow, reducing disputes.
+
+Deposit & Payment Tracking
+
+What it is: Tracks deposits and final payments automatically.
+
+How it works:
+
+Payment confirmation required to move from Phase 3 → 4.
+
+Phase 4 auto-locks until payment clears.
+
+Why it matters: Protects you from delivering work without payment, and keeps the workflow consistent.
+
+Cancellation & Refund Logging
+
+What it is: Automatically logs cancellation requests.
+
+How it works:
+
+Captures timestamp of request.
+
+Calculates fees automatically ($75 processing, $150 mid-project fee).
+
+Why it matters: Provides a clear, auditable trail for refunds and fees, protecting both parties.
+
+Warranty Period Tracker
+
+What it is: Tracks the 25-day warranty for post-delivery support.
+
+How it works:
+
+Auto-starts countdown on final delivery.
+
+Sends automated reminder emails when warranty begins and ends.
+
+Why it matters: Keeps clients informed and ensures you honor your warranty without manual tracking.
+
+2. Workflow & Project Management
+Phase Milestone Timestamps
+
+What it is: Automatic logging of each phase status change.
+
+Why it matters: Generates accurate timelines for reporting and analytics, prevents disputes over delays.
+
+Revision Requests
+
+What it is: Captures client requests during Phase 7 (client review).
+
+How it works:
+
+Tag requests as “minor” (warranty-covered) or “major” (out-of-scope).
+
+Why it matters: Helps manage scope creep and ensures warranty terms are followed.
+
+On-Hold Notes
+
+What it is: Tracks reasons for project pauses.
+
+Why it matters: Keeps team and client aligned on resumption dates and expectations.
+
+Automated Notifications
+
+What it is: Sends emails when client action or internal action is required.
+
+Why it matters: Ensures deadlines and approvals aren’t missed.
+
+Progress Indicators
+
+What it is: Shows % completion per project or phase.
+
+Why it matters: Provides transparency for clients and internal tracking.
+
+3. Client Communication & Support
+
+Document/Resource Library
+
+What it is: Central location for PDFs, guides, TOS, and instructions.
+
+Why it matters: Clients have self-serve access, reducing repetitive questions.
+
+Automated Monthly/Quarterly Check-ins
+
+What it is: Automated emails regarding hosting, domain renewal, or support queries.
+
+Why it matters: Keeps clients informed and prevents accidental service lapses.
+
+4. Payment & Invoicing Features
+Partial / Full Payment Options
+
+What it is: Supports 50% deposit or full payment workflows.
+
+Why it matters: Flexible payment processing while protecting your cash flow.
+
+Payment Status Tracking
+
+What it is: Shows “Pending,” “Cleared,” or “Failed” for each payment.
+
+Why it matters: Allows your team and clients to see the payment state at a glance.
+
+Automated Invoice Generation
+
+What it is: Generates PDF invoices when quotes are approved or payments received.
+
+Why it matters: Streamlines bookkeeping and provides official records for clients.
+
+5. Reporting & Analytics
+Phase Completion Reports
+
+What it is: Exportable timelines showing approval, payment, and milestone dates.
+
+Why it matters: Helps in client reporting and internal project audits.
+
+Revenue Tracking
+
+What it is: Compares deposits received vs. final payments.
+
+Why it matters: Ensures financial visibility for your projects.
+
+Warranty / Support Logs
+
+What it is: Tracks which clients are under warranty and any minor changes made.
+
+Why it matters: Maintains accountability and prevents disputes over warranty coverage.

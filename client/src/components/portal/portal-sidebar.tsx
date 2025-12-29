@@ -6,7 +6,6 @@ import {
   Upload,
   Settings, 
   LogOut,
-  Sparkles,
   Users,
   BarChart3,
   ChevronDown,
@@ -15,6 +14,9 @@ import {
   HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-provider";
+import duoLogoLight from "@assets/ChatGPT_Image_Dec_29,_2025,_07_49_10_AM_1767014379495.png";
+import duoLogoDark from "@assets/ChatGPT_Image_Dec_29,_2025,_07_56_01_AM_1767014379497.png";
 import {
   Sidebar,
   SidebarContent,
@@ -57,6 +59,8 @@ const adminNavItems = [
 export function PortalSidebar() {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const isAdmin = user?.role === "admin";
   const navItems = isAdmin ? adminNavItems : clientNavItems;
@@ -75,12 +79,11 @@ export function PortalSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-sidebar-primary-foreground" />
-          </div>
-          <span className="font-serif font-bold text-lg text-sidebar-foreground">
-            PixelCraft
-          </span>
+          <img 
+            src={isDark ? duoLogoDark : duoLogoLight} 
+            alt="DUO by ML WebDesign"
+            className="h-8 w-auto object-contain"
+          />
         </Link>
       </SidebarHeader>
 
