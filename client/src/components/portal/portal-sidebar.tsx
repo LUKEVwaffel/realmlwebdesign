@@ -39,11 +39,7 @@ const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
   { title: "Tutorial", url: "/client/tutorial", icon: HelpCircle },
   { title: "Questionnaire", url: "/client/questionnaire", icon: ClipboardList },
-  { title: "Quotes", url: "/client/quotes", icon: Receipt },
-  { title: "Payments", url: "/client/payments", icon: CreditCard },
-  { title: "Documents", url: "/client/documents", icon: FileText },
   { title: "Uploads", url: "/client/uploads", icon: Upload },
-  { title: "Settings", url: "/client/settings", icon: Settings },
 ];
 
 const adminNavItems = [

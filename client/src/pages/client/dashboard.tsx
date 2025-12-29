@@ -351,46 +351,6 @@ function NextActionCard({ action, isLoading }: { action: ReturnType<typeof getNe
   );
 }
 
-function QuickLinkCard({ 
-  icon: Icon, 
-  title, 
-  description, 
-  href, 
-  badge 
-}: { 
-  icon: any; 
-  title: string; 
-  description: string; 
-  href: string; 
-  badge?: string;
-}) {
-  return (
-    <motion.div variants={fadeInUp}>
-      <Link href={href}>
-        <Card className="hover-elevate cursor-pointer h-full transition-all duration-200">
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium">{title}</h3>
-                  {badge && (
-                    <Badge variant="secondary" className="text-xs">{badge}</Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
-    </motion.div>
-  );
-}
-
 function ActivityItem({ activity, index }: { activity: any; index: number }) {
   return (
     <motion.div
@@ -688,31 +648,6 @@ export default function ClientDashboard() {
           </motion.div>
         )}
 
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          variants={staggerContainer}
-        >
-          <QuickLinkCard
-            icon={FileText}
-            title="Documents"
-            description="View contracts and agreements"
-            href="/client/documents"
-            badge={unsignedDocuments.length > 0 ? `${unsignedDocuments.length} pending` : undefined}
-          />
-          <QuickLinkCard
-            icon={CreditCard}
-            title="Payments"
-            description="View invoices and payment history"
-            href="/client/payments"
-            badge={pendingPayments.length > 0 ? `${pendingPayments.length} due` : undefined}
-          />
-          <QuickLinkCard
-            icon={MessageSquare}
-            title="Messages"
-            description="Contact our team"
-            href="/client/messages"
-          />
-        </motion.div>
 
         <motion.div variants={fadeInUp}>
           <Card className="border-border/50">
