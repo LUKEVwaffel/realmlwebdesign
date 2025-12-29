@@ -216,14 +216,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex flex-col">
-      <header className="flex items-center justify-between p-4 sm:p-6">
-        <Link href="/" className="flex items-center gap-2">
-          <img 
-            src={isDark ? duoLogoDark : duoLogoLight} 
-            alt="DUO by ML WebDesign"
-            className="h-10 w-auto object-contain"
-          />
-        </Link>
+      <header className="flex items-center justify-end p-4 sm:p-6">
         <ThemeToggle />
       </header>
 
@@ -234,7 +227,7 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Sign in to your portal</p>
           </div>
 
-          <Tabs defaultValue="admin" className="w-full">
+          <Tabs defaultValue="client" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="admin" className="gap-2" data-testid="tab-admin-login">
                 <Shield className="w-4 h-4" />
