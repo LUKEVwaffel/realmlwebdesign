@@ -12,21 +12,51 @@ export const priorityEnum = pgEnum("priority", ["high", "normal", "low"]);
 export const projectTypeEnum = pgEnum("project_type", ["new_website", "redesign", "landing_page", "ecommerce", "other"]);
 export const paymentStructureEnum = pgEnum("payment_structure", ["50_50", "custom", "full_upfront"]);
 export const projectStatusEnum = pgEnum("project_status", [
-  "created",                    // Phase 1: Client created, awaiting questionnaire
-  "questionnaire_pending",      // Phase 2: Awaiting client questionnaire
-  "questionnaire_complete",     // Phase 2 complete: Questionnaire submitted
-  "tos_pending",               // Phase 3: Terms of Service awaiting signature
-  "tos_signed",                // Phase 3 complete: TOS signed
-  "design_pending",            // Phase 4: Design consultation pending
-  "design_approved",           // Phase 4 complete: Design requirements approved
-  "in_development",            // Phase 5: Website being built
-  "hosting_setup",             // Phase 6: Hosting account setup
-  "deployed",                  // Phase 6 complete: Website deployed
-  "delivery",                  // Phase 7: Final delivery and handoff
-  "client_review",             // Phase 7: Final review by client
-  "completed",                 // Phase 8: Project completed
-  "on_hold",                   // Paused
-  "cancelled"                  // Cancelled
+  // Phase 1: Client Onboarding
+  "draft",                      // Phase 1: Admin created client, not yet sent welcome email
+  "created",                    // Phase 1: Client account created, welcome email sent
+  
+  // Phase 2: Client Questionnaire
+  "questionnaire_pending",      // Phase 2: Waiting for client to complete questionnaire
+  "questionnaire_complete",     // Phase 2: Client completed questionnaire
+  
+  // Phase 3: Quote & Agreement
+  "quote_draft",               // Phase 3: Admin is drafting quote
+  "quote_sent",                // Phase 3: Quote sent to client
+  "quote_approved",            // Phase 3: Client approved quote, awaiting TOS + deposit
+  "tos_pending",               // Phase 3: Awaiting TOS signature
+  "tos_signed",                // Phase 3: TOS signed, awaiting deposit
+  "deposit_pending",           // Phase 3: Awaiting 50% deposit payment
+  "deposit_paid",              // Phase 3: 50% deposit received - Phase 3 complete
+  
+  // Phase 4: Design Consultation
+  "design_pending",            // Phase 4: Awaiting design template selection
+  "design_sent",               // Phase 4: Admin sent design options to client
+  "design_approved",           // Phase 4: Client approved design - Phase 4 complete
+  
+  // Phase 5: Website Development
+  "in_development",            // Phase 5: Website actively being built
+  
+  // Phase 6: Ready for Review
+  "ready_for_review",          // Phase 6: Development complete, ready for client preview
+  
+  // Phase 7: Client Review & Delivery
+  "client_review",             // Phase 7: Client reviewing the site
+  "revisions_pending",         // Phase 7: Client requested revisions
+  "revisions_complete",        // Phase 7: All revisions done
+  "awaiting_final_payment",    // Phase 7: Awaiting 50% final payment
+  "payment_complete",          // Phase 7: Final payment received
+  
+  // Phase 7A: Hosting & Domain Setup
+  "hosting_setup_pending",     // Phase 7A: Awaiting client hosting credentials
+  "hosting_configured",        // Phase 7A: Hosting configured, ready for final delivery
+  
+  // Final
+  "completed",                 // Project fully delivered
+  
+  // Special States
+  "on_hold",                   // Project paused
+  "cancelled"                  // Project cancelled
 ]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "overdue", "cancelled", "failed", "refunded"]);
 export const paymentTypeEnum = pgEnum("payment_type", ["deposit", "milestone", "final", "addon", "revision", "other"]);
@@ -237,6 +267,35 @@ export const projects = pgTable("projects", {
   onHoldAt: timestamp("on_hold_at"),
   resumptionDate: date("resumption_date"),
   onHoldByUserId: varchar("on_hold_by_user_id", { length: 36 }),
+  
+  // Phase 4: Design Template Selection
+  designTemplateUrls: text("design_template_urls").array(),  // Array of 4 template screenshot URLs
+  designTemplatesSentAt: timestamp("design_templates_sent_at"),
+  selectedTemplateIndex: integer("selected_template_index"),  // Which template client selected (0-3)
+  selectedTemplateUrl: varchar("selected_template_url", { length: 500 }),
+  
+  // Phase 5: Development
+  stagingUrl: varchar("staging_url", { length: 500 }),
+  developmentProgress: integer("development_progress").default(0),  // 0-100%
+  developmentNotes: text("development_notes"),
+  websitePlatform: varchar("website_platform", { length: 50 }),  // wix, shopify, custom
+  
+  // Phase 7A: Hosting Setup
+  hostingProvider: varchar("hosting_provider", { length: 100 }),  // hostinger, etc.
+  hostingCredentialsReceived: boolean("hosting_credentials_received").default(false),
+  hostingCredentialsReceivedAt: timestamp("hosting_credentials_received_at"),
+  domainConnected: boolean("domain_connected").default(false),
+  sslConfigured: boolean("ssl_configured").default(false),
+  dnsConfigured: boolean("dns_configured").default(false),
+  hostingNotes: text("hosting_notes"),
+  
+  // Final Delivery Checklist
+  liveSiteTested: boolean("live_site_tested").default(false),
+  domainResolving: boolean("domain_resolving").default(false),
+  allLinksFunctional: boolean("all_links_functional").default(false),
+  seoBasicsConfigured: boolean("seo_basics_configured").default(false),
+  credentialsCompiled: boolean("credentials_compiled").default(false),
+  deliveredAt: timestamp("delivered_at"),
   
   // Portfolio display
   visibleOnPortfolio: boolean("visible_on_portfolio").default(false),

@@ -11,7 +11,9 @@ import {
   Users,
   Globe,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  PlayCircle,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -454,7 +456,7 @@ export default function AdminClients() {
                         key={client.id} 
                         data-testid={`client-row-${client.id}`}
                         className="cursor-pointer hover-elevate"
-                        onClick={() => window.location.href = `/admin/clients/${client.id}`}
+                        onClick={() => window.location.href = `/admin/clients/${client.id}/workflow`}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -491,21 +493,45 @@ export default function AdminClients() {
                           {client.createdAt ? format(new Date(client.createdAt), "MMM d, yyyy") : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setClientToDelete({ 
-                                id: client.id, 
-                                name: client.businessLegalName 
-                              });
-                            }}
-                            data-testid={`button-delete-client-${client.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Link href={`/admin/clients/${client.id}/workflow`}>
+                              <Button 
+                                variant="default"
+                                size="sm"
+                                className="gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                                data-testid={`button-workflow-${client.id}`}
+                              >
+                                <PlayCircle className="w-3 h-3" />
+                                Workflow
+                              </Button>
+                            </Link>
+                            <Link href={`/admin/clients/${client.id}`}>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                                data-testid={`button-details-${client.id}`}
+                              >
+                                <Settings className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setClientToDelete({ 
+                                  id: client.id, 
+                                  name: client.businessLegalName 
+                                });
+                              }}
+                              data-testid={`button-delete-client-${client.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

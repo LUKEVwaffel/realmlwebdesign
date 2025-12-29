@@ -28,6 +28,7 @@ import ClientTutorial from "@/pages/client/tutorial";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminClients from "@/pages/admin/clients";
 import AdminClientDetails from "@/pages/admin/client-details";
+import ProjectWorkflow from "@/pages/admin/project-workflow";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminAnalyticsPage from "@/pages/admin/admin-analytics";
 import AdminSettings from "@/pages/admin/settings";
@@ -59,6 +60,7 @@ function Router() {
       
       {/* Admin Portal Routes */}
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/clients/:id/workflow" component={ProjectWorkflow} />
       <Route path="/admin/clients/:id" component={AdminClientDetails} />
       <Route path="/admin/clients" component={AdminClients} />
       <Route path="/admin/analytics/:adminId" component={AdminAnalyticsPage} />

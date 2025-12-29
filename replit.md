@@ -112,16 +112,26 @@ Preferred communication style: Simple, everyday language.
 - API routes: POST /api/admin/projects/:id/cancel, PATCH /api/admin/cancellations/:id/refund
 - Activity logging for cancellations and refund processing
 
-### 7-Phase Development Process
+### 7-Phase Development Process (Iron-Clad Workflow)
+The workflow is gated - admins cannot skip phases without PIN verification.
+
 | Phase | Status Values | Description |
 |-------|---------------|-------------|
-| Phase 1 | `created` | **Client Onboarding** - Admin creates client account, fills out basic business/contact info |
-| Phase 2 | `questionnaire_pending` → `questionnaire_complete` | **Client Questionnaire** - Client fills out project questionnaire (goals, style preferences, content needs) |
-| Phase 3 | `quote_sent` → `quote_approved` | **Quote & Agreement** - Admin sends quote, client approves/rejects. Upon approval: TOS signed + 50% deposit paid |
-| Phase 4 | `design_pending` → `design_approved` | **Design Consultation** - Design requirements finalized and approved by client |
-| Phase 5 | `in_development` | **Website Development** - Website actively being built on staging environment |
-| Phase 6 | `ready_for_review` | **Ready for Review** - Development complete, ready for client preview on staging |
-| Phase 7 | `client_review` → `completed` | **Client Review & Delivery** - Client reviews, requests revisions within warranty, final approval, 50% payment, then credentials handed over |
+| Phase 1 | `draft` → `created` | **Client Onboarding** - Admin creates client, sends welcome email with questionnaire link |
+| Phase 2 | `questionnaire_pending` → `questionnaire_complete` | **Client Questionnaire** - Client fills out project questionnaire (waiting phase for admin) |
+| Phase 3 | `quote_draft` → `quote_sent` → `quote_approved` → `tos_pending` → `tos_signed` → `deposit_pending` → `deposit_paid` | **Quote & Agreement** - 3-tier quote (Basic/Advanced/Ecommerce), TOS signature, 50% deposit |
+| Phase 4 | `design_pending` → `design_sent` → `design_approved` | **Design** - Admin uploads 4 template screenshots, client selects one |
+| Phase 5 | `in_development` | **Website Development** - Building on Wix/Shopify, staging URL, progress tracking |
+| Phase 6 | `ready_for_review` | **Ready for Review** - QA checklist, send staging link to client |
+| Phase 7 | `client_review` → `revisions_pending` → `revisions_complete` → `awaiting_final_payment` → `payment_complete` | **Client Review & Delivery** - Revisions, final 50% payment |
+| Phase 7A | `hosting_setup_pending` → `hosting_configured` → `completed` | **Hosting & Domain** - Client provides Hostinger credentials, admin configures DNS/SSL, final delivery |
+
+### Workflow UI Features
+- Phase timeline with visual progress indicator
+- Each phase shows only relevant tools/actions
+- PIN verification modal for skipping phases
+- Animated transitions between phases
+- Status badges with color coding
 
 ### Progress Tracking
 - Automatic progress calculation based on project status
