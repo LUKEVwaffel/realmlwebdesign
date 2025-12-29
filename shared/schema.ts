@@ -76,6 +76,7 @@ export const documentTypeEnum = pgEnum("document_type", [
 ]);
 export const signatureTypeEnum = pgEnum("signature_type", ["drawn", "typed"]);
 export const senderTypeEnum = pgEnum("sender_type", ["admin", "client"]);
+export const messageCategoryEnum = pgEnum("message_category", ["general", "development_feedback", "revision_request", "support"]);
 export const siteTypeEnum = pgEnum("site_type", ["business", "portfolio", "ecommerce", "blog", "landing_page", "nonprofit", "restaurant", "real_estate", "other"]);
 export const designStyleEnum = pgEnum("design_style", ["modern", "minimal", "bold", "elegant", "playful", "corporate", "creative", "classic"]);
 export const uploadCategoryEnum = pgEnum("upload_category", ["logo", "brand_assets", "photos", "content", "documents", "inspiration", "other"]);
@@ -454,6 +455,9 @@ export const messages = pgTable("messages", {
   // Status
   isRead: boolean("is_read").default(false),
   readAt: timestamp("read_at"),
+  
+  // Category for filtering (e.g., development_feedback)
+  category: messageCategoryEnum("category").default("general"),
   
   // Metadata
   createdAt: timestamp("created_at").defaultNow(),
