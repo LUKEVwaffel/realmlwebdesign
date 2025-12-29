@@ -1305,7 +1305,12 @@ function Phase5Content({ client, project, onAdvancePhase, onUpdateProject, isUpd
               data-testid="input-staging-url"
             />
             {stagingUrl && (
-              <a href={stagingUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+              <a 
+                href={stagingUrl.startsWith('http') ? stagingUrl : `https://${stagingUrl}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sm text-primary hover:underline"
+              >
                 Open staging site
               </a>
             )}
@@ -1394,7 +1399,7 @@ function Phase6Content({ client, project, onAdvancePhase, onSendReminder, isUpda
                 <p className="text-sm font-medium">Staging URL</p>
                 <p className="text-sm text-muted-foreground">{project.stagingUrl}</p>
               </div>
-              <a href={project.stagingUrl} target="_blank" rel="noopener noreferrer">
+              <a href={project.stagingUrl.startsWith('http') ? project.stagingUrl : `https://${project.stagingUrl}`} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm" className="gap-2">
                   <ExternalLink className="w-4 h-4" />
                   Preview
