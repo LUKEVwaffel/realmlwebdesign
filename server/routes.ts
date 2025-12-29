@@ -1755,6 +1755,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
       }
       const { status } = parsed.data;
+      const { onHoldReason, resumptionDate } = req.body;
 
       const existingProject = await storage.getProject(id);
       if (!existingProject) {
@@ -1780,6 +1781,20 @@ export async function registerRoutes(
         updateData.warrantyEndDate = warrantyEnd;
         updateData.warrantyReminderSent = false;
         updateData.warrantyExpiryNotified = false;
+      }
+      
+      // Handle on-hold status with notes and resumption date
+      if (status === "on_hold") {
+        updateData.onHoldReason = onHoldReason || null;
+        updateData.onHoldAt = new Date();
+        updateData.onHoldByUserId = req.user!.id;
+        updateData.resumptionDate = resumptionDate || null;
+      } else if (oldStatus === "on_hold" && status !== "on_hold") {
+        // Resuming from on-hold - clear on-hold fields
+        updateData.onHoldReason = null;
+        updateData.onHoldAt = null;
+        updateData.onHoldByUserId = null;
+        updateData.resumptionDate = null;
       }
 
       const project = await storage.updateProject(id, updateData);

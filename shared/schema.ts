@@ -230,6 +230,12 @@ export const projects = pgTable("projects", {
   warrantyExpiryNotified: boolean("warranty_expiry_notified").default(false),
   warrantyNotes: text("warranty_notes"),
   
+  // On-Hold Tracking
+  onHoldReason: text("on_hold_reason"),
+  onHoldAt: timestamp("on_hold_at"),
+  resumptionDate: date("resumption_date"),
+  onHoldByUserId: varchar("on_hold_by_user_id", { length: 36 }),
+  
   // Portfolio display
   visibleOnPortfolio: boolean("visible_on_portfolio").default(false),
   portfolioImage: varchar("portfolio_image", { length: 500 }),

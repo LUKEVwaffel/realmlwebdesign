@@ -85,6 +85,12 @@ Preferred communication style: Simple, everyday language.
 - Tracks estimated hours and additional costs for major revisions
 - Authorization ensures clients can only request revisions for their own projects
 
+### On-Hold Tracking
+- Projects can be put on hold with reason notes and expected resumption date
+- On-hold fields: onHoldReason, onHoldAt, resumptionDate, onHoldByUserId
+- When resuming from on-hold, all on-hold fields are automatically cleared
+- Status changes via PATCH /api/admin/projects/:id/status support onHoldReason and resumptionDate params
+
 ## External Dependencies
 
 ### Payment Processing
