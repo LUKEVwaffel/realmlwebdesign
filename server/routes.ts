@@ -105,6 +105,8 @@ const updateProjectStatusSchema = z.object({
 
 const sendMessageSchema = z.object({
   messageText: z.string().min(1, "Message cannot be empty"),
+  category: z.enum(["general", "development_feedback", "revision_request", "support"]).optional().default("general"),
+  projectId: z.string().optional(),
 });
 
 const updateProfileSchema = z.object({
@@ -708,7 +710,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
       }
-      const { messageText } = parsed.data;
+      const { messageText, category, projectId } = parsed.data;
       const client = await storage.getClientByUserId(req.user!.id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -716,9 +718,11 @@ export async function registerRoutes(
 
       const message = await storage.createMessage({
         clientId: client.id,
+        projectId: projectId || undefined,
         senderId: req.user!.id,
         senderType: "client",
         messageText,
+        category: category || "general",
       });
 
       // Send real-time WebSocket notification to admins
@@ -3848,6 +3852,44 @@ export async function registerRoutes(
       res.json(resourceList);
     } catch (error) {
       console.error("Get client resources error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ PROJECT MESSAGES / FEEDBACK ROUTES ============
+  
+  // Get messages for a project (admin) - optionally filter by category
+  app.get("/api/admin/projects/:id/messages", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { category } = req.query;
+      
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Get all messages for the client associated with this project
+      const allMessages = await storage.getMessagesByClientId(project.clientId);
+      
+      // Filter by project and optionally by category
+      let projectMessages = allMessages.filter(m => m.projectId === id);
+      if (category && typeof category === "string") {
+        projectMessages = projectMessages.filter(m => m.category === category);
+      }
+      
+      // Enrich with sender info
+      const enrichedMessages = await Promise.all(projectMessages.map(async (msg) => {
+        const sender = await storage.getUser(msg.senderId);
+        return {
+          ...msg,
+          senderName: sender ? `${sender.firstName} ${sender.lastName}` : "Unknown",
+        };
+      }));
+      
+      res.json(enrichedMessages);
+    } catch (error) {
+      console.error("Get project messages error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

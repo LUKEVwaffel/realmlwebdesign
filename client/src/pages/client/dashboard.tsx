@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -20,15 +21,20 @@ import {
   FileText,
   MessageSquare,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Send,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { useAuth } from "@/lib/auth-context";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 
 const fadeInUp = {
@@ -404,6 +410,86 @@ function ActivityItem({ activity, index }: { activity: any; index: number }) {
   );
 }
 
+function DevelopmentFeedbackPanel({ projectId }: { projectId: string }) {
+  const [feedback, setFeedback] = useState("");
+  const { toast } = useToast();
+
+  const sendFeedbackMutation = useMutation({
+    mutationFn: async (data: { messageText: string; category: string; projectId: string }) => {
+      const res = await apiRequest("POST", "/api/client/messages", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setFeedback("");
+      queryClient.invalidateQueries({ queryKey: ["/api/client/messages"] });
+      toast({
+        title: "Feedback sent",
+        description: "Your feedback has been sent to the development team.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to send feedback",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!feedback.trim()) return;
+    sendFeedbackMutation.mutate({
+      messageText: feedback.trim(),
+      category: "development_feedback",
+      projectId,
+    });
+  };
+
+  return (
+    <motion.div variants={fadeInUp}>
+      <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 via-background to-blue-500/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Share Your Thoughts</CardTitle>
+              <CardDescription>
+                Have feedback during development? Let us know here.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            placeholder="Share any ideas, concerns, or feedback about your website development..."
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            className="min-h-[100px] resize-none"
+            data-testid="input-development-feedback"
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSubmit}
+              disabled={!feedback.trim() || sendFeedbackMutation.isPending}
+              className="gap-2"
+              data-testid="button-send-feedback"
+            >
+              {sendFeedbackMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Send Feedback
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function ClientDashboard() {
   const { user } = useAuth();
 
@@ -535,6 +621,10 @@ export default function ClientDashboard() {
         )}
 
         <NextActionCard action={nextAction} isLoading={isLoading} />
+
+        {project?.status === "in_development" && project?.id && (
+          <DevelopmentFeedbackPanel projectId={project.id} />
+        )}
 
         {project?.status === "completed" && warranty && !warranty.isExpired && (
           <motion.div variants={fadeInUp}>
