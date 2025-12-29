@@ -23,7 +23,11 @@ import {
   ExternalLink,
   Sparkles,
   Send,
-  Loader2
+  Loader2,
+  RefreshCw,
+  ThumbsUp,
+  ThumbsDown,
+  DollarSign
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -137,12 +141,46 @@ const getNextAction = (status: string, hasUnsignedDocs: boolean, hasPendingPayme
   if (status === "client_review") {
     return {
       title: "Review Your Website",
-      description: "Your website is ready for review! Take a look and let us know if you need any changes.",
-      buttonText: "Send Feedback",
-      href: "/client/documents",
+      description: "Your website is ready for review! Take a look and let us know what you think.",
+      buttonText: "Review Now",
+      href: "/client/dashboard",
       icon: Eye,
       priority: "high",
       pulse: true
+    };
+  }
+
+  if (status === "revisions_pending" || status === "revisions_complete") {
+    return {
+      title: "Revisions In Progress",
+      description: "We're working on the changes you requested. We'll notify you when they're ready.",
+      buttonText: "View Progress",
+      href: "/client/dashboard",
+      icon: RefreshCw,
+      priority: "medium"
+    };
+  }
+
+  if (status === "awaiting_final_payment") {
+    return {
+      title: "Final Payment Required",
+      description: "Your website is approved and ready! Complete your final payment to receive your website.",
+      buttonText: "Pay Now",
+      href: "/client/dashboard",
+      icon: CreditCard,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "payment_complete" || status === "hosting_setup_pending" || status === "hosting_configured") {
+    return {
+      title: "Setting Up Your Website",
+      description: "Payment received! We're finalizing your website setup and will deliver it soon.",
+      buttonText: "View Status",
+      href: "/client/dashboard",
+      icon: Rocket,
+      priority: "medium"
     };
   }
 
@@ -450,6 +488,230 @@ function DevelopmentFeedbackPanel({ projectId }: { projectId: string }) {
   );
 }
 
+function WebsiteReviewPanel({ project, onApprove, onRequestChanges, isApproving }: { 
+  project: any; 
+  onApprove: () => void; 
+  onRequestChanges: () => void;
+  isApproving: boolean;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const { toast } = useToast();
+
+  const sendFeedbackMutation = useMutation({
+    mutationFn: async (data: { messageText: string; category: string; projectId: string }) => {
+      const res = await apiRequest("POST", "/api/client/messages", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setFeedback("");
+      queryClient.invalidateQueries({ queryKey: ["/api/client/messages"] });
+      toast({
+        title: "Feedback sent",
+        description: "Your feedback has been sent to the team.",
+      });
+    },
+  });
+
+  const handleRequestChanges = () => {
+    if (feedback.trim()) {
+      sendFeedbackMutation.mutate({
+        messageText: feedback.trim(),
+        category: "development_feedback",
+        projectId: project.id,
+      });
+    }
+    onRequestChanges();
+  };
+
+  return (
+    <motion.div variants={fadeInUp}>
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/5 overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <motion.div 
+              className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+            >
+              <Eye className="w-6 h-6 text-primary" />
+            </motion.div>
+            <div>
+              <CardTitle className="text-xl">Your Website is Ready for Review!</CardTitle>
+              <CardDescription>
+                Take a look at your website and let us know what you think.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {project.stagingUrl && (
+            <div className="p-4 rounded-lg bg-muted/50 border">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="font-medium">Preview Your Website</p>
+                  <p className="text-sm text-muted-foreground">Click to open your website in a new tab</p>
+                </div>
+                <a 
+                  href={project.stagingUrl.startsWith('http') ? project.stagingUrl : `https://${project.stagingUrl}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" className="gap-2" data-testid="button-preview-website">
+                    <ExternalLink className="w-4 h-4" />
+                    Open Website
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Have any feedback or changes?</p>
+            <Textarea
+              placeholder="Let us know if there's anything you'd like us to change..."
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              className="min-h-[80px] resize-none"
+              data-testid="input-review-feedback"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={handleRequestChanges}
+              disabled={isApproving || sendFeedbackMutation.isPending}
+              data-testid="button-request-changes"
+            >
+              <ThumbsDown className="w-4 h-4" />
+              Request Changes
+            </Button>
+            <Button
+              className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+              onClick={onApprove}
+              disabled={isApproving}
+              data-testid="button-approve-website"
+            >
+              {isApproving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ThumbsUp className="w-4 h-4" />
+              )}
+              I Love It - Approve & Pay
+            </Button>
+          </div>
+          <p className="text-xs text-center text-muted-foreground">
+            Approving will move you to final payment to receive your completed website.
+          </p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function PendingPaymentsPanel({ payments }: { payments: any[] }) {
+  if (payments.length === 0) return null;
+
+  return (
+    <motion.div variants={fadeInUp}>
+      <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Payments Due</CardTitle>
+              <CardDescription>
+                You have {payments.length} payment{payments.length !== 1 ? 's' : ''} waiting
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {payments.map((payment: any) => (
+            <div 
+              key={payment.id} 
+              className="flex items-center justify-between p-4 rounded-lg bg-background border"
+              data-testid={`payment-item-${payment.id}`}
+            >
+              <div>
+                <p className="font-medium capitalize">{payment.paymentType?.replace('_', ' ') || 'Payment'}</p>
+                <p className="text-sm text-muted-foreground">
+                  Due: {payment.dueDate ? format(new Date(payment.dueDate), 'MMM d, yyyy') : 'Soon'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold">${parseFloat(payment.amount || 0).toFixed(2)}</span>
+                {payment.stripePaymentUrl ? (
+                  <a href={payment.stripePaymentUrl} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" className="gap-2" data-testid={`button-pay-${payment.id}`}>
+                      <CreditCard className="w-4 h-4" />
+                      Pay Now
+                    </Button>
+                  </a>
+                ) : (
+                  <Badge variant="secondary">Invoice Pending</Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function PendingDocumentsPanel({ documents }: { documents: any[] }) {
+  if (documents.length === 0) return null;
+
+  return (
+    <motion.div variants={fadeInUp}>
+      <Card className="border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-blue-500/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <FileSignature className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Documents Requiring Signature</CardTitle>
+              <CardDescription>
+                Please review and sign {documents.length} document{documents.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {documents.map((doc: any) => (
+            <div 
+              key={doc.id} 
+              className="flex items-center justify-between p-4 rounded-lg bg-background border"
+              data-testid={`document-item-${doc.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{doc.documentName || doc.documentType}</p>
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {doc.documentType?.replace('_', ' ')}
+                  </p>
+                </div>
+              </div>
+              <Link href="/client/documents">
+                <Button size="sm" className="gap-2" data-testid={`button-sign-${doc.id}`}>
+                  <FileSignature className="w-4 h-4" />
+                  Review & Sign
+                </Button>
+              </Link>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function ClientDashboard() {
   const { user } = useAuth();
 
@@ -488,6 +750,49 @@ export default function ClientDashboard() {
     unsignedDocuments.length > 0, 
     pendingPayments.length > 0
   ) : null;
+  const { toast } = useToast();
+
+  const approveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/client/projects/${project?.id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      toast({
+        title: "Website Approved!",
+        description: "Great choice! You'll now proceed to final payment.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Approval failed",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const requestChangesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/client/projects/${project?.id}/request-changes`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      toast({
+        title: "Revision request sent",
+        description: "We'll get started on the changes right away.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Request failed",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <PortalLayout requiredRole="client">
@@ -582,9 +887,26 @@ export default function ClientDashboard() {
 
         <NextActionCard action={nextAction} isLoading={isLoading} />
 
-        {(project?.status === "client_review" || project?.status === "revisions_pending" || project?.status === "revisions_complete") && project?.id && (
+        {/* Website Review Panel - for client_review status */}
+        {project?.status === "client_review" && project?.id && (
+          <WebsiteReviewPanel 
+            project={project}
+            onApprove={() => approveMutation.mutate()}
+            onRequestChanges={() => requestChangesMutation.mutate()}
+            isApproving={approveMutation.isPending}
+          />
+        )}
+
+        {/* Feedback panel for revisions phase */}
+        {(project?.status === "revisions_pending" || project?.status === "revisions_complete") && project?.id && (
           <DevelopmentFeedbackPanel projectId={project.id} />
         )}
+
+        {/* Pending Payments Panel */}
+        <PendingPaymentsPanel payments={pendingPayments} />
+
+        {/* Pending Documents Panel */}
+        <PendingDocumentsPanel documents={unsignedDocuments} />
 
         {project?.status === "completed" && warranty && !warranty.isExpired && (
           <motion.div variants={fadeInUp}>

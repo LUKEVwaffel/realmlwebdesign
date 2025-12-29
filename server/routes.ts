@@ -3624,6 +3624,82 @@ export async function registerRoutes(
     }
   });
 
+  // Client approves website and moves to awaiting_final_payment
+  app.post("/api/client/projects/:id/approve", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.user!.id);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const project = await storage.getProject(id);
+      if (!project || project.clientId !== client.id) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      if (project.status !== "client_review") {
+        return res.status(400).json({ error: "Project is not in review status" });
+      }
+      
+      // Update project status to awaiting_final_payment
+      await storage.updateProject(id, { status: "awaiting_final_payment" });
+      
+      // Log activity
+      await storage.createActivityLog({
+        clientId: client.id,
+        userId: req.user!.id,
+        action: "project_approved",
+        description: "Client approved website design",
+        metadata: { projectId: id },
+      });
+      
+      res.json({ success: true, message: "Website approved! Proceeding to final payment." });
+    } catch (error) {
+      console.error("Client approve project error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Client requests changes - moves to revisions_pending
+  app.post("/api/client/projects/:id/request-changes", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.user!.id);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const project = await storage.getProject(id);
+      if (!project || project.clientId !== client.id) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      if (project.status !== "client_review") {
+        return res.status(400).json({ error: "Project is not in review status" });
+      }
+      
+      // Update project status to revisions_pending
+      await storage.updateProject(id, { status: "revisions_pending" });
+      
+      // Log activity
+      await storage.createActivityLog({
+        clientId: client.id,
+        userId: req.user!.id,
+        action: "revisions_requested",
+        description: "Client requested website revisions",
+        metadata: { projectId: id },
+      });
+      
+      res.json({ success: true, message: "Revision request submitted. We'll get to work on the changes." });
+    } catch (error) {
+      console.error("Client request changes error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ CANCELLATION ROUTES ============
   
   // Get all cancellations (admin)
