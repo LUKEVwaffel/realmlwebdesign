@@ -40,6 +40,7 @@ export const documentTypeEnum = pgEnum("document_type", [
   "design_requirements",   // Design consultation document
   "hosting_instructions",  // Hosting setup guide
   "completion_document",   // Final project completion doc
+  "resource",              // Global resource library item (guides, PDFs, templates)
   "other"
 ]);
 export const signatureTypeEnum = pgEnum("signature_type", ["drawn", "typed"]);
@@ -927,6 +928,56 @@ export const insertRevisionSchema = createInsertSchema(revisions).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+// Resource category for library items
+export const resourceCategoryEnum = pgEnum("resource_category", [
+  "guide",           // How-to guides and tutorials
+  "template",        // Document templates  
+  "legal",           // TOS, privacy policy, legal docs
+  "faq",             // Frequently asked questions
+  "video",           // Video tutorials
+  "other"
+]);
+
+// Global resource library (accessible to all clients)
+export const resources = pgTable("resources", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Resource Info
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  category: resourceCategoryEnum("category").notNull(),
+  
+  // File Storage (optional - some resources are links/text)
+  fileUrl: varchar("file_url", { length: 500 }),
+  fileName: varchar("file_name", { length: 255 }),
+  fileSize: integer("file_size"),
+  fileType: varchar("file_type", { length: 50 }),
+  
+  // External link (for video tutorials, external resources)
+  externalUrl: varchar("external_url", { length: 500 }),
+  
+  // Rich text content (for FAQs, guides without file)
+  content: text("content"),
+  
+  // Display Order and Visibility
+  sortOrder: integer("sort_order").default(0),
+  isPublished: boolean("is_published").default(true),
+  isClientVisible: boolean("is_client_visible").default(true),
+  
+  // Metadata
+  createdBy: varchar("created_by", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertResourceSchema = createInsertSchema(resources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertResource = z.infer<typeof insertResourceSchema>;
+export type Resource = typeof resources.$inferSelect;
 
 // Login schema
 export const loginSchema = z.object({

@@ -3382,6 +3382,104 @@ export async function registerRoutes(
     }
   });
 
+  // ============ RESOURCE LIBRARY ROUTES ============
+  
+  // Get all resources (admin)
+  app.get("/api/admin/resources", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const resourceList = await storage.getResources();
+      res.json(resourceList);
+    } catch (error) {
+      console.error("Get resources error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get single resource (admin)
+  app.get("/api/admin/resources/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const resource = await storage.getResource(id);
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+      res.json(resource);
+    } catch (error) {
+      console.error("Get resource error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create resource (admin)
+  app.post("/api/admin/resources", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { title, description, category, fileUrl, fileName, fileSize, fileType, externalUrl, content, sortOrder, isPublished, isClientVisible } = req.body;
+      
+      if (!title || !category) {
+        return res.status(400).json({ error: "Title and category are required" });
+      }
+      
+      const resource = await storage.createResource({
+        title,
+        description,
+        category,
+        fileUrl,
+        fileName,
+        fileSize,
+        fileType,
+        externalUrl,
+        content,
+        sortOrder: sortOrder || 0,
+        isPublished: isPublished !== false,
+        isClientVisible: isClientVisible !== false,
+        createdBy: req.user!.id,
+      });
+      
+      res.json(resource);
+    } catch (error) {
+      console.error("Create resource error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update resource (admin)
+  app.patch("/api/admin/resources/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const resource = await storage.updateResource(id, req.body);
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+      res.json(resource);
+    } catch (error) {
+      console.error("Update resource error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Delete resource (admin)
+  app.delete("/api/admin/resources/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteResource(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete resource error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get published resources for clients
+  app.get("/api/client/resources", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const resourceList = await storage.getPublishedResources();
+      res.json(resourceList);
+    } catch (error) {
+      console.error("Get client resources error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ REVISION ROUTES ============
   
   // Get all pending revisions (admin)

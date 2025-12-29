@@ -17,6 +17,7 @@ import {
   adminClientAccess,
   quotes,
   revisions,
+  resources,
   type User,
   type InsertUser,
   type Client,
@@ -49,6 +50,8 @@ import {
   type InsertQuote,
   type Revision,
   type InsertRevision,
+  type Resource,
+  type InsertResource,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -800,6 +803,42 @@ export class DatabaseStorage implements IStorage {
 
   async getPendingRevisions(): Promise<Revision[]> {
     return db.select().from(revisions).where(eq(revisions.status, "pending")).orderBy(desc(revisions.createdAt));
+  }
+
+  // Resources
+  async getResource(id: string): Promise<Resource | undefined> {
+    const [resource] = await db.select().from(resources).where(eq(resources.id, id));
+    return resource;
+  }
+
+  async getResources(): Promise<Resource[]> {
+    return db.select().from(resources).orderBy(resources.sortOrder, resources.title);
+  }
+
+  async getPublishedResources(): Promise<Resource[]> {
+    return db.select().from(resources)
+      .where(and(eq(resources.isPublished, true), eq(resources.isClientVisible, true)))
+      .orderBy(resources.sortOrder, resources.title);
+  }
+
+  async getResourcesByCategory(category: string): Promise<Resource[]> {
+    return db.select().from(resources)
+      .where(eq(resources.category, category as any))
+      .orderBy(resources.sortOrder, resources.title);
+  }
+
+  async createResource(data: InsertResource): Promise<Resource> {
+    const [resource] = await db.insert(resources).values(data).returning();
+    return resource;
+  }
+
+  async updateResource(id: string, data: Partial<InsertResource>): Promise<Resource | undefined> {
+    const [updated] = await db.update(resources).set({ ...data, updatedAt: new Date() }).where(eq(resources.id, id)).returning();
+    return updated;
+  }
+
+  async deleteResource(id: string): Promise<void> {
+    await db.delete(resources).where(eq(resources.id, id));
   }
 }
 

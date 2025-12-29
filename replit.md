@@ -91,6 +91,14 @@ Preferred communication style: Simple, everyday language.
 - When resuming from on-hold, all on-hold fields are automatically cleared
 - Status changes via PATCH /api/admin/projects/:id/status support onHoldReason and resumptionDate params
 
+### Resource Library
+- Global resource library for TOS, guides, templates, FAQs, and videos
+- Categories: guide, template, legal, faq, video, other
+- Supports file uploads, external URLs, and rich text content
+- Admin CRUD at /api/admin/resources
+- Client access at /api/client/resources (published + visible only)
+- sortOrder field for custom ordering
+
 ## External Dependencies
 
 ### Payment Processing
