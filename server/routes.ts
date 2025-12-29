@@ -3367,6 +3367,252 @@ export async function registerRoutes(
     }
   });
 
+  // ============ REVISION ROUTES ============
+  
+  // Get all pending revisions (admin)
+  app.get("/api/admin/revisions", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const pendingRevisions = await storage.getPendingRevisions();
+      
+      const enrichedRevisions = await Promise.all(pendingRevisions.map(async (revision) => {
+        const client = await storage.getClient(revision.clientId);
+        const requestedBy = await storage.getUser(revision.requestedBy);
+        return {
+          ...revision,
+          clientName: client?.businessLegalName || "Unknown",
+          requestedByName: requestedBy ? `${requestedBy.firstName} ${requestedBy.lastName}` : "Unknown",
+        };
+      }));
+      
+      res.json(enrichedRevisions);
+    } catch (error) {
+      console.error("Get pending revisions error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get revisions for a project (admin)
+  app.get("/api/admin/projects/:id/revisions", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const revisionList = await storage.getRevisionsByProjectId(id);
+      
+      const enrichedRevisions = await Promise.all(revisionList.map(async (revision) => {
+        const requestedBy = await storage.getUser(revision.requestedBy);
+        const reviewedBy = revision.reviewedBy ? await storage.getUser(revision.reviewedBy) : null;
+        const completedBy = revision.completedBy ? await storage.getUser(revision.completedBy) : null;
+        return {
+          ...revision,
+          requestedByName: requestedBy ? `${requestedBy.firstName} ${requestedBy.lastName}` : "Unknown",
+          reviewedByName: reviewedBy ? `${reviewedBy.firstName} ${reviewedBy.lastName}` : null,
+          completedByName: completedBy ? `${completedBy.firstName} ${completedBy.lastName}` : null,
+        };
+      }));
+      
+      res.json(enrichedRevisions);
+    } catch (error) {
+      console.error("Get project revisions error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create a revision request (client or admin)
+  app.post("/api/revisions", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { projectId, type, title, description, affectedPages } = req.body;
+      
+      if (!projectId || !type || !title || !description) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      if (!["minor", "major"].includes(type)) {
+        return res.status(400).json({ error: "Invalid revision type" });
+      }
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Authorization check: clients can only create revisions for their own projects
+      if (req.user!.role === "client") {
+        const userClient = await storage.getClientByUserId(req.user!.id);
+        if (!userClient || userClient.id !== client.id) {
+          return res.status(403).json({ error: "You can only request revisions for your own project" });
+        }
+      }
+      
+      const revision = await storage.createRevision({
+        clientId: client.id,
+        projectId,
+        requestedBy: req.user!.id,
+        type,
+        title,
+        description,
+        affectedPages,
+        status: "pending",
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "revision_requested",
+        description: `${type === "major" ? "Major" : "Minor"} revision requested: ${title}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(revision);
+    } catch (error) {
+      console.error("Create revision error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Review a revision (admin approve/decline)
+  app.patch("/api/admin/revisions/:id/review", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { action, adminNotes, declineReason, estimatedHours, additionalCost } = req.body;
+      
+      if (!["approve", "decline"].includes(action)) {
+        return res.status(400).json({ error: "Invalid action" });
+      }
+      
+      const revision = await storage.getRevision(id);
+      if (!revision) {
+        return res.status(404).json({ error: "Revision not found" });
+      }
+      
+      const updatedRevision = await storage.updateRevision(id, {
+        status: action === "approve" ? "approved" : "declined",
+        reviewedBy: req.user!.id,
+        reviewedAt: new Date(),
+        adminNotes,
+        declineReason: action === "decline" ? declineReason : null,
+        estimatedHours: action === "approve" ? estimatedHours : null,
+        additionalCost: action === "approve" ? additionalCost : null,
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: revision.clientId,
+        action: action === "approve" ? "revision_approved" : "revision_declined",
+        description: `Revision "${revision.title}" ${action === "approve" ? "approved" : "declined"}`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(updatedRevision);
+    } catch (error) {
+      console.error("Review revision error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Start working on a revision (admin)
+  app.patch("/api/admin/revisions/:id/start", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const revision = await storage.getRevision(id);
+      if (!revision) {
+        return res.status(404).json({ error: "Revision not found" });
+      }
+      
+      if (revision.status !== "approved") {
+        return res.status(400).json({ error: "Revision must be approved first" });
+      }
+      
+      const updatedRevision = await storage.updateRevision(id, {
+        status: "in_progress",
+      });
+      
+      res.json(updatedRevision);
+    } catch (error) {
+      console.error("Start revision error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Complete a revision (admin)
+  app.patch("/api/admin/revisions/:id/complete", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { completionNotes } = req.body;
+      
+      const revision = await storage.getRevision(id);
+      if (!revision) {
+        return res.status(404).json({ error: "Revision not found" });
+      }
+      
+      if (revision.status !== "in_progress" && revision.status !== "approved") {
+        return res.status(400).json({ error: "Revision must be in progress or approved" });
+      }
+      
+      const updatedRevision = await storage.updateRevision(id, {
+        status: "completed",
+        completedBy: req.user!.id,
+        completedAt: new Date(),
+        completionNotes,
+      });
+      
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: revision.clientId,
+        action: "revision_completed",
+        description: `Revision "${revision.title}" completed`,
+        ipAddress: req.ip,
+      });
+      
+      res.json(updatedRevision);
+    } catch (error) {
+      console.error("Complete revision error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Delete a revision (admin only, for pending revisions)
+  app.delete("/api/admin/revisions/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const revision = await storage.getRevision(id);
+      if (!revision) {
+        return res.status(404).json({ error: "Revision not found" });
+      }
+      
+      if (revision.status !== "pending" && revision.status !== "declined") {
+        return res.status(400).json({ error: "Can only delete pending or declined revisions" });
+      }
+      
+      await storage.deleteRevision(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete revision error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get revisions for client's project
+  app.get("/api/client/revisions", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.json([]);
+      }
+      
+      const revisionList = await storage.getRevisionsByClientId(client.id);
+      res.json(revisionList);
+    } catch (error) {
+      console.error("Get client revisions error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ OBJECT STORAGE ROUTES ============
 
   // Get upload URL for document files (admin only)

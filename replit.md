@@ -77,6 +77,14 @@ Preferred communication style: Simple, everyday language.
 - Admin can view all warranty statuses and send reminder emails
 - Email notifications: warranty start, reminder, and expiry emails
 
+### Revision Requests
+- Clients can request revisions tagged as "minor" or "major"
+- Minor: Small text changes, color adjustments, simple fixes
+- Major: Layout changes, new features, structural modifications
+- Admin workflow: pending -> approved/declined -> in_progress -> completed
+- Tracks estimated hours and additional costs for major revisions
+- Authorization ensures clients can only request revisions for their own projects
+
 ## External Dependencies
 
 ### Payment Processing

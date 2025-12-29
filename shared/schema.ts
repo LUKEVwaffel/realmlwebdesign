@@ -51,6 +51,8 @@ export const questionnaireStatusEnum = pgEnum("questionnaire_status", ["not_star
 export const documentStatusEnum = pgEnum("document_status", ["draft", "ready_for_signature", "pending_signature", "signed"]);
 export const quoteStatusEnum = pgEnum("quote_status", ["draft", "sent", "viewed", "approved", "rejected", "expired"]);
 export const accessLevelEnum = pgEnum("access_level", ["view", "edit"]);
+export const revisionTypeEnum = pgEnum("revision_type", ["minor", "major"]);
+export const revisionStatusEnum = pgEnum("revision_status", ["pending", "approved", "declined", "in_progress", "completed"]);
 
 // Users Table
 export const users = pgTable("users", {
@@ -556,6 +558,42 @@ export const adminClientAccess = pgTable("admin_client_access", {
   expiresAt: timestamp("expires_at"),
 });
 
+// Revision Requests Table
+export const revisions = pgTable("revisions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  
+  // Request Info
+  requestedBy: varchar("requested_by", { length: 36 }).references(() => users.id).notNull(),
+  type: revisionTypeEnum("type").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  
+  // Scope & Complexity
+  affectedPages: text("affected_pages"),
+  estimatedHours: decimal("estimated_hours", { precision: 5, scale: 2 }),
+  additionalCost: decimal("additional_cost", { precision: 10, scale: 2 }),
+  
+  // Status
+  status: revisionStatusEnum("status").notNull().default("pending"),
+  
+  // Admin Response
+  reviewedBy: varchar("reviewed_by", { length: 36 }).references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  adminNotes: text("admin_notes"),
+  declineReason: text("decline_reason"),
+  
+  // Completion
+  completedBy: varchar("completed_by", { length: 36 }).references(() => users.id),
+  completedAt: timestamp("completed_at"),
+  completionNotes: text("completion_notes"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Quotes (for pricing proposals to clients)
 export const quotes = pgTable("quotes", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -752,6 +790,29 @@ export const adminClientAccessRelations = relations(adminClientAccess, ({ one })
   }),
 }));
 
+export const revisionsRelations = relations(revisions, ({ one }) => ({
+  client: one(clients, {
+    fields: [revisions.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [revisions.projectId],
+    references: [projects.id],
+  }),
+  requestedByUser: one(users, {
+    fields: [revisions.requestedBy],
+    references: [users.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [revisions.reviewedBy],
+    references: [users.id],
+  }),
+  completedByUser: one(users, {
+    fields: [revisions.completedBy],
+    references: [users.id],
+  }),
+}));
+
 export const quotesRelations = relations(quotes, ({ one }) => ({
   client: one(clients, {
     fields: [quotes.clientId],
@@ -855,6 +916,12 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   updatedAt: true,
 });
 
+export const insertRevisionSchema = createInsertSchema(revisions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -918,6 +985,8 @@ export type InsertAdminClientAccess = z.infer<typeof insertAdminClientAccessSche
 export type AdminClientAccess = typeof adminClientAccess.$inferSelect;
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 export type Quote = typeof quotes.$inferSelect;
+export type InsertRevision = z.infer<typeof insertRevisionSchema>;
+export type Revision = typeof revisions.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type PinLoginInput = z.infer<typeof pinLoginSchema>;

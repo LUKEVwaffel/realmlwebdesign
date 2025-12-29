@@ -16,6 +16,7 @@ import {
   hostingCredentials,
   adminClientAccess,
   quotes,
+  revisions,
   type User,
   type InsertUser,
   type Client,
@@ -46,6 +47,8 @@ import {
   type InsertAdminClientAccess,
   type Quote,
   type InsertQuote,
+  type Revision,
+  type InsertRevision,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -146,6 +149,15 @@ export interface IStorage {
   createQuote(data: InsertQuote): Promise<Quote>;
   updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<void>;
+
+  // Revisions
+  getRevision(id: string): Promise<Revision | undefined>;
+  getRevisionsByProjectId(projectId: string): Promise<Revision[]>;
+  getRevisionsByClientId(clientId: string): Promise<Revision[]>;
+  createRevision(data: InsertRevision): Promise<Revision>;
+  updateRevision(id: string, data: Partial<InsertRevision>): Promise<Revision | undefined>;
+  deleteRevision(id: string): Promise<void>;
+  getPendingRevisions(): Promise<Revision[]>;
 
   // Admin Users
   getAdminUsers(): Promise<User[]>;
@@ -756,6 +768,38 @@ export class DatabaseStorage implements IStorage {
 
     // Sort by total revenue descending
     return leaderboard.sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }
+
+  // Revisions
+  async getRevision(id: string): Promise<Revision | undefined> {
+    const [revision] = await db.select().from(revisions).where(eq(revisions.id, id));
+    return revision;
+  }
+
+  async getRevisionsByProjectId(projectId: string): Promise<Revision[]> {
+    return db.select().from(revisions).where(eq(revisions.projectId, projectId)).orderBy(desc(revisions.createdAt));
+  }
+
+  async getRevisionsByClientId(clientId: string): Promise<Revision[]> {
+    return db.select().from(revisions).where(eq(revisions.clientId, clientId)).orderBy(desc(revisions.createdAt));
+  }
+
+  async createRevision(data: InsertRevision): Promise<Revision> {
+    const [revision] = await db.insert(revisions).values(data).returning();
+    return revision;
+  }
+
+  async updateRevision(id: string, data: Partial<InsertRevision>): Promise<Revision | undefined> {
+    const [updated] = await db.update(revisions).set({ ...data, updatedAt: new Date() }).where(eq(revisions.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRevision(id: string): Promise<void> {
+    await db.delete(revisions).where(eq(revisions.id, id));
+  }
+
+  async getPendingRevisions(): Promise<Revision[]> {
+    return db.select().from(revisions).where(eq(revisions.status, "pending")).orderBy(desc(revisions.createdAt));
   }
 }
 
