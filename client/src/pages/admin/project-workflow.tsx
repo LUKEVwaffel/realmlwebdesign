@@ -218,9 +218,23 @@ export default function ProjectWorkflow() {
     },
   });
 
+  const sendReminderMutation = useMutation({
+    mutationFn: async ({ projectId, type }: { projectId: string; type: string }) => {
+      const res = await apiRequest("POST", `/api/admin/projects/${projectId}/send-reminder`, { type });
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Reminder sent", description: `${variables.type} reminder email has been sent.` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send reminder", description: error.message, variant: "destructive" });
+    },
+  });
+
   const verifyPinMutation = useMutation({
     mutationFn: async (pin: string) => {
-      const res = await apiRequest("POST", "/api/auth/verify-pin", { pin });
+      const res = await apiRequest("POST", "/api/admin/pin/verify", { pin });
       return res.json();
     },
     onSuccess: () => {
@@ -459,22 +473,57 @@ export default function ProjectWorkflow() {
                 />
               )}
               {currentPhase === 2 && (
-                <Phase2Content client={client} project={project} />
+                <Phase2Content 
+                  client={client} 
+                  project={project}
+                  onSendReminder={() => sendReminderMutation.mutate({ projectId: project.id, type: "questionnaire" })}
+                  onAdvancePhase={() => updateStatusMutation.mutate({ projectId: project.id, status: "quote_draft" })}
+                  isSendingReminder={sendReminderMutation.isPending}
+                />
               )}
               {currentPhase === 3 && (
-                <Phase3Content client={client} project={project} />
+                <Phase3Content 
+                  client={client} 
+                  project={project}
+                  onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  onSendReminder={(type: string) => sendReminderMutation.mutate({ projectId: project.id, type })}
+                  isSendingReminder={sendReminderMutation.isPending}
+                  isUpdating={updateStatusMutation.isPending}
+                />
               )}
               {currentPhase === 4 && (
-                <Phase4Content client={client} project={project} />
+                <Phase4Content 
+                  client={client} 
+                  project={project}
+                  onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  isUpdating={updateStatusMutation.isPending}
+                />
               )}
               {currentPhase === 5 && (
-                <Phase5Content client={client} project={project} />
+                <Phase5Content 
+                  client={client} 
+                  project={project}
+                  onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  isUpdating={updateStatusMutation.isPending}
+                />
               )}
               {currentPhase === 6 && (
-                <Phase6Content client={client} project={project} />
+                <Phase6Content 
+                  client={client} 
+                  project={project}
+                  onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  onSendReminder={() => sendReminderMutation.mutate({ projectId: project.id, type: "review" })}
+                  isUpdating={updateStatusMutation.isPending}
+                  isSendingReminder={sendReminderMutation.isPending}
+                />
               )}
               {currentPhase === 7 && (
-                <Phase7Content client={client} project={project} />
+                <Phase7Content 
+                  client={client} 
+                  project={project}
+                  onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  isUpdating={updateStatusMutation.isPending}
+                />
               )}
               {currentPhase === 0 && (
                 <SpecialStateContent client={client} project={project} />
@@ -674,7 +723,7 @@ function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
 }
 
 // Phase 2: Questionnaire
-function Phase2Content({ client, project }: any) {
+function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSendingReminder }: any) {
   const isPending = project.status === "questionnaire_pending";
   const isComplete = project.status === "questionnaire_complete";
 
@@ -712,14 +761,22 @@ function Phase2Content({ client, project }: any) {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="gap-2">
-                  <Send className="w-4 h-4" />
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={onSendReminder}
+                  disabled={isSendingReminder}
+                  data-testid="button-send-reminder"
+                >
+                  {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Send Reminder
                 </Button>
-                <Button variant="outline" className="gap-2">
-                  <ExternalLink className="w-4 h-4" />
-                  View Questionnaire
-                </Button>
+                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
+                  <Button variant="outline" className="gap-2" data-testid="button-view-questionnaire">
+                    <ExternalLink className="w-4 h-4" />
+                    View Questionnaire
+                  </Button>
+                </Link>
               </div>
             </div>
           ) : (
@@ -755,16 +812,16 @@ function Phase2Content({ client, project }: any) {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2">
-                  <ExternalLink className="w-4 h-4" />
-                  View Full Responses
-                </Button>
-                <Link href={`/admin/clients/${client.id}/quote`}>
-                  <Button className="gap-2">
-                    Create Quote
-                    <ChevronRight className="w-4 h-4" />
+                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
+                  <Button variant="outline" className="gap-2" data-testid="button-view-full-responses">
+                    <ExternalLink className="w-4 h-4" />
+                    View Full Responses
                   </Button>
                 </Link>
+                <Button className="gap-2" onClick={onAdvancePhase} data-testid="button-create-quote">
+                  Create Quote
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           )}
@@ -775,15 +832,8 @@ function Phase2Content({ client, project }: any) {
 }
 
 // Phase 3: Quote & Agreement
-function Phase3Content({ client, project }: any) {
+function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSendingReminder, isUpdating }: any) {
   const status = project.status;
-  const statusSteps = [
-    { key: "quote_draft", label: "Draft Quote", done: false },
-    { key: "quote_sent", label: "Quote Sent", done: false },
-    { key: "quote_approved", label: "Quote Approved", done: false },
-    { key: "tos_signed", label: "TOS Signed", done: false },
-    { key: "deposit_paid", label: "Deposit Received", done: false },
-  ];
 
   // Determine which steps are done
   const statusOrder = ["quote_draft", "quote_sent", "quote_approved", "tos_pending", "tos_signed", "deposit_pending", "deposit_paid"];
@@ -827,8 +877,8 @@ function Phase3Content({ client, project }: any) {
                 <p className="text-sm text-muted-foreground">
                   Review the questionnaire responses and create a detailed quote with pricing tiers.
                 </p>
-                <Link href={`/admin/clients/${client.id}/quote/create`}>
-                  <Button className="gap-2">
+                <Link href={`/admin/clients/${client.id}`}>
+                  <Button className="gap-2" data-testid="button-create-quote-phase3">
                     <FileText className="w-4 h-4" />
                     Create Quote
                   </Button>
@@ -844,12 +894,20 @@ function Phase3Content({ client, project }: any) {
                   Quote sent to client. Waiting for their response.
                 </p>
                 <div className="flex justify-center gap-2">
-                  <Button variant="outline" className="gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    View Quote
-                  </Button>
-                  <Button variant="outline" className="gap-2">
-                    <Send className="w-4 h-4" />
+                  <Link href={`/admin/clients/${client.id}`}>
+                    <Button variant="outline" className="gap-2" data-testid="button-view-quote">
+                      <ExternalLink className="w-4 h-4" />
+                      View Quote
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    className="gap-2" 
+                    onClick={() => onSendReminder("quote")}
+                    disabled={isSendingReminder}
+                    data-testid="button-send-quote-reminder"
+                  >
+                    {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Send Reminder
                   </Button>
                 </div>
@@ -863,8 +921,14 @@ function Phase3Content({ client, project }: any) {
                 <p className="text-sm text-muted-foreground">
                   Quote approved! Waiting for client to sign Terms of Service.
                 </p>
-                <Button variant="outline" className="gap-2">
-                  <Send className="w-4 h-4" />
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={() => onSendReminder("tos")}
+                  disabled={isSendingReminder}
+                  data-testid="button-resend-tos"
+                >
+                  {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Resend TOS
                 </Button>
               </div>
@@ -875,15 +939,26 @@ function Phase3Content({ client, project }: any) {
                 <DollarSign className="w-12 h-12 mx-auto text-primary" />
                 <h3 className="font-semibold">Awaiting 50% Deposit</h3>
                 <p className="text-sm text-muted-foreground">
-                  TOS signed! Waiting for deposit payment of ${(parseFloat(project.totalCost) / 2).toFixed(2)}.
+                  TOS signed! Waiting for deposit payment of ${(parseFloat(project.totalCost || "0") / 2).toFixed(2)}.
                 </p>
                 <div className="flex justify-center gap-2">
-                  <Button variant="outline" className="gap-2">
-                    <Send className="w-4 h-4" />
+                  <Button 
+                    variant="outline" 
+                    className="gap-2" 
+                    onClick={() => onSendReminder("payment")}
+                    disabled={isSendingReminder}
+                    data-testid="button-send-payment-reminder"
+                  >
+                    {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Send Payment Reminder
                   </Button>
-                  <Button className="gap-2">
-                    <DollarSign className="w-4 h-4" />
+                  <Button 
+                    className="gap-2" 
+                    onClick={() => onAdvancePhase("deposit_paid")}
+                    disabled={isUpdating}
+                    data-testid="button-mark-paid"
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
                     Mark as Paid
                   </Button>
                 </div>
@@ -903,7 +978,13 @@ function Phase3Content({ client, project }: any) {
                 <p className="text-sm text-muted-foreground">
                   Quote approved, TOS signed, and deposit received. Ready to proceed to Design phase.
                 </p>
-                <Button className="gap-2">
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("design_pending")}
+                  disabled={isUpdating}
+                  data-testid="button-proceed-phase4"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Proceed to Phase 4
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -917,7 +998,7 @@ function Phase3Content({ client, project }: any) {
 }
 
 // Phase 4: Design
-function Phase4Content({ client, project }: any) {
+function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
   const status = project.status;
 
   return (
@@ -940,10 +1021,23 @@ function Phase4Content({ client, project }: any) {
               <p className="text-sm text-muted-foreground">
                 Find 4 suitable templates and upload screenshots for client review.
               </p>
-              <Button className="gap-2">
-                <Upload className="w-4 h-4" />
-                Upload Templates
-              </Button>
+              <div className="flex justify-center gap-2">
+                <Link href={`/admin/clients/${client.id}`}>
+                  <Button variant="outline" className="gap-2" data-testid="button-upload-templates">
+                    <Upload className="w-4 h-4" />
+                    Upload Templates
+                  </Button>
+                </Link>
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("design_sent")}
+                  disabled={isUpdating}
+                  data-testid="button-send-templates"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Send to Client
+                </Button>
+              </div>
             </div>
           )}
 
@@ -958,10 +1052,22 @@ function Phase4Content({ client, project }: any) {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                    <span className="text-muted-foreground">Template {i}</span>
+                  <div key={i} className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
+                    <span className="text-muted-foreground text-sm">Template {i}</span>
                   </div>
                 ))}
+              </div>
+              <div className="flex justify-center">
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("design_approved")}
+                  disabled={isUpdating}
+                  data-testid="button-mark-design-approved"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Mark Design Approved
+                </Button>
               </div>
             </div>
           )}
@@ -973,7 +1079,13 @@ function Phase4Content({ client, project }: any) {
               <p className="text-sm text-muted-foreground">
                 Client selected their preferred template. Ready to begin development.
               </p>
-              <Button className="gap-2">
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("in_development")}
+                disabled={isUpdating}
+                data-testid="button-start-development"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Start Development
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -986,7 +1098,7 @@ function Phase4Content({ client, project }: any) {
 }
 
 // Phase 5: Development
-function Phase5Content({ client, project }: any) {
+function Phase5Content({ client, project, onAdvancePhase, isUpdating }: any) {
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       <Card>
@@ -1009,6 +1121,17 @@ function Phase5Content({ client, project }: any) {
             <Progress value={project.developmentProgress || 0} className="h-3" />
           </div>
 
+          {/* Platform */}
+          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+            <Code className="w-5 h-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Development Platform</p>
+              <p className="text-sm text-muted-foreground">
+                {project.platform || "Wix"} (Standard Template)
+              </p>
+            </div>
+          </div>
+
           {/* Staging URL */}
           <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
             <Globe className="w-5 h-5 text-muted-foreground" />
@@ -1019,20 +1142,29 @@ function Phase5Content({ client, project }: any) {
               </p>
             </div>
             {project.stagingUrl && (
-              <Button variant="outline" size="sm" className="gap-2">
-                <ExternalLink className="w-4 h-4" />
-                View Site
-              </Button>
+              <a href={project.stagingUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-2" data-testid="button-view-staging">
+                  <ExternalLink className="w-4 h-4" />
+                  View Site
+                </Button>
+              </a>
             )}
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" className="gap-2">
-              Update Progress
-            </Button>
-            <Button className="gap-2">
-              <Eye className="w-4 h-4" />
+            <Link href={`/admin/clients/${client.id}`}>
+              <Button variant="outline" className="gap-2" data-testid="button-update-progress">
+                Update Progress
+              </Button>
+            </Link>
+            <Button 
+              className="gap-2" 
+              onClick={() => onAdvancePhase("ready_for_review")}
+              disabled={isUpdating}
+              data-testid="button-mark-ready-review"
+            >
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
               Mark Ready for Review
             </Button>
           </div>
@@ -1043,7 +1175,23 @@ function Phase5Content({ client, project }: any) {
 }
 
 // Phase 6: Ready for Review
-function Phase6Content({ client, project }: any) {
+function Phase6Content({ client, project, onAdvancePhase, onSendReminder, isUpdating, isSendingReminder }: any) {
+  const [checklist, setChecklist] = useState<boolean[]>([false, false, false, false, false]);
+  const qaItems = [
+    "All pages load correctly",
+    "Mobile responsive",
+    "Forms working",
+    "Images optimized",
+    "Links functional",
+  ];
+  const allChecked = checklist.every(Boolean);
+
+  const toggleCheck = (index: number) => {
+    const updated = [...checklist];
+    updated[index] = !updated[index];
+    setChecklist(updated);
+  };
+
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       <Card>
@@ -1057,29 +1205,55 @@ function Phase6Content({ client, project }: any) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Staging URL */}
+          {project.stagingUrl && (
+            <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
+              <Globe className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Staging URL</p>
+                <p className="text-sm text-muted-foreground">{project.stagingUrl}</p>
+              </div>
+              <a href={project.stagingUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  Preview
+                </Button>
+              </a>
+            </div>
+          )}
+
           {/* QA Checklist */}
           <div className="space-y-3">
             <h4 className="font-medium">Internal QA Checklist</h4>
-            {[
-              "All pages load correctly",
-              "Mobile responsive",
-              "Forms working",
-              "Images optimized",
-              "Links functional",
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded border flex items-center justify-center">
-                  <Check className="w-3 h-3 text-green-500" />
+            {qaItems.map((item, i) => (
+              <div 
+                key={i} 
+                className="flex items-center gap-3 p-2 rounded-lg hover-elevate cursor-pointer"
+                onClick={() => toggleCheck(i)}
+                data-testid={`qa-item-${i}`}
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${checklist[i] ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
+                  {checklist[i] && <Check className="w-3 h-3 text-white" />}
                 </div>
-                <span className="text-sm">{item}</span>
+                <span className={`text-sm ${checklist[i] ? 'text-muted-foreground line-through' : ''}`}>{item}</span>
               </div>
             ))}
           </div>
 
-          <Button className="w-full gap-2">
-            <Send className="w-4 h-4" />
-            Send to Client for Review
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              className="flex-1 gap-2" 
+              onClick={() => onAdvancePhase("client_review")}
+              disabled={isUpdating || !allChecked}
+              data-testid="button-send-to-client"
+            >
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send to Client for Review
+            </Button>
+          </div>
+          {!allChecked && (
+            <p className="text-xs text-muted-foreground text-center">Complete all QA checks before sending to client</p>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -1087,8 +1261,15 @@ function Phase6Content({ client, project }: any) {
 }
 
 // Phase 7: Review & Delivery
-function Phase7Content({ client, project }: any) {
+function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
   const status = project.status;
+
+  const getWarrantyDays = () => {
+    if (!project.warrantyEndDate) return 25;
+    const end = new Date(project.warrantyEndDate);
+    const now = new Date();
+    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  };
 
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
@@ -1102,11 +1283,162 @@ function Phase7Content({ client, project }: any) {
             Final review, revisions, payment, hosting setup, and project handover.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {/* Status indicator */}
-          <div className="p-4 rounded-lg bg-muted/50 mb-6">
+          <div className="p-4 rounded-lg bg-muted/50">
             <p className="font-medium">Current Status: {getStatusLabel(status)}</p>
           </div>
+
+          {status === "client_review" && (
+            <div className="text-center space-y-4 py-4">
+              <Clock className="w-12 h-12 mx-auto text-amber-500" />
+              <h3 className="font-semibold">Client Reviewing Website</h3>
+              <p className="text-sm text-muted-foreground">
+                Waiting for client feedback and revision requests.
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("revisions_pending")}
+                  disabled={isUpdating}
+                  data-testid="button-revisions-requested"
+                >
+                  Revisions Requested
+                </Button>
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("awaiting_final_payment")}
+                  disabled={isUpdating}
+                  data-testid="button-no-revisions"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  No Revisions - Proceed to Payment
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {status === "revisions_pending" && (
+            <div className="text-center space-y-4 py-4">
+              <RefreshCw className="w-12 h-12 mx-auto text-primary" />
+              <h3 className="font-semibold">Revisions In Progress</h3>
+              <p className="text-sm text-muted-foreground">
+                Working on client-requested revisions.
+              </p>
+              <Link href={`/admin/clients/${client.id}`}>
+                <Button variant="outline" className="gap-2" data-testid="button-view-revisions">
+                  <ExternalLink className="w-4 h-4" />
+                  View Revision Requests
+                </Button>
+              </Link>
+              <Button 
+                className="gap-2 ml-2" 
+                onClick={() => onAdvancePhase("revisions_complete")}
+                disabled={isUpdating}
+                data-testid="button-revisions-complete"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Mark Revisions Complete
+              </Button>
+            </div>
+          )}
+
+          {status === "revisions_complete" && (
+            <div className="text-center space-y-4 py-4">
+              <CheckCircle2 className="w-12 h-12 mx-auto text-green-500" />
+              <h3 className="font-semibold">Revisions Complete</h3>
+              <p className="text-sm text-muted-foreground">
+                All revisions have been completed. Ready for final payment.
+              </p>
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("awaiting_final_payment")}
+                disabled={isUpdating}
+                data-testid="button-request-final-payment"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                Request Final Payment
+              </Button>
+            </div>
+          )}
+
+          {status === "awaiting_final_payment" && (
+            <div className="text-center space-y-4 py-4">
+              <DollarSign className="w-12 h-12 mx-auto text-primary" />
+              <h3 className="font-semibold">Awaiting Final Payment</h3>
+              <p className="text-sm text-muted-foreground">
+                Waiting for remaining 50% payment (${(parseFloat(project.totalCost || "0") / 2).toFixed(2)})
+              </p>
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("payment_complete")}
+                disabled={isUpdating}
+                data-testid="button-mark-payment-complete"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Mark Payment Complete
+              </Button>
+            </div>
+          )}
+
+          {status === "payment_complete" && (
+            <div className="text-center space-y-4 py-4">
+              <Globe className="w-12 h-12 mx-auto text-primary" />
+              <h3 className="font-semibold">Payment Received - Setup Hosting</h3>
+              <p className="text-sm text-muted-foreground">
+                Full payment received. Configure hosting and domain.
+              </p>
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("hosting_setup_pending")}
+                disabled={isUpdating}
+                data-testid="button-setup-hosting"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Begin Hosting Setup
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {status === "hosting_setup_pending" && (
+            <div className="text-center space-y-4 py-4">
+              <Globe className="w-12 h-12 mx-auto text-amber-500" />
+              <h3 className="font-semibold">Configuring Hosting</h3>
+              <p className="text-sm text-muted-foreground">
+                Awaiting client hosting credentials or domain configuration.
+              </p>
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("hosting_configured")}
+                disabled={isUpdating}
+                data-testid="button-hosting-configured"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Mark Hosting Configured
+              </Button>
+            </div>
+          )}
+
+          {status === "hosting_configured" && (
+            <div className="text-center space-y-4 py-4">
+              <Rocket className="w-12 h-12 mx-auto text-green-500" />
+              <h3 className="font-semibold">Ready for Final Delivery</h3>
+              <p className="text-sm text-muted-foreground">
+                Hosting is configured. Complete the project handover.
+              </p>
+              <Button 
+                className="gap-2" 
+                onClick={() => onAdvancePhase("completed")}
+                disabled={isUpdating}
+                data-testid="button-complete-project"
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Complete Project
+              </Button>
+            </div>
+          )}
 
           {status === "completed" && (
             <div className="text-center space-y-4 py-6">
@@ -1122,16 +1454,8 @@ function Phase7Content({ client, project }: any) {
                 Delivered on {project.completedAt ? format(new Date(project.completedAt), "MMM d, yyyy") : "N/A"}
               </p>
               <Badge className="bg-green-500/10 text-green-600">
-                Warranty: 25 days remaining
+                Warranty: {getWarrantyDays()} days remaining
               </Badge>
-            </div>
-          )}
-
-          {status !== "completed" && (
-            <div className="text-center py-6">
-              <p className="text-muted-foreground">
-                Phase 7 workflow tools will appear here based on current status.
-              </p>
             </div>
           )}
         </CardContent>

@@ -74,16 +74,29 @@ const createProjectRequestSchema = z.object({
 
 const updateProjectStatusSchema = z.object({
   status: z.enum([
+    "draft",
     "created",
     "questionnaire_pending",
     "questionnaire_complete",
+    "quote_draft",
+    "quote_sent",
+    "quote_approved",
     "tos_pending",
     "tos_signed",
+    "deposit_pending",
+    "deposit_paid",
+    "design_pending",
+    "design_sent",
+    "design_approved",
     "in_development",
-    "hosting_setup",
-    "deployed",
-    "delivery",
+    "ready_for_review",
     "client_review",
+    "revisions_pending",
+    "revisions_complete",
+    "awaiting_final_payment",
+    "payment_complete",
+    "hosting_setup_pending",
+    "hosting_configured",
     "completed",
     "on_hold",
     "cancelled"
@@ -163,19 +176,32 @@ async function canAdminEditClientHelper(adminId: string, clientId: string): Prom
 // Returns -1 for on_hold/cancelled to indicate "paused" state (UI should handle display)
 function calculateProjectProgress(status: string): number {
   const progressMap: Record<string, number> = {
+    draft: 2,
     created: 5,
     questionnaire_pending: 10,
     questionnaire_complete: 20,
-    tos_pending: 30,
-    tos_signed: 40,
-    in_development: 55,
-    hosting_setup: 70,
-    deployed: 80,
-    delivery: 85,
-    client_review: 90,
+    quote_draft: 25,
+    quote_sent: 28,
+    quote_approved: 32,
+    tos_pending: 35,
+    tos_signed: 38,
+    deposit_pending: 40,
+    deposit_paid: 45,
+    design_pending: 48,
+    design_sent: 50,
+    design_approved: 55,
+    in_development: 65,
+    ready_for_review: 75,
+    client_review: 80,
+    revisions_pending: 82,
+    revisions_complete: 85,
+    awaiting_final_payment: 88,
+    payment_complete: 92,
+    hosting_setup_pending: 95,
+    hosting_configured: 98,
     completed: 100,
-    on_hold: -1,   // Paused - UI shows "On Hold" instead of %
-    cancelled: -1, // Cancelled - UI shows "Cancelled" instead of %
+    on_hold: -1,
+    cancelled: -1,
   };
   return progressMap[status] ?? 0;
 }
@@ -1916,6 +1942,114 @@ export async function registerRoutes(
     }
   });
 
+  // Send welcome email to client with login credentials
+  app.post("/api/admin/projects/:id/send-welcome", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id: projectId } = req.params;
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, project.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      if (!user) {
+        return res.status(400).json({ error: "No user account associated with this client" });
+      }
+      
+      // Generate a temporary password if needed (user should already have one from creation)
+      const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      
+      // Update user with new temp password and set mustChangePassword
+      await storage.updateUser(user.id, {
+        passwordHash,
+        mustChangePassword: true,
+      } as any);
+      
+      // Send welcome email using the workflow email function
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      await sendWelcomeEmail(
+        user.email,
+        user.firstName,
+        tempPassword,
+        `${baseUrl}/login`
+      );
+      
+      // Update project status to created (welcome email sent)
+      await storage.updateProject(projectId, { status: "created" });
+      
+      // Also update to questionnaire_pending
+      await storage.updateProject(projectId, { status: "questionnaire_pending" });
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: project.clientId,
+        action: "welcome_email_sent",
+        description: "Sent welcome email with login credentials",
+        ipAddress: req.ip,
+      });
+      
+      res.json({ success: true, message: "Welcome email sent successfully" });
+    } catch (error) {
+      console.error("Send welcome email error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Send reminder email for questionnaire or other actions
+  app.post("/api/admin/projects/:id/send-reminder", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id: projectId } = req.params;
+      const { type } = req.body; // "questionnaire", "quote", "tos", "payment"
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await canAdminEditClientHelper(req.user!.id, project.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
+      // Send appropriate reminder based on type
+      await sendWorkflowEmail(client.id, projectId, type || project.status);
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: project.clientId,
+        action: "reminder_sent",
+        description: `Sent ${type || "workflow"} reminder email`,
+        ipAddress: req.ip,
+      });
+      
+      res.json({ success: true, message: "Reminder sent successfully" });
+    } catch (error) {
+      console.error("Send reminder error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/analytics", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const [stats, projectsByStatus, revenueByMonth, clientAcquisition, projectMetrics] = await Promise.all([
@@ -3296,6 +3430,57 @@ export async function registerRoutes(
       res.json({ pinEnabled: user.pinEnabled || false });
     } catch (error) {
       console.error("Check PIN status error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Verify PIN for phase skipping (requires authenticated admin)
+  app.post("/api/admin/pin/verify", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { pin } = req.body;
+      
+      if (!pin || !/^\d{5}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 5 digits" });
+      }
+      
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (!user.pinEnabled || !user.pinHash) {
+        return res.status(400).json({ error: "PIN not set up for this account" });
+      }
+      
+      // Check if locked out
+      if (user.pinLockedUntil && new Date(user.pinLockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(user.pinLockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(429).json({ error: `Too many attempts. Try again in ${remainingMinutes} minutes.` });
+      }
+      
+      const validPin = await bcrypt.compare(pin, user.pinHash);
+      if (!validPin) {
+        // Increment failed attempts
+        const attempts = (user.pinFailedAttempts || 0) + 1;
+        const updates: any = { pinFailedAttempts: attempts };
+        
+        if (attempts >= 5) {
+          updates.pinLockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        
+        await storage.updateUser(user.id, updates);
+        return res.status(401).json({ error: "Invalid PIN" });
+      }
+      
+      // Success - reset failed attempts
+      await storage.updateUser(user.id, {
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
+      } as any);
+      
+      res.json({ success: true, verified: true });
+    } catch (error) {
+      console.error("Verify PIN error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
