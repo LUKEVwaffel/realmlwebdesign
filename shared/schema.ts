@@ -28,7 +28,8 @@ export const projectStatusEnum = pgEnum("project_status", [
   "on_hold",                   // Paused
   "cancelled"                  // Cancelled
 ]);
-export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "overdue", "cancelled", "failed", "refunded"]);
+export const paymentTypeEnum = pgEnum("payment_type", ["deposit", "milestone", "final", "addon", "revision", "other"]);
 export const documentTypeEnum = pgEnum("document_type", [
   "contract",
   "invoice", 
@@ -258,6 +259,9 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   description: varchar("description", { length: 255 }),
   dueDate: date("due_date"),
+  
+  // Payment Type (deposit, milestone, final, addon, revision, other)
+  paymentType: paymentTypeEnum("payment_type").default("other"),
   
   // Status
   status: paymentStatusEnum("status").default("pending"),

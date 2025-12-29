@@ -840,6 +840,22 @@ export class DatabaseStorage implements IStorage {
   async deleteResource(id: string): Promise<void> {
     await db.delete(resources).where(eq(resources.id, id));
   }
+
+  // Payment helpers
+  async isDepositPaidForProject(projectId: string): Promise<boolean> {
+    const depositPayments = await db.select()
+      .from(payments)
+      .where(and(
+        eq(payments.projectId, projectId),
+        eq(payments.paymentType, "deposit"),
+        eq(payments.status, "paid")
+      ));
+    return depositPayments.length > 0;
+  }
+
+  async getPaymentsByProjectId(projectId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.projectId, projectId)).orderBy(desc(payments.createdAt));
+  }
 }
 
 export const storage = new DatabaseStorage();

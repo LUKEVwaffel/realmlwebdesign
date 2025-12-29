@@ -99,6 +99,12 @@ Preferred communication style: Simple, everyday language.
 - Client access at /api/client/resources (published + visible only)
 - sortOrder field for custom ordering
 
+### Payment Tracking
+- Payment status: pending, paid, overdue, cancelled, failed, refunded
+- Payment types: deposit, milestone, final, addon, revision, other
+- Deposit gating: Development phase requires deposit to be paid first
+- Admin can override deposit check with skipDepositCheck: true parameter
+
 ## External Dependencies
 
 ### Payment Processing

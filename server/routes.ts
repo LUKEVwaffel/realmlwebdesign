@@ -1770,6 +1770,21 @@ export async function registerRoutes(
       
       const oldStatus = existingProject.status;
       
+      // Deposit gating: require deposit payment before advancing to development
+      const developmentPhases = ["development", "hosting_setup", "ready_for_delivery", "completed"];
+      if (developmentPhases.includes(status) && !developmentPhases.includes(oldStatus)) {
+        const skipDepositCheck = req.body.skipDepositCheck === true; // Admin can override
+        if (!skipDepositCheck) {
+          const depositPaid = await storage.isDepositPaidForProject(id);
+          if (!depositPaid) {
+            return res.status(400).json({ 
+              error: "Deposit payment required", 
+              message: "The deposit must be paid before advancing to the development phase. Set skipDepositCheck: true to override." 
+            });
+          }
+        }
+      }
+      
       // Prepare update data, including warranty dates if completing project
       const updateData: any = { status };
       if (status === "completed" && oldStatus !== "completed") {
