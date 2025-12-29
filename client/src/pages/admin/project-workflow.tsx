@@ -232,6 +232,37 @@ export default function ProjectWorkflow() {
     },
   });
 
+  const uploadTemplatesMutation = useMutation({
+    mutationFn: async ({ projectId, templateUrls }: { projectId: string; templateUrls: string[] }) => {
+      const res = await apiRequest("PATCH", `/api/admin/projects/${projectId}`, { 
+        designTemplateUrls: JSON.stringify(templateUrls),
+        designTemplatesSentAt: new Date().toISOString(),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Templates saved", description: "Design templates have been saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to save templates", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ projectId, data }: { projectId: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/admin/projects/${projectId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Project updated", description: "Changes have been saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
   const verifyPinMutation = useMutation({
     mutationFn: async (pin: string) => {
       const res = await apiRequest("POST", "/api/admin/pin/verify", { pin });
@@ -354,11 +385,6 @@ export default function ProjectWorkflow() {
               {user?.firstName} {user?.lastName} • {user?.email}
             </p>
           </div>
-          <Link href={`/admin/clients/${clientId}`}>
-            <Button variant="outline" data-testid="button-client-details">
-              View Full Details
-            </Button>
-          </Link>
         </motion.div>
 
         {/* Phase Progress Timeline */}
@@ -496,7 +522,9 @@ export default function ProjectWorkflow() {
                   client={client} 
                   project={project}
                   onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
+                  onUploadTemplates={(urls: string[]) => uploadTemplatesMutation.mutate({ projectId: project.id, templateUrls: urls })}
                   isUpdating={updateStatusMutation.isPending}
+                  isUploading={uploadTemplatesMutation.isPending}
                 />
               )}
               {currentPhase === 5 && (
@@ -504,7 +532,8 @@ export default function ProjectWorkflow() {
                   client={client} 
                   project={project}
                   onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
-                  isUpdating={updateStatusMutation.isPending}
+                  onUpdateProject={(data: any) => updateProjectMutation.mutate({ projectId: project.id, data })}
+                  isUpdating={updateStatusMutation.isPending || updateProjectMutation.isPending}
                 />
               )}
               {currentPhase === 6 && (
@@ -877,12 +906,17 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                 <p className="text-sm text-muted-foreground">
                   Review the questionnaire responses and create a detailed quote with pricing tiers.
                 </p>
-                <Link href={`/admin/clients/${client.id}`}>
-                  <Button className="gap-2" data-testid="button-create-quote-phase3">
-                    <FileText className="w-4 h-4" />
-                    Create Quote
+                <div className="flex justify-center gap-2">
+                  <Button 
+                    className="gap-2" 
+                    onClick={() => onAdvancePhase("quote_sent")}
+                    disabled={isUpdating}
+                    data-testid="button-create-quote-phase3"
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    Mark Quote Sent
                   </Button>
-                </Link>
+                </div>
               </div>
             )}
             
@@ -894,12 +928,6 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   Quote sent to client. Waiting for their response.
                 </p>
                 <div className="flex justify-center gap-2">
-                  <Link href={`/admin/clients/${client.id}`}>
-                    <Button variant="outline" className="gap-2" data-testid="button-view-quote">
-                      <ExternalLink className="w-4 h-4" />
-                      View Quote
-                    </Button>
-                  </Link>
                   <Button 
                     variant="outline" 
                     className="gap-2" 
@@ -909,6 +937,15 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   >
                     {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Send Reminder
+                  </Button>
+                  <Button 
+                    className="gap-2" 
+                    onClick={() => onAdvancePhase("quote_approved")}
+                    disabled={isUpdating}
+                    data-testid="button-mark-quote-approved"
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Mark Quote Approved
                   </Button>
                 </div>
               </div>
@@ -998,8 +1035,21 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
 }
 
 // Phase 4: Design
-function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
+function Phase4Content({ client, project, onAdvancePhase, onUploadTemplates, isUpdating, isUploading }: any) {
   const status = project.status;
+  const [templateUrls, setTemplateUrls] = useState<string[]>(
+    project.designTemplateUrls ? JSON.parse(project.designTemplateUrls) : ['', '', '', '']
+  );
+  const { toast } = useToast();
+
+  const handleUrlChange = (index: number, value: string) => {
+    const updated = [...templateUrls];
+    updated[index] = value;
+    setTemplateUrls(updated);
+  };
+
+  const hasTemplates = templateUrls.some(url => url.trim() !== '');
+  const selectedIndex = project.selectedTemplateIndex;
 
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
@@ -1010,35 +1060,89 @@ function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
             Phase 4: Design Consultation
           </CardTitle>
           <CardDescription>
-            Upload design templates for client selection.
+            Add template URLs for client to select from.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {status === "design_pending" && (
-            <div className="text-center space-y-4 py-6">
-              <Palette className="w-12 h-12 mx-auto text-muted-foreground" />
-              <h3 className="font-semibold">Upload Design Templates</h3>
-              <p className="text-sm text-muted-foreground">
-                Find 4 suitable templates and upload screenshots for client review.
-              </p>
-              <div className="flex justify-center gap-2">
-                <Link href={`/admin/clients/${client.id}`}>
-                  <Button variant="outline" className="gap-2" data-testid="button-upload-templates">
-                    <Upload className="w-4 h-4" />
-                    Upload Templates
-                  </Button>
-                </Link>
+            <>
+              {/* Template URL Inputs */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Design Template URLs</h4>
+                <p className="text-sm text-muted-foreground">
+                  Enter URLs for 4 design templates. These can be Wix template previews, screenshots, or design mockups.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Label htmlFor={`template-${i}`}>Template {i + 1}</Label>
+                      <Input 
+                        id={`template-${i}`}
+                        placeholder="https://example.com/template-preview.jpg"
+                        value={templateUrls[i] || ''}
+                        onChange={(e) => handleUrlChange(i, e.target.value)}
+                        data-testid={`input-template-url-${i}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview */}
+              {hasTemplates && (
+                <div className="space-y-2">
+                  <h4 className="font-medium">Preview</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {templateUrls.map((url, i) => (
+                      <div key={i} className="aspect-video bg-muted rounded-lg flex items-center justify-center border overflow-hidden">
+                        {url ? (
+                          <img 
+                            src={url} 
+                            alt={`Template ${i + 1}`} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-muted-foreground text-xs p-2 text-center">Template ${i + 1}<br/>Invalid URL</span>`;
+                            }}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Template {i + 1}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline"
+                  className="gap-2" 
+                  onClick={() => onUploadTemplates(templateUrls)}
+                  disabled={isUploading || !hasTemplates}
+                  data-testid="button-save-templates"
+                >
+                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Save Templates
+                </Button>
                 <Button 
                   className="gap-2" 
-                  onClick={() => onAdvancePhase("design_sent")}
-                  disabled={isUpdating}
+                  onClick={() => {
+                    if (!hasTemplates) {
+                      toast({ title: "Please add at least one template URL", variant: "destructive" });
+                      return;
+                    }
+                    onUploadTemplates(templateUrls);
+                    onAdvancePhase("design_sent");
+                  }}
+                  disabled={isUpdating || !hasTemplates}
                   data-testid="button-send-templates"
                 >
                   {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Send to Client
+                  Save & Send to Client
                 </Button>
               </div>
-            </div>
+            </>
           )}
 
           {status === "design_sent" && (
@@ -1047,19 +1151,36 @@ function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
                 <Clock className="w-6 h-6 text-amber-600" />
                 <div>
                   <p className="font-medium">Awaiting Client Selection</p>
-                  <p className="text-sm text-muted-foreground">Templates sent to client for review</p>
+                  <p className="text-sm text-muted-foreground">
+                    Templates sent on {project.designTemplatesSentAt ? format(new Date(project.designTemplatesSentAt), "MMM d, yyyy") : "N/A"}
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
-                    <span className="text-muted-foreground text-sm">Template {i}</span>
+                {templateUrls.map((url, i) => (
+                  <div 
+                    key={i} 
+                    className={`aspect-video bg-muted rounded-lg flex items-center justify-center border-2 overflow-hidden ${
+                      selectedIndex === i ? 'border-primary ring-2 ring-primary/20' : 'border-dashed'
+                    }`}
+                  >
+                    {url ? (
+                      <img 
+                        src={url} 
+                        alt={`Template ${i + 1}`} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Template {i + 1}</span>
+                    )}
                   </div>
                 ))}
               </div>
+              {selectedIndex !== null && (
+                <p className="text-sm text-center text-green-600">Client selected Template {selectedIndex + 1}</p>
+              )}
               <div className="flex justify-center">
                 <Button 
-                  variant="outline" 
                   className="gap-2" 
                   onClick={() => onAdvancePhase("design_approved")}
                   disabled={isUpdating}
@@ -1079,6 +1200,11 @@ function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
               <p className="text-sm text-muted-foreground">
                 Client selected their preferred template. Ready to begin development.
               </p>
+              {project.selectedTemplateUrl && (
+                <div className="max-w-xs mx-auto aspect-video rounded-lg overflow-hidden border">
+                  <img src={project.selectedTemplateUrl} alt="Selected Template" className="w-full h-full object-cover" />
+                </div>
+              )}
               <Button 
                 className="gap-2" 
                 onClick={() => onAdvancePhase("in_development")}
@@ -1098,7 +1224,26 @@ function Phase4Content({ client, project, onAdvancePhase, isUpdating }: any) {
 }
 
 // Phase 5: Development
-function Phase5Content({ client, project, onAdvancePhase, isUpdating }: any) {
+function Phase5Content({ client, project, onAdvancePhase, onUpdateProject, isUpdating }: any) {
+  const [stagingUrl, setStagingUrl] = useState(project.stagingUrl || '');
+  const [progress, setProgress] = useState(project.developmentProgress || 0);
+  const [notes, setNotes] = useState(project.developmentNotes || '');
+  const [platform, setPlatform] = useState(project.websitePlatform || 'wix');
+
+  const hasChanges = stagingUrl !== (project.stagingUrl || '') || 
+                     progress !== (project.developmentProgress || 0) ||
+                     notes !== (project.developmentNotes || '') ||
+                     platform !== (project.websitePlatform || 'wix');
+
+  const handleSave = () => {
+    onUpdateProject({
+      stagingUrl,
+      developmentProgress: progress,
+      developmentNotes: notes,
+      websitePlatform: platform,
+    });
+  };
+
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       <Card>
@@ -1112,55 +1257,91 @@ function Phase5Content({ client, project, onAdvancePhase, isUpdating }: any) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Progress */}
+          {/* Platform Selection */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Development Progress</span>
-              <span className="font-medium">{project.developmentProgress || 0}%</span>
+            <Label>Development Platform</Label>
+            <div className="flex gap-2">
+              {['wix', 'shopify', 'wordpress', 'custom'].map((p) => (
+                <Button
+                  key={p}
+                  variant={platform === p ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setPlatform(p)}
+                  data-testid={`button-platform-${p}`}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </Button>
+              ))}
             </div>
-            <Progress value={project.developmentProgress || 0} className="h-3" />
           </div>
 
-          {/* Platform */}
-          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-            <Code className="w-5 h-5 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Development Platform</p>
-              <p className="text-sm text-muted-foreground">
-                {project.platform || "Wix"} (Standard Template)
-              </p>
+          {/* Progress Slider */}
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <Label>Development Progress</Label>
+              <span className="font-medium">{progress}%</span>
             </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={progress}
+              onChange={(e) => setProgress(parseInt(e.target.value))}
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+              data-testid="slider-progress"
+            />
+            <Progress value={progress} className="h-3" />
           </div>
 
           {/* Staging URL */}
-          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-            <Globe className="w-5 h-5 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Staging URL</p>
-              <p className="text-sm text-muted-foreground">
-                {project.stagingUrl || "Not configured yet"}
-              </p>
-            </div>
-            {project.stagingUrl && (
-              <a href={project.stagingUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="gap-2" data-testid="button-view-staging">
-                  <ExternalLink className="w-4 h-4" />
-                  View Site
-                </Button>
+          <div className="space-y-2">
+            <Label htmlFor="staging-url">Staging URL</Label>
+            <Input
+              id="staging-url"
+              placeholder="https://staging.example.wixsite.com/preview"
+              value={stagingUrl}
+              onChange={(e) => setStagingUrl(e.target.value)}
+              data-testid="input-staging-url"
+            />
+            {stagingUrl && (
+              <a href={stagingUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                Open staging site
               </a>
             )}
           </div>
 
+          {/* Development Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="dev-notes">Development Notes</Label>
+            <Textarea
+              id="dev-notes"
+              placeholder="Notes about development progress, issues, etc."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              data-testid="textarea-dev-notes"
+            />
+          </div>
+
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Link href={`/admin/clients/${client.id}`}>
-              <Button variant="outline" className="gap-2" data-testid="button-update-progress">
-                Update Progress
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleSave}
+              disabled={isUpdating || !hasChanges}
+              data-testid="button-save-progress"
+            >
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Save Progress
+            </Button>
             <Button 
               className="gap-2" 
-              onClick={() => onAdvancePhase("ready_for_review")}
+              onClick={() => {
+                if (hasChanges) handleSave();
+                onAdvancePhase("ready_for_review");
+              }}
               disabled={isUpdating}
               data-testid="button-mark-ready-review"
             >
@@ -1326,21 +1507,17 @@ function Phase7Content({ client, project, onAdvancePhase, isUpdating }: any) {
               <p className="text-sm text-muted-foreground">
                 Working on client-requested revisions.
               </p>
-              <Link href={`/admin/clients/${client.id}`}>
-                <Button variant="outline" className="gap-2" data-testid="button-view-revisions">
-                  <ExternalLink className="w-4 h-4" />
-                  View Revision Requests
+              <div className="flex justify-center gap-2">
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("revisions_complete")}
+                  disabled={isUpdating}
+                  data-testid="button-revisions-complete"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Mark Revisions Complete
                 </Button>
-              </Link>
-              <Button 
-                className="gap-2 ml-2" 
-                onClick={() => onAdvancePhase("revisions_complete")}
-                disabled={isUpdating}
-                data-testid="button-revisions-complete"
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Mark Revisions Complete
-              </Button>
+              </div>
             </div>
           )}
 
