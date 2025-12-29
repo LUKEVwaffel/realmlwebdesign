@@ -70,6 +70,13 @@ Preferred communication style: Simple, everyday language.
 - Password reset flow with email tokens
 - First-login password change requirement
 
+### Warranty Tracking
+- 25-day warranty period starts automatically when project status changes to "completed"
+- Client dashboard shows warranty countdown with days remaining
+- Three states: Active (green), Expiring Soon (amber, <7 days), Expired (gray)
+- Admin can view all warranty statuses and send reminder emails
+- Email notifications: warranty start, reminder, and expiry emails
+
 ## External Dependencies
 
 ### Payment Processing

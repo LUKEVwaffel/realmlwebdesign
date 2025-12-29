@@ -1768,8 +1768,21 @@ export async function registerRoutes(
       }
       
       const oldStatus = existingProject.status;
+      
+      // Prepare update data, including warranty dates if completing project
+      const updateData: any = { status };
+      if (status === "completed" && oldStatus !== "completed") {
+        const warrantyStart = new Date();
+        const warrantyEnd = new Date();
+        warrantyEnd.setDate(warrantyEnd.getDate() + 25); // 25-day warranty period
+        updateData.completedAt = warrantyStart;
+        updateData.warrantyStartDate = warrantyStart;
+        updateData.warrantyEndDate = warrantyEnd;
+        updateData.warrantyReminderSent = false;
+        updateData.warrantyExpiryNotified = false;
+      }
 
-      const project = await storage.updateProject(id, { status });
+      const project = await storage.updateProject(id, updateData);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -1781,6 +1794,29 @@ export async function registerRoutes(
         description: `Updated project status to ${status}`,
         ipAddress: req.ip,
       });
+      
+      // Send warranty start email if project just completed
+      if (status === "completed" && oldStatus !== "completed") {
+        const client = await storage.getClient(project.clientId);
+        if (client?.userId) {
+          const user = await storage.getUser(client.userId);
+          if (user?.email && project.warrantyEndDate) {
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            const projectName = project.projectType === "other" 
+              ? project.projectTypeOther || "Custom Project" 
+              : project.projectType.replace(/_/g, " ");
+            import("./emailService").then(emailService => {
+              emailService.sendWarrantyStartEmail(
+                user.email,
+                user.firstName || "Client",
+                projectName,
+                project.warrantyEndDate!,
+                `${baseUrl}/client`
+              ).catch(console.error);
+            }).catch(console.error);
+          }
+        }
+      }
 
       const client = await storage.getClient(project.clientId);
       const projectName = project.projectType === "other" 
@@ -3192,6 +3228,141 @@ export async function registerRoutes(
       res.json({ pinEnabled: user.pinEnabled || false });
     } catch (error) {
       console.error("Check PIN status error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ WARRANTY ROUTES ============
+  
+  // Get warranty status for all completed projects (admin)
+  app.get("/api/admin/warranty", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const allProjects = await storage.getProjects();
+      const completedProjects = allProjects.filter(p => 
+        p.status === "completed" && p.warrantyStartDate && p.warrantyEndDate
+      );
+      
+      const warrantyData = await Promise.all(completedProjects.map(async (project) => {
+        const client = await storage.getClient(project.clientId);
+        const warrantyEnd = new Date(project.warrantyEndDate!);
+        const now = new Date();
+        const daysRemaining = Math.ceil((warrantyEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const isExpired = daysRemaining <= 0;
+        const isExpiringSoon = daysRemaining > 0 && daysRemaining <= 7;
+        
+        return {
+          projectId: project.id,
+          projectType: project.projectType,
+          clientId: project.clientId,
+          clientName: client?.businessLegalName || "Unknown",
+          warrantyStartDate: project.warrantyStartDate,
+          warrantyEndDate: project.warrantyEndDate,
+          daysRemaining: Math.max(0, daysRemaining),
+          isExpired,
+          isExpiringSoon,
+          warrantyReminderSent: project.warrantyReminderSent,
+          warrantyExpiryNotified: project.warrantyExpiryNotified,
+        };
+      }));
+      
+      res.json(warrantyData.sort((a, b) => a.daysRemaining - b.daysRemaining));
+    } catch (error) {
+      console.error("Get warranty status error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Send warranty reminder email (admin)
+  app.post("/api/admin/warranty/:projectId/remind", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { projectId } = req.params;
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      if (!project.warrantyEndDate) {
+        return res.status(400).json({ error: "Project has no warranty period" });
+      }
+      
+      const client = await storage.getClient(project.clientId);
+      if (!client?.userId) {
+        return res.status(400).json({ error: "Client not found" });
+      }
+      
+      const user = await storage.getUser(client.userId);
+      if (!user?.email) {
+        return res.status(400).json({ error: "Client email not found" });
+      }
+      
+      const warrantyEnd = new Date(project.warrantyEndDate);
+      const daysRemaining = Math.ceil((warrantyEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      
+      if (daysRemaining <= 0) {
+        return res.status(400).json({ error: "Warranty has already expired" });
+      }
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const projectName = project.projectType === "other" 
+        ? project.projectTypeOther || "Custom Project" 
+        : project.projectType.replace(/_/g, " ");
+      
+      const emailService = await import("./emailService");
+      const sent = await emailService.sendWarrantyReminderEmail(
+        user.email,
+        user.firstName || "Client",
+        projectName,
+        daysRemaining,
+        warrantyEnd,
+        `${baseUrl}/client`
+      );
+      
+      if (sent) {
+        await storage.updateProject(projectId, { warrantyReminderSent: true });
+        res.json({ success: true, message: "Warranty reminder sent" });
+      } else {
+        res.status(500).json({ error: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Send warranty reminder error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get warranty status for client's project
+  app.get("/api/client/warranty", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.json({ warranty: null });
+      }
+      
+      const projectsList = await storage.getProjectsByClientId(client.id);
+      const completedProject = projectsList.find(p => 
+        p.status === "completed" && p.warrantyStartDate && p.warrantyEndDate
+      );
+      
+      if (!completedProject) {
+        return res.json({ warranty: null });
+      }
+      
+      const warrantyEnd = new Date(completedProject.warrantyEndDate!);
+      const now = new Date();
+      const daysRemaining = Math.ceil((warrantyEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      
+      res.json({
+        warranty: {
+          projectId: completedProject.id,
+          startDate: completedProject.warrantyStartDate,
+          endDate: completedProject.warrantyEndDate,
+          daysRemaining: Math.max(0, daysRemaining),
+          isExpired: daysRemaining <= 0,
+          isExpiringSoon: daysRemaining > 0 && daysRemaining <= 7,
+        }
+      });
+    } catch (error) {
+      console.error("Get client warranty error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

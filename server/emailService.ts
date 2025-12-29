@@ -791,6 +791,116 @@ export async function sendProjectCompletedEmail(
   });
 }
 
+// ============ Warranty Period Emails ============
+export async function sendWarrantyStartEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  warrantyEndDate: Date,
+  portalUrl: string
+): Promise<boolean> {
+  const daysRemaining = Math.ceil((warrantyEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const formattedEndDate = warrantyEndDate.toLocaleDateString("en-US", { 
+    month: "long", 
+    day: "numeric", 
+    year: "numeric" 
+  });
+  
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Your 25-Day Warranty Period Has Started</h2>
+    <p>Hi ${firstName},</p>
+    <p>Congratulations on completing your project <strong>${projectName}</strong>!</p>
+    <div style="background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%); padding: 25px; border-radius: 8px; margin: 20px 0; color: #fff;">
+      <h3 style="margin: 0 0 10px 0; color: #fff;">25-Day Warranty Coverage</h3>
+      <p style="margin: 5px 0; color: #fff;">You have <strong>${daysRemaining} days</strong> of free support and bug fixes.</p>
+      <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">Warranty expires: ${formattedEndDate}</p>
+    </div>
+    <p>During this period, we'll fix any bugs or issues with your website at no additional cost. This includes:</p>
+    <ul>
+      <li>Bug fixes and technical issues</li>
+      <li>Minor adjustments to functionality</li>
+      <li>Browser compatibility fixes</li>
+    </ul>
+    <p style="color: #666; font-size: 14px;"><strong>Note:</strong> This warranty covers fixes only, not new features or major design changes.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/dashboard" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Your 25-Day Warranty Period Has Started",
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendWarrantyReminderEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  daysRemaining: number,
+  warrantyEndDate: Date,
+  portalUrl: string
+): Promise<boolean> {
+  const formattedEndDate = warrantyEndDate.toLocaleDateString("en-US", { 
+    month: "long", 
+    day: "numeric", 
+    year: "numeric" 
+  });
+  
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Warranty Period Reminder</h2>
+    <p>Hi ${firstName},</p>
+    <p>This is a friendly reminder that your warranty period for <strong>${projectName}</strong> is ending soon.</p>
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+      <p style="margin: 0; font-size: 18px;"><strong>${daysRemaining} days remaining</strong></p>
+      <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Warranty expires: ${formattedEndDate}</p>
+    </div>
+    <p>If you've noticed any bugs or issues with your website, please let us know before your warranty expires so we can fix them at no additional cost.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/messages" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Contact Us</a>
+    </div>
+    <p style="color: #666; font-size: 14px;">After the warranty period, bug fixes and support will be billed separately.</p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Warranty Reminder: ${daysRemaining} Days Remaining`,
+    html: baseTemplate(content),
+  });
+}
+
+export async function sendWarrantyExpiredEmail(
+  email: string,
+  firstName: string,
+  projectName: string,
+  portalUrl: string
+): Promise<boolean> {
+  const content = `
+    <h2 style="color: #1a1a2e; margin-top: 0;">Warranty Period Has Ended</h2>
+    <p>Hi ${firstName},</p>
+    <p>Your 25-day warranty period for <strong>${projectName}</strong> has now ended.</p>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>What this means:</strong></p>
+      <ul style="margin: 10px 0 0 0;">
+        <li>Future bug fixes and support will be billed at our standard rates</li>
+        <li>You can still reach out to us anytime for paid support</li>
+        <li>Consider our maintenance plans for ongoing peace of mind</li>
+      </ul>
+    </div>
+    <p>It's been a pleasure working with you! If you need any future assistance, we're here to help.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${portalUrl}/dashboard" style="background: #1a1a2e; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">View Dashboard</a>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Your Warranty Period Has Ended",
+    html: baseTemplate(content),
+  });
+}
+
 export async function sendWorkflowEmail(
   clientId: string,
   projectId: string | null,

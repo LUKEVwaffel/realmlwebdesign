@@ -7,7 +7,9 @@ import {
   CheckCircle2, 
   ArrowRight,
   Calendar,
-  User
+  User,
+  Shield,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +59,12 @@ const statusLabels: Record<string, string> = Object.fromEntries(
 export default function ClientDashboard() {
   const { user } = useAuth();
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading } = useQuery<{
+    project: any;
+    pendingPayments: any[];
+    unsignedDocuments: any[];
+    recentActivity: any[];
+  }>({
     queryKey: ["/api/client/dashboard"],
   });
 
@@ -65,6 +72,22 @@ export default function ClientDashboard() {
   const pendingPayments = dashboardData?.pendingPayments || [];
   const unsignedDocuments = dashboardData?.unsignedDocuments || [];
   const recentActivity = dashboardData?.recentActivity || [];
+  
+  const { data: warrantyData, isLoading: warrantyLoading } = useQuery<{
+    warranty: {
+      projectId: string;
+      startDate: string;
+      endDate: string;
+      daysRemaining: number;
+      isExpired: boolean;
+      isExpiringSoon: boolean;
+    } | null;
+  }>({
+    queryKey: ["/api/client/warranty"],
+    enabled: project?.status === "completed",
+  });
+  
+  const warranty = warrantyData?.warranty;
 
   return (
     <PortalLayout requiredRole="client">
@@ -185,6 +208,110 @@ export default function ClientDashboard() {
           <Card className="border-border/50">
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground">No active project found.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Warranty Countdown - Only show for completed projects with active warranty */}
+        {project?.status === "completed" && warrantyLoading && (
+          <Card className="border-border/50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-12 h-12 rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-32 mb-2" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+                <Skeleton className="w-20 h-16" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {project?.status === "completed" && !warrantyLoading && warranty && (
+          <Card 
+            className={`border-border/50 ${
+              warranty.isExpired 
+                ? "bg-muted/30" 
+                : warranty.isExpiringSoon 
+                  ? "border-amber-500/30 bg-amber-500/5" 
+                  : "border-green-500/30 bg-green-500/5"
+            }`}
+            data-testid="card-warranty"
+          >
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+                    warranty.isExpired 
+                      ? "bg-muted" 
+                      : warranty.isExpiringSoon 
+                        ? "bg-amber-500/10" 
+                        : "bg-green-500/10"
+                  }`}>
+                    {warranty.isExpired ? (
+                      <Shield className="w-6 h-6 text-muted-foreground" />
+                    ) : warranty.isExpiringSoon ? (
+                      <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      25-Day Warranty
+                      {!warranty.isExpired && (
+                        <Badge variant="outline" className={
+                          warranty.isExpiringSoon 
+                            ? "border-amber-500/50 text-amber-600 dark:text-amber-400" 
+                            : "border-green-500/50 text-green-600 dark:text-green-400"
+                        }>
+                          Active
+                        </Badge>
+                      )}
+                      {warranty.isExpired && (
+                        <Badge variant="outline" className="border-muted-foreground/50 text-muted-foreground">
+                          Expired
+                        </Badge>
+                      )}
+                    </h3>
+                    {warranty.isExpired ? (
+                      <p className="text-sm text-muted-foreground">
+                        Your warranty period has ended. Future support will be billed separately.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Free bug fixes and support included until{" "}
+                        {warranty.endDate && format(new Date(warranty.endDate), "MMMM d, yyyy")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {!warranty.isExpired && (
+                  <div className="flex flex-col items-center justify-center px-6 py-3 bg-background rounded-md border">
+                    <span className={`text-3xl font-bold ${
+                      warranty.isExpiringSoon 
+                        ? "text-amber-600 dark:text-amber-400" 
+                        : "text-green-600 dark:text-green-400"
+                    }`}>
+                      {warranty.daysRemaining}
+                    </span>
+                    <span className="text-xs text-muted-foreground">days left</span>
+                  </div>
+                )}
+              </div>
+              {!warranty.isExpired && warranty.isExpiringSoon && (
+                <div className="mt-4 pt-4 border-t border-amber-500/20">
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Your warranty is ending soon. If you have any issues with your website, please contact us before the warranty expires.
+                  </p>
+                  <Link href="/client/messages">
+                    <Button variant="outline" size="sm" className="mt-2 gap-2" data-testid="button-contact-warranty">
+                      Contact Us
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

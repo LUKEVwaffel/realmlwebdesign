@@ -221,6 +221,13 @@ export const projects = pgTable("projects", {
   deliveryStartedAt: timestamp("delivery_started_at"),
   completedAt: timestamp("completed_at"),
   
+  // Warranty Tracking (25-day support period after completion)
+  warrantyStartDate: timestamp("warranty_start_date"),
+  warrantyEndDate: timestamp("warranty_end_date"),
+  warrantyReminderSent: boolean("warranty_reminder_sent").default(false),
+  warrantyExpiryNotified: boolean("warranty_expiry_notified").default(false),
+  warrantyNotes: text("warranty_notes"),
+  
   // Portfolio display
   visibleOnPortfolio: boolean("visible_on_portfolio").default(false),
   portfolioImage: varchar("portfolio_image", { length: 500 }),
