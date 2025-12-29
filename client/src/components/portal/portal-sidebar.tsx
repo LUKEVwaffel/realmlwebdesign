@@ -14,7 +14,6 @@ import {
   HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 import {
   Sidebar,
   SidebarContent,
@@ -74,12 +73,29 @@ export function PortalSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-6">
-        <Link href="/" className="flex items-center justify-center">
-          <img 
-            src={duoLogo} 
-            alt="DUO"
-            className="h-20 w-auto object-contain"
-          />
+        <Link href="/" className="flex flex-col items-center justify-center gap-1">
+          <div className="relative">
+            <span 
+              className="text-4xl font-bold tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              DUO
+            </span>
+            <div 
+              className="absolute -inset-2 opacity-30 blur-lg rounded-full -z-10"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)',
+              }}
+            />
+          </div>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-sidebar-foreground/50 font-medium">
+            Client Portal
+          </span>
         </Link>
       </SidebarHeader>
 

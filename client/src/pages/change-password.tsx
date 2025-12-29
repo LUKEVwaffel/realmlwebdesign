@@ -12,7 +12,6 @@ import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { changePasswordSchema, type ChangePasswordInput } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 export default function ChangePasswordPage() {
   const [, setLocation] = useLocation();
@@ -73,11 +72,17 @@ export default function ChangePasswordPage() {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <img 
-              src={duoLogo} 
-              alt="DUO"
-              className="h-16 w-auto object-contain"
-            />
+            <span 
+              className="text-2xl font-bold tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              DUO
+            </span>
           </div>
           <ThemeToggle />
         </div>

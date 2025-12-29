@@ -4,7 +4,6 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
-import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 export function PublicNavbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,12 +29,18 @@ export function PublicNavbar() {
               className="flex items-center gap-2 cursor-pointer"
               whileTap={{ scale: 0.98 }}
             >
-              <img 
-                src={duoLogo} 
-                alt="ML WebDesign"
-                className="h-14 w-auto object-contain"
+              <span 
+                className="text-2xl font-bold tracking-tight"
+                style={{
+                  background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
                 data-testid="text-logo"
-              />
+              >
+                ML WebDesign
+              </span>
             </motion.div>
           </Link>
 

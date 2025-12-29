@@ -1,7 +1,6 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import duoLogo from "@assets/ChatGPT_Image_Dec_29,_2025,_11_57_01_AM_1767027492270.png";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -37,11 +36,17 @@ export function PublicFooter() {
             transition={{ duration: 0.5 }}
           >
             <div className="mb-4">
-              <img 
-                src={duoLogo} 
-                alt="ML WebDesign"
-                className="h-14 w-auto object-contain"
-              />
+              <span 
+                className="text-3xl font-bold tracking-tight"
+                style={{
+                  background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                ML WebDesign
+              </span>
             </div>
             <p className="text-muted-foreground max-w-md mb-4">
               We create stunning, modern websites that help businesses grow online. 
