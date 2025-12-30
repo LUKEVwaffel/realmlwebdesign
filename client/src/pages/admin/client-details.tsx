@@ -37,7 +37,8 @@ import {
   Activity,
   KeyRound,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Rocket
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -195,9 +196,24 @@ function EmbeddedPhaseTools({ client, project, status }: {
 }) {
   const { toast } = useToast();
   const phase = phaseLabels[status]?.phase || 0;
+  const [liveWebsiteUrl, setLiveWebsiteUrl] = useState(project?.websiteUrl || "");
   
   const clientId = String(client.id);
   
+  const updateProjectMutation = useMutation({
+    mutationFn: async (data: { websiteUrl?: string; deliveredAt?: Date }) => {
+      const res = await apiRequest("PATCH", `/api/admin/projects/${project?.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Project updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update project", description: error.message, variant: "destructive" });
+    },
+  });
+
   const sendWelcomeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/admin/projects/${project?.id}/send-welcome`);
@@ -552,14 +568,68 @@ function EmbeddedPhaseTools({ client, project, status }: {
                 </div>
               </div>
             )}
-            <Button onClick={() => advanceStatusMutation.mutate("completed")} disabled={advanceStatusMutation.isPending}>Complete Project</Button>
+            <div className="p-3 border rounded-lg space-y-3">
+              <Label className="text-sm font-medium">Final Website URL</Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="https://clientwebsite.com" 
+                  value={liveWebsiteUrl}
+                  onChange={(e) => setLiveWebsiteUrl(e.target.value)}
+                  data-testid="input-website-url"
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={() => updateProjectMutation.mutate({ websiteUrl: liveWebsiteUrl })}
+                  disabled={updateProjectMutation.isPending || !liveWebsiteUrl}
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Enter the live website URL before completing the project.</p>
+            </div>
+            <Button 
+              onClick={() => {
+                if (liveWebsiteUrl) {
+                  updateProjectMutation.mutate({ websiteUrl: liveWebsiteUrl, deliveredAt: new Date() });
+                }
+                advanceStatusMutation.mutate("completed");
+              }} 
+              disabled={advanceStatusMutation.isPending || !liveWebsiteUrl}
+              className="w-full"
+            >
+              <Rocket className="w-4 h-4 mr-2" />
+              Deliver & Complete Project
+            </Button>
           </div>
         )}
         {status === "completed" && (
-          <div className="text-center py-4">
-            <Check className="w-12 h-12 mx-auto text-green-500 mb-2" />
-            <p className="font-semibold text-green-600">Project Complete!</p>
-            <p className="text-sm text-muted-foreground mt-1">25-day warranty is now active.</p>
+          <div className="space-y-4">
+            <div className="text-center py-4">
+              <Check className="w-12 h-12 mx-auto text-green-500 mb-2" />
+              <p className="font-semibold text-green-600">Project Complete!</p>
+              <p className="text-sm text-muted-foreground mt-1">25-day warranty is now active.</p>
+            </div>
+            {project?.websiteUrl && (
+              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <Label className="text-xs text-muted-foreground">Live Website</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Globe className="w-4 h-4 text-green-600" />
+                  <a 
+                    href={project.websiteUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {project.websiteUrl}
+                  </a>
+                </div>
+              </div>
+            )}
+            {project?.deliveredAt && (
+              <p className="text-xs text-muted-foreground text-center">
+                Delivered on {new Date(project.deliveredAt).toLocaleDateString()}
+              </p>
+            )}
           </div>
         )}
       </div>
