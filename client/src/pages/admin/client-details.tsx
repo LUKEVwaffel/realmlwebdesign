@@ -64,6 +64,7 @@ import { PortalLayout } from "@/components/portal/portal-layout";
 import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
 import { FileUploader } from "@/components/FileUploader";
 import { CloseAccountForm } from "@/components/admin/close-account-form";
+import { ChatPanel } from "@/components/admin/chat-panel";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -1443,6 +1444,10 @@ export default function ClientDetails() {
               <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-activity">
                 <Activity className="w-4 h-4" />
                 <span className="hidden sm:inline">Activity</span>
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-messages">
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">Messages</span>
               </TabsTrigger>
               <TabsTrigger value="portal-preview" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-portal-preview">
                 <Eye className="w-4 h-4" />
@@ -2879,6 +2884,16 @@ export default function ClientDetails() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="messages" className="mt-4">
+            <div className="h-[600px]">
+              <ChatPanel 
+                clientId={id} 
+                clientName={client.businessLegalName || client.users?.[0]?.firstName || "Client"}
+                projectId={client.projects?.[0]?.id}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="portal-preview" className="mt-4">
