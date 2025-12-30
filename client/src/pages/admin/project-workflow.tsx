@@ -536,8 +536,6 @@ export default function ProjectWorkflow() {
                   project={project}
                   onSendWelcome={() => sendWelcomeEmailMutation.mutate(project.id)}
                   isSending={sendWelcomeEmailMutation.isPending}
-                  onUpdateClient={(data: any) => updateClientMutation.mutate(data)}
-                  isUpdating={updateClientMutation.isPending}
                 />
               )}
               {currentPhase === 2 && (
@@ -549,6 +547,8 @@ export default function ProjectWorkflow() {
                   isSendingReminder={sendReminderMutation.isPending}
                   onResendWelcome={() => sendWelcomeEmailMutation.mutate(project.id)}
                   isResending={sendWelcomeEmailMutation.isPending}
+                  onUpdateClient={(data: any) => updateClientMutation.mutate(data)}
+                  isUpdating={updateClientMutation.isPending}
                 />
               )}
               {currentPhase === 3 && (
@@ -669,58 +669,25 @@ export default function ProjectWorkflow() {
 }
 
 // Phase 1: Client Onboarding
-function Phase1Content({ client, project, onSendWelcome, isSending, onUpdateClient, isUpdating }: any) {
+function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
   const user = client.user;
   const isDraft = project.status === "draft";
   const isCreated = project.status === "created";
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    businessLegalName: client.businessLegalName || "",
-    businessPhone: client.businessPhone || "",
-    businessEmail: client.businessEmail || "",
-    industry: client.industry || "",
-    existingWebsite: client.existingWebsite || "",
-    addressStreet: client.addressStreet || "",
-    addressCity: client.addressCity || "",
-    addressState: client.addressState || "",
-    addressZip: client.addressZip || "",
-  });
-
-  const handleSaveEdit = () => {
-    onUpdateClient(editForm);
-    setEditOpen(false);
-  };
 
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              Phase 1: Client Onboarding
-            </CardTitle>
-            <CardDescription>
-              {isDraft 
-                ? "Review client information and send welcome email with login credentials."
-                : "Welcome email has been sent. Waiting for client to complete questionnaire."
-              }
-            </CardDescription>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2"
-            onClick={() => setEditOpen(true)}
-            data-testid="button-edit-client"
-          >
-            <Pencil className="w-4 h-4" />
-            Edit Contact Info
-          </Button>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5 text-primary" />
+            Phase 1: Client Onboarding
+          </CardTitle>
+          <CardDescription>
+            {isDraft 
+              ? "Review client information and send welcome email with login credentials."
+              : "Welcome email has been sent. Waiting for client to complete questionnaire."
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Client Information Summary */}
@@ -832,6 +799,159 @@ function Phase1Content({ client, project, onSendWelcome, isSending, onUpdateClie
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// Phase 2: Questionnaire
+function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSendingReminder, onResendWelcome, isResending, onUpdateClient, isUpdating }: any) {
+  const user = client.user;
+  const isPending = project.status === "questionnaire_pending";
+  const isComplete = project.status === "questionnaire_complete";
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    businessLegalName: client.businessLegalName || "",
+    businessPhone: client.businessPhone || "",
+    businessEmail: client.businessEmail || "",
+    industry: client.industry || "",
+    existingWebsite: client.existingWebsite || "",
+    addressStreet: client.addressStreet || "",
+    addressCity: client.addressCity || "",
+    addressState: client.addressState || "",
+    addressZip: client.addressZip || "",
+  });
+
+  const handleSaveEdit = () => {
+    onUpdateClient(editForm);
+    setEditOpen(false);
+  };
+
+  return (
+    <motion.div variants={fadeInUp} className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-primary" />
+              Phase 2: Client Questionnaire
+            </CardTitle>
+            <CardDescription>
+              {isPending 
+                ? "Waiting for the client to complete their project questionnaire."
+                : "Questionnaire completed! Review responses and proceed to quote creation."
+              }
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2"
+            onClick={() => setEditOpen(true)}
+            data-testid="button-edit-client"
+          >
+            <Pencil className="w-4 h-4" />
+            Edit Contact Info
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isPending ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <motion.div 
+                className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center"
+                animate={{ 
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Clock className="w-10 h-10 text-amber-600" />
+              </motion.div>
+              <div className="text-center">
+                <h3 className="font-semibold text-lg">Awaiting Client Response</h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  The questionnaire was sent on {project.createdAt ? format(new Date(project.createdAt), "MMM d, yyyy") : "N/A"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={onResendWelcome}
+                  disabled={isResending}
+                  data-testid="button-resend-welcome-phase2"
+                >
+                  {isResending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Resend Welcome Email
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={onSendReminder}
+                  disabled={isSendingReminder}
+                  data-testid="button-send-reminder"
+                >
+                  {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Send Reminder
+                </Button>
+                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
+                  <Button variant="outline" className="gap-2" data-testid="button-view-questionnaire">
+                    <ExternalLink className="w-4 h-4" />
+                    View Questionnaire
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 p-4 bg-green-500/10 rounded-lg">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-700 dark:text-green-400">Questionnaire Complete</p>
+                  <p className="text-sm text-green-600 dark:text-green-500">
+                    Completed on {project.questionnaireCompletedAt ? format(new Date(project.questionnaireCompletedAt), "MMM d, yyyy 'at' h:mm a") : "N/A"}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Questionnaire Response Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Project Goals</h4>
+                  <p className="text-sm text-muted-foreground">{project.mainGoals || "Not specified"}</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Target Audience</h4>
+                  <p className="text-sm text-muted-foreground">{project.targetAudience || "Not specified"}</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Design Style</h4>
+                  <p className="text-sm text-muted-foreground capitalize">{project.designStyle || "Not specified"}</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Site Type</h4>
+                  <p className="text-sm text-muted-foreground capitalize">{project.siteType?.replace("_", " ") || "Not specified"}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
+                  <Button variant="outline" className="gap-2" data-testid="button-view-full-responses">
+                    <ExternalLink className="w-4 h-4" />
+                    View Full Responses
+                  </Button>
+                </Link>
+                <Button className="gap-2" onClick={onAdvancePhase} data-testid="button-create-quote">
+                  Create Quote
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1007,125 +1127,6 @@ function Phase1Content({ client, project, onSendWelcome, isSending, onUpdateClie
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </motion.div>
-  );
-}
-
-// Phase 2: Questionnaire
-function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSendingReminder, onResendWelcome, isResending }: any) {
-  const isPending = project.status === "questionnaire_pending";
-  const isComplete = project.status === "questionnaire_complete";
-
-  return (
-    <motion.div variants={fadeInUp} className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-primary" />
-            Phase 2: Client Questionnaire
-          </CardTitle>
-          <CardDescription>
-            {isPending 
-              ? "Waiting for the client to complete their project questionnaire."
-              : "Questionnaire completed! Review responses and proceed to quote creation."
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isPending ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <motion.div 
-                className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center"
-                animate={{ 
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Clock className="w-10 h-10 text-amber-600" />
-              </motion.div>
-              <div className="text-center">
-                <h3 className="font-semibold text-lg">Awaiting Client Response</h3>
-                <p className="text-muted-foreground text-sm mt-1">
-                  The questionnaire was sent on {project.createdAt ? format(new Date(project.createdAt), "MMM d, yyyy") : "N/A"}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  variant="outline" 
-                  className="gap-2" 
-                  onClick={onResendWelcome}
-                  disabled={isResending}
-                  data-testid="button-resend-welcome-phase2"
-                >
-                  {isResending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  Resend Welcome Email
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="gap-2" 
-                  onClick={onSendReminder}
-                  disabled={isSendingReminder}
-                  data-testid="button-send-reminder"
-                >
-                  {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Send Reminder
-                </Button>
-                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
-                  <Button variant="outline" className="gap-2" data-testid="button-view-questionnaire">
-                    <ExternalLink className="w-4 h-4" />
-                    View Questionnaire
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 p-4 bg-green-500/10 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-700 dark:text-green-400">Questionnaire Complete</p>
-                  <p className="text-sm text-green-600 dark:text-green-500">
-                    Completed on {project.questionnaireCompletedAt ? format(new Date(project.questionnaireCompletedAt), "MMM d, yyyy 'at' h:mm a") : "N/A"}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Questionnaire Response Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2">Project Goals</h4>
-                  <p className="text-sm text-muted-foreground">{project.mainGoals || "Not specified"}</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2">Target Audience</h4>
-                  <p className="text-sm text-muted-foreground">{project.targetAudience || "Not specified"}</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2">Design Style</h4>
-                  <p className="text-sm text-muted-foreground capitalize">{project.designStyle || "Not specified"}</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2">Site Type</h4>
-                  <p className="text-sm text-muted-foreground capitalize">{project.siteType?.replace("_", " ") || "Not specified"}</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Link href={`/admin/clients/${client.id}/questionnaire/pdf`} target="_blank">
-                  <Button variant="outline" className="gap-2" data-testid="button-view-full-responses">
-                    <ExternalLink className="w-4 h-4" />
-                    View Full Responses
-                  </Button>
-                </Link>
-                <Button className="gap-2" onClick={onAdvancePhase} data-testid="button-create-quote">
-                  Create Quote
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </motion.div>
   );
 }
