@@ -1197,6 +1197,20 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
     },
   });
 
+  // Approve quote mutation (admin manually marking as approved)
+  const approveQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/quotes/${quoteId}`, { status: "approved" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", client.id, "quotes"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to approve quote", description: error.message, variant: "destructive" });
+    },
+  });
+
   // New order: TOS → Quote → Deposit
   const statusOrder = ["tos_pending", "tos_signed", "quote_draft", "quote_sent", "quote_approved", "deposit_pending", "deposit_paid"];
   const currentIndex = statusOrder.indexOf(status);
@@ -1267,31 +1281,53 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
   };
 
   const handleQuoteApproval = async () => {
-    // Find the approved quote's total
-    const approvedQuote = quotes?.find((q: any) => q.status === "sent" || q.status === "viewed");
-    const amount = parseFloat(approvedQuote?.totalAmount || project.totalCost || "0");
+    // Find the pending quote (one that was sent and awaiting response)
+    const pendingQuote = quotes?.find((q: any) => ["sent", "viewed"].includes(q.status));
+    
+    if (!pendingQuote) {
+      toast({ 
+        title: "No pending quote", 
+        description: "There is no quote awaiting approval.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    const amount = parseFloat(pendingQuote.totalAmount || "0");
     const depositAmount = (amount / 2).toFixed(2);
     
-    // Update project total cost
-    if (onUpdateProject && amount > 0) {
-      onUpdateProject({ totalCost: amount.toFixed(2) });
-    }
-    
-    // Create deposit payment automatically
-    if (onCreateDeposit && amount > 0) {
-      onCreateDeposit({
-        amount: depositAmount,
-        description: "50% Project Deposit",
-        paymentType: "deposit"
+    try {
+      // Mark the quote as approved in the database
+      await approveQuoteMutation.mutateAsync(pendingQuote.id);
+      
+      // Update project total cost
+      if (onUpdateProject && amount > 0) {
+        onUpdateProject({ totalCost: amount.toFixed(2) });
+      }
+      
+      // Create deposit payment automatically
+      if (onCreateDeposit && amount > 0) {
+        onCreateDeposit({
+          amount: depositAmount,
+          description: "50% Project Deposit",
+          paymentType: "deposit"
+        });
+      }
+      
+      toast({ 
+        title: "Quote approved", 
+        description: `Quote for $${amount.toFixed(2)} has been approved. Deposit payment of $${depositAmount} created.` 
       });
+      
+      onAdvancePhase("quote_approved");
+    } catch (error) {
+      // Error already handled by mutation
     }
-    
-    onAdvancePhase("quote_approved");
   };
 
   const { subtotal, taxAmount, total } = calculateQuoteTotals();
   const draftQuotes = quotes?.filter((q: any) => q.status === "draft") || [];
-  const sentQuotes = quotes?.filter((q: any) => q.status === "sent" || q.status === "viewed") || [];
+  const sentQuotes = quotes?.filter((q: any) => ["sent", "viewed"].includes(q.status)) || [];
   const approvedQuotes = quotes?.filter((q: any) => q.status === "approved") || [];
   
   return (
@@ -1713,10 +1749,10 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   <Button 
                     className="gap-2" 
                     onClick={handleQuoteApproval}
-                    disabled={isUpdating || sentQuotes.length === 0}
+                    disabled={isUpdating || approveQuoteMutation.isPending || sentQuotes.length === 0}
                     data-testid="button-mark-quote-approved"
                   >
-                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {(isUpdating || approveQuoteMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Mark Quote Approved
                   </Button>
                 </div>
