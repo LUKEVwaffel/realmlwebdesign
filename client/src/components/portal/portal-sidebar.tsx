@@ -13,7 +13,8 @@ import {
   ClipboardList,
   Receipt,
   HelpCircle,
-  MessageCircle
+  MessageCircle,
+  FileCheck
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
+  { title: "Quotes", url: "/client/quotes", icon: FileCheck },
   { title: "Messages", url: "/client/messages", icon: MessageCircle },
   { title: "Tutorial", url: "/client/tutorial", icon: HelpCircle },
   { title: "Questionnaire", url: "/client/questionnaire", icon: ClipboardList },
@@ -72,6 +74,16 @@ export function PortalSidebar() {
     enabled: isAdmin,
     refetchInterval: 10000,
   });
+
+  const { data: quotes } = useQuery<any[]>({
+    queryKey: ["/api/client/quotes"],
+    enabled: !isAdmin,
+    refetchInterval: 30000,
+  });
+
+  const pendingQuotesCount = (quotes || []).filter(
+    (q: any) => q.status === "sent" || q.status === "viewed"
+  ).length;
 
   const handleLogout = () => {
     logout();
@@ -120,9 +132,12 @@ export function PortalSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const unreadCount = item.title === "Messages" 
-                  ? (isAdmin ? adminUnreadData?.unreadCount || 0 : unreadData?.unreadCount || 0)
-                  : 0;
+                let badgeCount = 0;
+                if (item.title === "Messages") {
+                  badgeCount = isAdmin ? adminUnreadData?.unreadCount || 0 : unreadData?.unreadCount || 0;
+                } else if (item.title === "Quotes" && !isAdmin) {
+                  badgeCount = pendingQuotesCount;
+                }
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -132,13 +147,13 @@ export function PortalSidebar() {
                       <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase()}`}>
                         <item.icon className="w-4 h-4" />
                         <span className="flex-1">{item.title}</span>
-                        {unreadCount > 0 && (
+                        {badgeCount > 0 && (
                           <Badge 
-                            variant="destructive" 
+                            variant={item.title === "Quotes" ? "default" : "destructive"}
                             className="ml-auto text-[10px] px-1.5 min-w-[18px] h-[18px] flex items-center justify-center"
-                            data-testid="badge-unread-messages"
+                            data-testid={`badge-${item.title.toLowerCase()}-count`}
                           >
-                            {unreadCount > 99 ? "99+" : unreadCount}
+                            {badgeCount > 99 ? "99+" : badgeCount}
                           </Badge>
                         )}
                       </Link>

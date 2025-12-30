@@ -132,6 +132,18 @@ const getNextAction = (status: string, hasUnsignedDocs: boolean, hasPendingPayme
     };
   }
 
+  if (status === "quote_sent") {
+    return {
+      title: "Review Your Quote",
+      description: "We've prepared a project quote for you! Review the details and approve to proceed.",
+      buttonText: "View Quote",
+      href: "/client/quotes",
+      icon: FileText,
+      priority: "high",
+      pulse: true
+    };
+  }
+
   if (status === "design_sent") {
     return {
       title: "Choose Your Design",
