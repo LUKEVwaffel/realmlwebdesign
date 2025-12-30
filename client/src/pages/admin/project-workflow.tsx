@@ -33,7 +33,10 @@ import {
   Loader2,
   KeyRound,
   MessageSquare,
-  Pencil
+  Pencil,
+  Save,
+  Trash2,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1142,15 +1145,57 @@ function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSend
 // Phase 3: Agreement & Quote
 function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSendingReminder, isUpdating, onCreateDeposit, onUpdateProject }: any) {
   const status = project.status;
-  const [quoteAmount, setQuoteAmount] = useState(project.totalCost || "");
   const [tosSent, setTosSent] = useState(false);
+  const { toast } = useToast();
+  
+  // Full quote form state
+  const [quoteForm, setQuoteForm] = useState({
+    title: `Website Development - ${client.businessLegalName || "Project"}`,
+    description: "",
+    lineItems: [{ name: "Website Design & Development", description: "", quantity: 1, unitPrice: 0 }] as Array<{name: string; description: string; quantity: number; unitPrice: number}>,
+    discountAmount: 0,
+    discountDescription: "",
+    taxRate: 0,
+    validUntil: "",
+    notes: "",
+  });
 
-  // Sync quoteAmount with project.totalCost when it changes
-  useEffect(() => {
-    if (project.totalCost) {
-      setQuoteAmount(project.totalCost);
-    }
-  }, [project.totalCost]);
+  // Fetch existing quotes
+  const { data: quotes, isLoading: quotesLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/clients", client.id, "quotes"],
+    enabled: !!client.id,
+  });
+
+  // Create quote mutation
+  const createQuoteMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/admin/clients/${client.id}/quotes`, data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", client.id, "quotes"] });
+      toast({ title: "Quote created", description: "Quote has been created. Click 'Send to Client' to send it." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create quote", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Send quote mutation
+  const sendQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const res = await apiRequest("POST", `/api/admin/quotes/${quoteId}/send`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", client.id, "quotes"] });
+      toast({ title: "Quote sent", description: "Quote has been sent to the client." });
+      onAdvancePhase("quote_sent");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send quote", description: error.message, variant: "destructive" });
+    },
+  });
 
   // New order: TOS → Quote → Deposit
   const statusOrder = ["tos_pending", "tos_signed", "quote_draft", "quote_sent", "quote_approved", "deposit_pending", "deposit_paid"];
@@ -1158,25 +1203,79 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
   
   // Simplified progress indicator: check if step is complete based on current status
   const isStepComplete = (stepIndex: number) => {
-    // Step 0 (TOS Signed): complete when at tos_signed (index 1) or beyond
-    // Step 1 (Quote Approved): complete when at quote_approved (index 4) or beyond
-    // Step 2 (Deposit Paid): complete when at deposit_paid (index 6)
-    const thresholds = [1, 4, 6]; // Minimum indices for step completion (tos_signed=1, quote_approved=4, deposit_paid=6)
+    const thresholds = [1, 4, 6];
     return currentIndex >= thresholds[stepIndex];
   };
 
-  const handleSendQuote = async () => {
-    // Save quote amount to project before sending
-    if (onUpdateProject && quoteAmount) {
-      onUpdateProject({ totalCost: quoteAmount });
+  // Quote form helpers
+  const addLineItem = () => {
+    setQuoteForm(prev => ({
+      ...prev,
+      lineItems: [...prev.lineItems, { name: "", description: "", quantity: 1, unitPrice: 0 }]
+    }));
+  };
+
+  const removeLineItem = (index: number) => {
+    if (quoteForm.lineItems.length <= 1) return;
+    setQuoteForm(prev => ({
+      ...prev,
+      lineItems: prev.lineItems.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateLineItem = (index: number, field: string, value: string | number) => {
+    setQuoteForm(prev => ({
+      ...prev,
+      lineItems: prev.lineItems.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const calculateQuoteTotals = () => {
+    const subtotal = quoteForm.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const discountedSubtotal = subtotal - quoteForm.discountAmount;
+    const taxAmount = discountedSubtotal * (quoteForm.taxRate / 100);
+    const total = discountedSubtotal + taxAmount;
+    return { subtotal, taxAmount, total };
+  };
+
+  const handleCreateQuote = () => {
+    const { subtotal, taxAmount, total } = calculateQuoteTotals();
+    if (total <= 0) {
+      toast({ title: "Invalid quote", description: "Please add at least one line item with a price.", variant: "destructive" });
+      return;
     }
-    onAdvancePhase("quote_sent");
+    createQuoteMutation.mutate({
+      title: quoteForm.title,
+      description: quoteForm.description,
+      lineItems: quoteForm.lineItems,
+      subtotal: subtotal.toFixed(2),
+      discountAmount: quoteForm.discountAmount.toFixed(2),
+      discountDescription: quoteForm.discountDescription,
+      taxRate: quoteForm.taxRate.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      totalAmount: total.toFixed(2),
+      validUntil: quoteForm.validUntil || null,
+      notes: quoteForm.notes,
+      termsAndConditions: "",
+    });
+  };
+
+  const handleSendQuote = (quoteId: string) => {
+    sendQuoteMutation.mutate(quoteId);
   };
 
   const handleQuoteApproval = async () => {
-    // When quote is approved, auto-create the 50% deposit payment
-    const amount = parseFloat(quoteAmount || project.totalCost || "0");
+    // Find the approved quote's total
+    const approvedQuote = quotes?.find((q: any) => q.status === "sent" || q.status === "viewed");
+    const amount = parseFloat(approvedQuote?.totalAmount || project.totalCost || "0");
     const depositAmount = (amount / 2).toFixed(2);
+    
+    // Update project total cost
+    if (onUpdateProject && amount > 0) {
+      onUpdateProject({ totalCost: amount.toFixed(2) });
+    }
     
     // Create deposit payment automatically
     if (onCreateDeposit && amount > 0) {
@@ -1189,6 +1288,11 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
     
     onAdvancePhase("quote_approved");
   };
+
+  const { subtotal, taxAmount, total } = calculateQuoteTotals();
+  const draftQuotes = quotes?.filter((q: any) => q.status === "draft") || [];
+  const sentQuotes = quotes?.filter((q: any) => q.status === "sent" || q.status === "viewed") || [];
+  const approvedQuotes = quotes?.filter((q: any) => q.status === "approved") || [];
   
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
@@ -1346,42 +1450,215 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   <FileText className="w-12 h-12 mx-auto text-primary" />
                   <h3 className="font-semibold text-lg">Create Project Quote</h3>
                   <p className="text-sm text-muted-foreground">
-                    Review the questionnaire responses and create a detailed quote for the client.
+                    Create a detailed quote with line items. Once saved, you can send it to the client.
                   </p>
                 </div>
 
+                {/* Show existing quotes */}
+                {draftQuotes.length > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-medium">Draft Quotes Ready to Send:</p>
+                    {draftQuotes.map((quote: any) => (
+                      <div key={quote.id} className="flex items-center justify-between gap-4 p-3 bg-background rounded-lg border">
+                        <div>
+                          <p className="font-medium">{quote.title}</p>
+                          <p className="text-sm text-muted-foreground">Total: ${quote.totalAmount}</p>
+                        </div>
+                        <Button 
+                          className="gap-2" 
+                          onClick={() => handleSendQuote(quote.id)}
+                          disabled={sendQuoteMutation.isPending}
+                          data-testid={`button-send-quote-${quote.id}`}
+                        >
+                          {sendQuoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          Send to Client
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Quote Form */}
-                <div className="space-y-4 max-w-md mx-auto">
+                <div className="space-y-4 border rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Quote Title *</Label>
+                      <Input
+                        value={quoteForm.title}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, title: e.target.value })}
+                        placeholder="e.g., Website Development Proposal"
+                        data-testid="input-quote-title"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Valid Until</Label>
+                      <Input
+                        type="date"
+                        value={quoteForm.validUntil}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, validUntil: e.target.value })}
+                        data-testid="input-quote-valid-until"
+                      />
+                    </div>
+                  </div>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="quoteAmount">Total Project Cost ($)</Label>
-                    <Input
-                      id="quoteAmount"
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g., 2500.00"
-                      value={quoteAmount}
-                      onChange={(e) => setQuoteAmount(e.target.value)}
-                      data-testid="input-quote-amount"
+                    <Label>Description</Label>
+                    <Textarea
+                      value={quoteForm.description}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, description: e.target.value })}
+                      placeholder="Brief description of the quote..."
+                      rows={2}
+                      data-testid="input-quote-description"
                     />
-                    {quoteAmount && (
-                      <p className="text-xs text-muted-foreground">
-                        50% Deposit: ${(parseFloat(quoteAmount) / 2).toFixed(2)} | 
-                        Final Payment: ${(parseFloat(quoteAmount) / 2).toFixed(2)}
-                      </p>
+                  </div>
+
+                  {/* Line Items */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Line Items</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="gap-1" data-testid="button-add-line-item">
+                        <Plus className="w-4 h-4" /> Add Item
+                      </Button>
+                    </div>
+                    
+                    {quoteForm.lineItems.map((item, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-muted/30 rounded-lg">
+                        <div className="col-span-4 space-y-1">
+                          <Label className="text-xs">Item Name *</Label>
+                          <Input
+                            value={item.name}
+                            onChange={(e) => updateLineItem(index, "name", e.target.value)}
+                            placeholder="e.g., Homepage Design"
+                            data-testid={`input-line-item-name-${index}`}
+                          />
+                        </div>
+                        <div className="col-span-3 space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                            placeholder="Optional details"
+                            data-testid={`input-line-item-desc-${index}`}
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Qty</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(index, "quantity", parseInt(e.target.value) || 1)}
+                            data-testid={`input-line-item-qty-${index}`}
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Unit Price ($)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unitPrice}
+                            onChange={(e) => updateLineItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                            data-testid={`input-line-item-price-${index}`}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeLineItem(index)}
+                            disabled={quoteForm.lineItems.length <= 1}
+                            data-testid={`button-remove-line-item-${index}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Discount and Tax */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Discount ($)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={quoteForm.discountAmount}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, discountAmount: parseFloat(e.target.value) || 0 })}
+                        data-testid="input-quote-discount"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tax Rate (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={quoteForm.taxRate}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, taxRate: parseFloat(e.target.value) || 0 })}
+                        data-testid="input-quote-tax"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={quoteForm.notes}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, notes: e.target.value })}
+                      placeholder="Additional notes for the client..."
+                      rows={2}
+                      data-testid="input-quote-notes"
+                    />
+                  </div>
+
+                  {/* Totals */}
+                  <div className="border-t pt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>${subtotal.toFixed(2)}</span>
+                    </div>
+                    {quoteForm.discountAmount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount:</span>
+                        <span>-${quoteForm.discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {quoteForm.taxRate > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Tax ({quoteForm.taxRate}%):</span>
+                        <span>${taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-lg border-t pt-2">
+                      <span>Total:</span>
+                      <span>${total.toFixed(2)}</span>
+                    </div>
+                    {total > 0 && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>50% Deposit:</span>
+                        <span>${(total / 2).toFixed(2)}</span>
+                      </div>
                     )}
                   </div>
-                </div>
 
-                <div className="flex justify-center gap-2">
-                  <Button 
-                    className="gap-2" 
-                    onClick={handleSendQuote}
-                    disabled={isUpdating || !quoteAmount}
-                    data-testid="button-send-quote"
-                  >
-                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Send Quote to Client
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline"
+                      className="gap-2" 
+                      onClick={handleCreateQuote}
+                      disabled={createQuoteMutation.isPending || total <= 0 || !quoteForm.title}
+                      data-testid="button-save-quote"
+                    >
+                      {createQuoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Save Quote as Draft
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1392,15 +1669,36 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                 <Clock className="w-12 h-12 mx-auto text-amber-500" />
                 <h3 className="font-semibold">Awaiting Quote Approval</h3>
                 <p className="text-sm text-muted-foreground">
-                  Quote sent to client for ${project.totalCost || "N/A"}. Waiting for their approval.
+                  Quote sent to client. Waiting for their approval on the client portal.
                 </p>
-                <div className="bg-muted/50 rounded-lg p-4 max-w-sm mx-auto">
-                  <p className="text-sm font-medium">Quote Details:</p>
-                  <p className="text-2xl font-bold text-primary">${project.totalCost || "0.00"}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    50% Deposit: ${(parseFloat(project.totalCost || "0") / 2).toFixed(2)}
-                  </p>
-                </div>
+                
+                {/* Show sent quotes */}
+                {sentQuotes.length > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto space-y-3">
+                    <p className="text-sm font-medium">Pending Quotes:</p>
+                    {sentQuotes.map((quote: any) => {
+                      const lineItems = typeof quote.lineItems === 'string' ? JSON.parse(quote.lineItems) : quote.lineItems;
+                      return (
+                        <div key={quote.id} className="bg-background rounded-lg border p-3 text-left">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium">{quote.title}</p>
+                            <Badge variant="outline">Awaiting Response</Badge>
+                          </div>
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            <p>{lineItems?.length || 0} line items</p>
+                          </div>
+                          <div className="mt-2 border-t pt-2">
+                            <p className="text-2xl font-bold text-primary">${quote.totalAmount}</p>
+                            <p className="text-xs text-muted-foreground">
+                              50% Deposit: ${(parseFloat(quote.totalAmount) / 2).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex justify-center gap-2">
                   <Button 
                     variant="outline" 
@@ -1415,7 +1713,7 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   <Button 
                     className="gap-2" 
                     onClick={handleQuoteApproval}
-                    disabled={isUpdating}
+                    disabled={isUpdating || sentQuotes.length === 0}
                     data-testid="button-mark-quote-approved"
                   >
                     {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
