@@ -973,6 +973,7 @@ export default function ClientDashboard() {
     recentActivity: any[];
   }>({
     queryKey: ["/api/client/dashboard"],
+    refetchInterval: 10000, // Poll every 10 seconds to sync with admin changes
   });
 
   const project = dashboardData?.project;
@@ -992,6 +993,7 @@ export default function ClientDashboard() {
   }>({
     queryKey: ["/api/client/warranty"],
     enabled: project?.status === "completed",
+    refetchInterval: project?.status === "completed" ? 60000 : false, // Check warranty once per minute when complete
   });
   
   const warranty = warrantyData?.warranty;
