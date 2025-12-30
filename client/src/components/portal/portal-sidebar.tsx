@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   CreditCard, 
@@ -11,9 +12,11 @@ import {
   ChevronDown,
   ClipboardList,
   Receipt,
-  HelpCircle
+  HelpCircle,
+  MessageCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +40,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const clientNavItems = [
   { title: "Dashboard", url: "/client/dashboard", icon: LayoutDashboard },
+  { title: "Messages", url: "/client/messages", icon: MessageCircle },
   { title: "Tutorial", url: "/client/tutorial", icon: HelpCircle },
   { title: "Questionnaire", url: "/client/questionnaire", icon: ClipboardList },
   { title: "Uploads", url: "/client/uploads", icon: Upload },
@@ -55,6 +59,12 @@ export function PortalSidebar() {
 
   const isAdmin = user?.role === "admin";
   const navItems = isAdmin ? adminNavItems : clientNavItems;
+
+  const { data: unreadData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["/api/client/messages/unread"],
+    enabled: !isAdmin,
+    refetchInterval: 10000,
+  });
 
   const handleLogout = () => {
     logout();
@@ -102,19 +112,31 @@ export function PortalSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url || location.startsWith(item.url + "/")}
-                  >
-                    <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase()}`}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const unreadCount = item.title === "Messages" ? unreadData?.unreadCount || 0 : 0;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url || location.startsWith(item.url + "/")}
+                    >
+                      <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase()}`}>
+                        <item.icon className="w-4 h-4" />
+                        <span className="flex-1">{item.title}</span>
+                        {unreadCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="ml-auto text-[10px] px-1.5 min-w-[18px] h-[18px] flex items-center justify-center"
+                            data-testid="badge-unread-messages"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

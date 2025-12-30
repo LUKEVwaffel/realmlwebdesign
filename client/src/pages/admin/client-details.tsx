@@ -2889,7 +2889,7 @@ export default function ClientDetails() {
           <TabsContent value="messages" className="mt-4">
             <div className="h-[600px]">
               <ChatPanel 
-                clientId={id} 
+                clientId={clientId!} 
                 clientName={client.businessLegalName || client.users?.[0]?.firstName || "Client"}
                 projectId={client.projects?.[0]?.id}
               />
