@@ -119,7 +119,7 @@ The workflow is gated - admins cannot skip phases without PIN verification.
 |-------|---------------|-------------|
 | Phase 1 | `draft` → `created` | **Client Onboarding** - Admin creates client, sends welcome email with questionnaire link |
 | Phase 2 | `questionnaire_pending` → `questionnaire_complete` | **Client Questionnaire** - Client fills out project questionnaire (waiting phase for admin) |
-| Phase 3 | `quote_draft` → `quote_sent` → `quote_approved` → `tos_pending` → `tos_signed` → `deposit_pending` → `deposit_paid` | **Quote & Agreement** - 3-tier quote (Basic/Advanced/Ecommerce), TOS signature, 50% deposit |
+| Phase 3 | `tos_pending` → `tos_signed` → `quote_draft` → `quote_sent` → `quote_approved` → `deposit_pending` → `deposit_paid` | **Agreement & Quote** - TOS signature first (with manual signature field), then quote approval, then 50% deposit auto-created |
 | Phase 4 | `design_pending` → `design_sent` → `design_approved` | **Design** - Admin uploads 4 template screenshots, client selects one |
 | Phase 5 | `in_development` | **Website Development** - Building on Wix/Shopify, staging URL, progress tracking |
 | Phase 6 | `ready_for_review` | **Ready for Review** - QA checklist, send staging link to client |

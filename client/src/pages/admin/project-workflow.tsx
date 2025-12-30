@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -78,10 +78,10 @@ const PHASES = [
   },
   { 
     id: 3, 
-    name: "Quote & Agreement", 
+    name: "Agreement & Quote", 
     icon: FileText,
-    statuses: ["quote_draft", "quote_sent", "quote_approved", "tos_pending", "tos_signed", "deposit_pending", "deposit_paid"],
-    description: "Quote approval, TOS signature, and 50% deposit"
+    statuses: ["tos_pending", "tos_signed", "quote_draft", "quote_sent", "quote_approved", "deposit_pending", "deposit_paid"],
+    description: "TOS signature, quote approval, and 50% deposit"
   },
   { 
     id: 4, 
@@ -543,7 +543,7 @@ export default function ProjectWorkflow() {
                   client={client} 
                   project={project}
                   onSendReminder={() => sendReminderMutation.mutate({ projectId: project.id, type: "questionnaire" })}
-                  onAdvancePhase={() => updateStatusMutation.mutate({ projectId: project.id, status: "quote_draft" })}
+                  onAdvancePhase={() => updateStatusMutation.mutate({ projectId: project.id, status: "tos_pending" })}
                   isSendingReminder={sendReminderMutation.isPending}
                   onResendWelcome={() => sendWelcomeEmailMutation.mutate(project.id)}
                   isResending={sendWelcomeEmailMutation.isPending}
@@ -558,7 +558,15 @@ export default function ProjectWorkflow() {
                   onAdvancePhase={(status: string) => updateStatusMutation.mutate({ projectId: project.id, status })}
                   onSendReminder={(type: string) => sendReminderMutation.mutate({ projectId: project.id, type })}
                   isSendingReminder={sendReminderMutation.isPending}
-                  isUpdating={updateStatusMutation.isPending}
+                  isUpdating={updateStatusMutation.isPending || updateProjectMutation.isPending}
+                  onCreateDeposit={(data: { amount: string; description: string; paymentType: string }) => 
+                    createPaymentMutation.mutate({ 
+                      clientId: client.id, 
+                      projectId: project.id, 
+                      ...data 
+                    })
+                  }
+                  onUpdateProject={(data: any) => updateProjectMutation.mutate({ projectId: project.id, data })}
                 />
               )}
               {currentPhase === 4 && (
@@ -945,8 +953,8 @@ function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSend
                     View Full Responses
                   </Button>
                 </Link>
-                <Button className="gap-2" onClick={onAdvancePhase} data-testid="button-create-quote">
-                  Create Quote
+                <Button className="gap-2" onClick={onAdvancePhase} data-testid="button-proceed-phase3">
+                  Proceed to Agreement
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -1131,13 +1139,56 @@ function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSend
   );
 }
 
-// Phase 3: Quote & Agreement
-function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSendingReminder, isUpdating }: any) {
+// Phase 3: Agreement & Quote
+function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSendingReminder, isUpdating, onCreateDeposit, onUpdateProject }: any) {
   const status = project.status;
+  const [quoteAmount, setQuoteAmount] = useState(project.totalCost || "");
+  const [tosSent, setTosSent] = useState(false);
 
-  // Determine which steps are done
-  const statusOrder = ["quote_draft", "quote_sent", "quote_approved", "tos_pending", "tos_signed", "deposit_pending", "deposit_paid"];
+  // Sync quoteAmount with project.totalCost when it changes
+  useEffect(() => {
+    if (project.totalCost) {
+      setQuoteAmount(project.totalCost);
+    }
+  }, [project.totalCost]);
+
+  // New order: TOS → Quote → Deposit
+  const statusOrder = ["tos_pending", "tos_signed", "quote_draft", "quote_sent", "quote_approved", "deposit_pending", "deposit_paid"];
   const currentIndex = statusOrder.indexOf(status);
+  
+  // Simplified progress indicator: check if step is complete based on current status
+  const isStepComplete = (stepIndex: number) => {
+    // Step 0 (TOS Signed): complete when at tos_signed (index 1) or beyond
+    // Step 1 (Quote Approved): complete when at quote_approved (index 4) or beyond
+    // Step 2 (Deposit Paid): complete when at deposit_paid (index 6)
+    const thresholds = [1, 4, 6]; // Minimum indices for step completion (tos_signed=1, quote_approved=4, deposit_paid=6)
+    return currentIndex >= thresholds[stepIndex];
+  };
+
+  const handleSendQuote = async () => {
+    // Save quote amount to project before sending
+    if (onUpdateProject && quoteAmount) {
+      onUpdateProject({ totalCost: quoteAmount });
+    }
+    onAdvancePhase("quote_sent");
+  };
+
+  const handleQuoteApproval = async () => {
+    // When quote is approved, auto-create the 50% deposit payment
+    const amount = parseFloat(quoteAmount || project.totalCost || "0");
+    const depositAmount = (amount / 2).toFixed(2);
+    
+    // Create deposit payment automatically
+    if (onCreateDeposit && amount > 0) {
+      onCreateDeposit({
+        amount: depositAmount,
+        description: "50% Project Deposit",
+        paymentType: "deposit"
+      });
+    }
+    
+    onAdvancePhase("quote_approved");
+  };
   
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
@@ -1145,59 +1196,211 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
-            Phase 3: Quote & Agreement
+            Phase 3: Agreement & Quote
           </CardTitle>
           <CardDescription>
-            Create and send quote, obtain TOS signature, and collect 50% deposit.
+            Send Terms of Service for signature, then create and send quote for approval.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Mini Progress */}
           <div className="flex items-center gap-2">
-            {["Quote", "Approved", "TOS Signed", "Deposit Paid"].map((step, i) => (
+            {["TOS Signed", "Quote Approved", "Deposit Paid"].map((step, i) => (
               <div key={step} className="flex items-center gap-2 flex-1">
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium
-                  ${currentIndex >= i * 2 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}
+                  ${isStepComplete(i) ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}
                 `}>
-                  {currentIndex >= i * 2 ? <Check className="w-4 h-4" /> : i + 1}
+                  {isStepComplete(i) ? <Check className="w-4 h-4" /> : i + 1}
                 </div>
                 <span className="text-xs hidden sm:block">{step}</span>
-                {i < 3 && <div className="flex-1 h-0.5 bg-muted" />}
+                {i < 2 && <div className="flex-1 h-0.5 bg-muted" />}
               </div>
             ))}
           </div>
 
           {/* Content based on status */}
           <div className="border rounded-lg p-6">
-            {status === "quote_draft" && (
+            {/* Step 1: TOS Pending - Admin needs to send TOS */}
+            {status === "tos_pending" && (
+              <div className="space-y-6">
+                <div className="text-center space-y-4">
+                  <FileText className="w-12 h-12 mx-auto text-primary" />
+                  <h3 className="font-semibold text-lg">Send Terms of Service</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Before sending a quote, the client must sign the Terms of Service agreement.
+                  </p>
+                </div>
+                
+                {/* Admin Instructions */}
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-amber-800 dark:text-amber-200">Action Required</h4>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                        You must manually add a signature field to the TOS document before sending it to the client. 
+                        Make sure the signature area is clearly marked.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Legal Notice */}
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">Legal Binding Notice</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Electronic signatures are legally binding under the ESIGN Act and UETA. 
+                        The client's signature on the TOS has the same legal effect as a handwritten signature on paper.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-3">
+                  {!tosSent ? (
+                    <Button 
+                      className="gap-2" 
+                      onClick={() => setTosSent(true)}
+                      data-testid="button-confirm-tos-sent"
+                    >
+                      <Send className="w-4 h-4" />
+                      I Have Sent the TOS
+                    </Button>
+                  ) : (
+                    <div className="space-y-4 text-center max-w-md">
+                      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <div className="flex items-center gap-2 justify-center mb-2">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span className="font-medium text-green-800 dark:text-green-200">TOS Sent</span>
+                        </div>
+                        <p className="text-sm text-green-700 dark:text-green-300">
+                          Waiting for client to sign the Terms of Service document.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Has the client signed the TOS?</p>
+                        <p className="text-xs text-muted-foreground">
+                          Only confirm after you have received the signed TOS document from the client. 
+                          This action cannot be undone.
+                        </p>
+                      </div>
+                      <div className="flex justify-center gap-2">
+                        <Button 
+                          variant="outline"
+                          onClick={() => setTosSent(false)}
+                          data-testid="button-back-tos"
+                        >
+                          Not Yet Signed
+                        </Button>
+                        <Button 
+                          className="gap-2" 
+                          onClick={() => onAdvancePhase("tos_signed")}
+                          disabled={isUpdating}
+                          data-testid="button-mark-tos-signed"
+                        >
+                          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          Confirm Client Signed
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: TOS Signed - Waiting for client signature */}
+            {status === "tos_signed" && (
               <div className="text-center space-y-4">
-                <FileText className="w-12 h-12 mx-auto text-muted-foreground" />
-                <h3 className="font-semibold">Create Project Quote</h3>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", bounce: 0.5 }}
+                >
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-green-500" />
+                </motion.div>
+                <h3 className="font-semibold text-green-600">TOS Signed Successfully</h3>
                 <p className="text-sm text-muted-foreground">
-                  Review the questionnaire responses and create a detailed quote with pricing tiers.
+                  The client has signed the Terms of Service. You can now create and send the project quote.
                 </p>
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("quote_draft")}
+                  disabled={isUpdating}
+                  data-testid="button-proceed-to-quote"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  Proceed to Quote Creation
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Step 3: Quote Draft - Create the quote */}
+            {status === "quote_draft" && (
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <FileText className="w-12 h-12 mx-auto text-primary" />
+                  <h3 className="font-semibold text-lg">Create Project Quote</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Review the questionnaire responses and create a detailed quote for the client.
+                  </p>
+                </div>
+
+                {/* Quote Form */}
+                <div className="space-y-4 max-w-md mx-auto">
+                  <div className="space-y-2">
+                    <Label htmlFor="quoteAmount">Total Project Cost ($)</Label>
+                    <Input
+                      id="quoteAmount"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 2500.00"
+                      value={quoteAmount}
+                      onChange={(e) => setQuoteAmount(e.target.value)}
+                      data-testid="input-quote-amount"
+                    />
+                    {quoteAmount && (
+                      <p className="text-xs text-muted-foreground">
+                        50% Deposit: ${(parseFloat(quoteAmount) / 2).toFixed(2)} | 
+                        Final Payment: ${(parseFloat(quoteAmount) / 2).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex justify-center gap-2">
                   <Button 
                     className="gap-2" 
-                    onClick={() => onAdvancePhase("quote_sent")}
-                    disabled={isUpdating}
-                    data-testid="button-create-quote-phase3"
+                    onClick={handleSendQuote}
+                    disabled={isUpdating || !quoteAmount}
+                    data-testid="button-send-quote"
                   >
-                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                    Mark Quote Sent
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send Quote to Client
                   </Button>
                 </div>
               </div>
             )}
             
+            {/* Step 4: Quote Sent - Waiting for approval */}
             {status === "quote_sent" && (
               <div className="text-center space-y-4">
                 <Clock className="w-12 h-12 mx-auto text-amber-500" />
-                <h3 className="font-semibold">Awaiting Client Approval</h3>
+                <h3 className="font-semibold">Awaiting Quote Approval</h3>
                 <p className="text-sm text-muted-foreground">
-                  Quote sent to client. Waiting for their response.
+                  Quote sent to client for ${project.totalCost || "N/A"}. Waiting for their approval.
                 </p>
+                <div className="bg-muted/50 rounded-lg p-4 max-w-sm mx-auto">
+                  <p className="text-sm font-medium">Quote Details:</p>
+                  <p className="text-2xl font-bold text-primary">${project.totalCost || "0.00"}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    50% Deposit: ${(parseFloat(project.totalCost || "0") / 2).toFixed(2)}
+                  </p>
+                </div>
                 <div className="flex justify-center gap-2">
                   <Button 
                     variant="outline" 
@@ -1211,7 +1414,7 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   </Button>
                   <Button 
                     className="gap-2" 
-                    onClick={() => onAdvancePhase("quote_approved")}
+                    onClick={handleQuoteApproval}
                     disabled={isUpdating}
                     data-testid="button-mark-quote-approved"
                   >
@@ -1222,32 +1425,17 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
               </div>
             )}
 
-            {(status === "quote_approved" || status === "tos_pending") && (
-              <div className="text-center space-y-4">
-                <FileText className="w-12 h-12 mx-auto text-primary" />
-                <h3 className="font-semibold">Awaiting TOS Signature</h3>
-                <p className="text-sm text-muted-foreground">
-                  Quote approved! Waiting for client to sign Terms of Service.
-                </p>
-                <Button 
-                  variant="outline" 
-                  className="gap-2" 
-                  onClick={() => onSendReminder("tos")}
-                  disabled={isSendingReminder}
-                  data-testid="button-resend-tos"
-                >
-                  {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Resend TOS
-                </Button>
-              </div>
-            )}
-
-            {(status === "tos_signed" || status === "deposit_pending") && (
+            {/* Step 5: Quote Approved / Deposit Pending */}
+            {(status === "quote_approved" || status === "deposit_pending") && (
               <div className="text-center space-y-4">
                 <DollarSign className="w-12 h-12 mx-auto text-primary" />
                 <h3 className="font-semibold">Awaiting 50% Deposit</h3>
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-sm mx-auto">
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">Quote Approved</p>
+                  <p className="text-2xl font-bold text-green-600">${project.totalCost || "0.00"}</p>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  TOS signed! Waiting for deposit payment of ${(parseFloat(project.totalCost || "0") / 2).toFixed(2)}.
+                  Waiting for deposit payment of <strong>${(parseFloat(project.totalCost || "0") / 2).toFixed(2)}</strong>
                 </p>
                 <div className="flex justify-center gap-2">
                   <Button 
@@ -1267,12 +1455,13 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                     data-testid="button-mark-paid"
                   >
                     {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
-                    Mark as Paid
+                    Mark Deposit Paid
                   </Button>
                 </div>
               </div>
             )}
 
+            {/* Step 6: Deposit Paid - Phase Complete */}
             {status === "deposit_paid" && (
               <div className="text-center space-y-4">
                 <motion.div
@@ -1284,7 +1473,7 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                 </motion.div>
                 <h3 className="font-semibold text-green-600">Phase 3 Complete!</h3>
                 <p className="text-sm text-muted-foreground">
-                  Quote approved, TOS signed, and deposit received. Ready to proceed to Design phase.
+                  TOS signed, quote approved, and 50% deposit received. Ready to proceed to Design phase.
                 </p>
                 <Button 
                   className="gap-2" 
