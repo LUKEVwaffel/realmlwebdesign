@@ -4144,21 +4144,13 @@ export async function registerRoutes(
       const user = client.userId ? await storage.getUser(client.userId) : null;
       if (user?.email) {
         try {
-          await sendEmail({
-            to: user.email,
-            subject: "New message from ML WebDesign",
-            text: `You have a new message from the ML WebDesign team:\n\n"${messageText.substring(0, 200)}${messageText.length > 200 ? '...' : ''}"\n\nLog in to your DUO portal to view and respond.`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">New Message</h2>
-                <p>You have a new message from the ML WebDesign team:</p>
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0;">"${messageText.substring(0, 200)}${messageText.length > 200 ? '...' : ''}"</p>
-                </div>
-                <p><a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ''}/client/messages" style="color: #8b5cf6;">Log in to your DUO portal</a> to view and respond.</p>
-              </div>
-            `,
-          });
+          await sendNewMessageNotificationEmail(
+            user.email,
+            `${user.firstName} ${user.lastName}`,
+            client.businessLegalName || "Your Project",
+            `${req.user!.firstName} ${req.user!.lastName}`,
+            messageText.substring(0, 200) + (messageText.length > 200 ? '...' : '')
+          );
         } catch (emailErr) {
           console.error("Failed to send message notification email:", emailErr);
         }
