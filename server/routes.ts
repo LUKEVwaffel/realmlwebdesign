@@ -1082,6 +1082,100 @@ export async function registerRoutes(
     }
   });
 
+  // Update client contact information
+  app.patch("/api/admin/clients/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+      
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Check edit permissions
+      const canEdit = await storage.canAdminEditClient(adminId, id);
+      if (!canEdit) {
+        return res.status(403).json({ error: "You don't have edit permissions for this client" });
+      }
+      
+      const {
+        businessLegalName,
+        businessPhone,
+        businessEmail,
+        addressStreet,
+        addressCity,
+        addressState,
+        addressZip,
+        existingWebsite,
+        industry,
+        secondaryContactName,
+        secondaryContactEmail,
+        secondaryContactPhone,
+        secondaryContactRelationship,
+        // User fields
+        firstName,
+        lastName,
+        email,
+        phone,
+      } = req.body;
+      
+      // Update client record
+      const clientUpdate: any = {};
+      if (businessLegalName !== undefined) clientUpdate.businessLegalName = businessLegalName;
+      if (businessPhone !== undefined) clientUpdate.businessPhone = businessPhone;
+      if (businessEmail !== undefined) clientUpdate.businessEmail = businessEmail;
+      if (addressStreet !== undefined) clientUpdate.addressStreet = addressStreet;
+      if (addressCity !== undefined) clientUpdate.addressCity = addressCity;
+      if (addressState !== undefined) clientUpdate.addressState = addressState;
+      if (addressZip !== undefined) clientUpdate.addressZip = addressZip;
+      if (existingWebsite !== undefined) clientUpdate.existingWebsite = existingWebsite;
+      if (industry !== undefined) clientUpdate.industry = industry;
+      if (secondaryContactName !== undefined) clientUpdate.secondaryContactName = secondaryContactName;
+      if (secondaryContactEmail !== undefined) clientUpdate.secondaryContactEmail = secondaryContactEmail || null;
+      if (secondaryContactPhone !== undefined) clientUpdate.secondaryContactPhone = secondaryContactPhone;
+      if (secondaryContactRelationship !== undefined) clientUpdate.secondaryContactRelationship = secondaryContactRelationship;
+      
+      if (Object.keys(clientUpdate).length > 0) {
+        await storage.updateClient(id, clientUpdate);
+      }
+      
+      // Update user record if needed
+      if (client.userId && (firstName !== undefined || lastName !== undefined || email !== undefined || phone !== undefined)) {
+        const userUpdate: any = {};
+        if (firstName !== undefined) userUpdate.firstName = firstName;
+        if (lastName !== undefined) userUpdate.lastName = lastName;
+        if (email !== undefined) userUpdate.email = email;
+        if (phone !== undefined) userUpdate.phone = phone;
+        
+        if (Object.keys(userUpdate).length > 0) {
+          await storage.updateUser(client.userId, userUpdate);
+        }
+      }
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: adminId,
+        clientId: id,
+        action: "client_updated",
+        description: "Updated client contact information",
+        ipAddress: req.ip,
+      });
+      
+      // Return updated client
+      const updatedClient = await storage.getClient(id);
+      const user = updatedClient?.userId ? await storage.getUser(updatedClient.userId) : null;
+      
+      res.json({
+        ...updatedClient,
+        user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone } : null,
+      });
+    } catch (error) {
+      console.error("Update client error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Download questionnaire answers as PDF
   app.get("/api/admin/clients/:id/questionnaire/pdf", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {

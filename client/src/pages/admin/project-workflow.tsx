@@ -32,7 +32,8 @@ import {
   XCircle,
   Loader2,
   KeyRound,
-  MessageSquare
+  MessageSquare,
+  Pencil
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -288,6 +289,20 @@ export default function ProjectWorkflow() {
     },
   });
 
+  const updateClientMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", `/api/admin/clients/${clientId}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Client updated", description: "Contact information has been saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
   const verifyPinMutation = useMutation({
     mutationFn: async (pin: string) => {
       const res = await apiRequest("POST", "/api/admin/pin/verify", { pin });
@@ -521,6 +536,8 @@ export default function ProjectWorkflow() {
                   project={project}
                   onSendWelcome={() => sendWelcomeEmailMutation.mutate(project.id)}
                   isSending={sendWelcomeEmailMutation.isPending}
+                  onUpdateClient={(data: any) => updateClientMutation.mutate(data)}
+                  isUpdating={updateClientMutation.isPending}
                 />
               )}
               {currentPhase === 2 && (
@@ -652,25 +669,58 @@ export default function ProjectWorkflow() {
 }
 
 // Phase 1: Client Onboarding
-function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
+function Phase1Content({ client, project, onSendWelcome, isSending, onUpdateClient, isUpdating }: any) {
   const user = client.user;
   const isDraft = project.status === "draft";
   const isCreated = project.status === "created";
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    businessLegalName: client.businessLegalName || "",
+    businessPhone: client.businessPhone || "",
+    businessEmail: client.businessEmail || "",
+    industry: client.industry || "",
+    existingWebsite: client.existingWebsite || "",
+    addressStreet: client.addressStreet || "",
+    addressCity: client.addressCity || "",
+    addressState: client.addressState || "",
+    addressZip: client.addressZip || "",
+  });
+
+  const handleSaveEdit = () => {
+    onUpdateClient(editForm);
+    setEditOpen(false);
+  };
 
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            Phase 1: Client Onboarding
-          </CardTitle>
-          <CardDescription>
-            {isDraft 
-              ? "Review client information and send welcome email with login credentials."
-              : "Welcome email has been sent. Waiting for client to complete questionnaire."
-            }
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" />
+              Phase 1: Client Onboarding
+            </CardTitle>
+            <CardDescription>
+              {isDraft 
+                ? "Review client information and send welcome email with login credentials."
+                : "Welcome email has been sent. Waiting for client to complete questionnaire."
+              }
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2"
+            onClick={() => setEditOpen(true)}
+            data-testid="button-edit-client"
+          >
+            <Pencil className="w-4 h-4" />
+            Edit Contact Info
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Client Information Summary */}
@@ -784,6 +834,179 @@ function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Contact Info Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Contact Information</DialogTitle>
+            <DialogDescription>
+              Update the client's contact details and business information.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Primary Contact */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Primary Contact
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                    data-testid="input-edit-firstname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                    data-testid="input-edit-lastname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    data-testid="input-edit-email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    data-testid="input-edit-phone"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Business Information */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Business Information
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="businessLegalName">Business Name</Label>
+                  <Input
+                    id="businessLegalName"
+                    value={editForm.businessLegalName}
+                    onChange={(e) => setEditForm({ ...editForm, businessLegalName: e.target.value })}
+                    data-testid="input-edit-businessname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessPhone">Business Phone</Label>
+                  <Input
+                    id="businessPhone"
+                    value={editForm.businessPhone}
+                    onChange={(e) => setEditForm({ ...editForm, businessPhone: e.target.value })}
+                    data-testid="input-edit-businessphone"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessEmail">Business Email</Label>
+                  <Input
+                    id="businessEmail"
+                    type="email"
+                    value={editForm.businessEmail}
+                    onChange={(e) => setEditForm({ ...editForm, businessEmail: e.target.value })}
+                    data-testid="input-edit-businessemail"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="industry">Industry</Label>
+                  <Input
+                    id="industry"
+                    value={editForm.industry}
+                    onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })}
+                    data-testid="input-edit-industry"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="existingWebsite">Existing Website</Label>
+                  <Input
+                    id="existingWebsite"
+                    value={editForm.existingWebsite}
+                    onChange={(e) => setEditForm({ ...editForm, existingWebsite: e.target.value })}
+                    data-testid="input-edit-website"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                Address
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="addressStreet">Street Address</Label>
+                  <Input
+                    id="addressStreet"
+                    value={editForm.addressStreet}
+                    onChange={(e) => setEditForm({ ...editForm, addressStreet: e.target.value })}
+                    data-testid="input-edit-street"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addressCity">City</Label>
+                  <Input
+                    id="addressCity"
+                    value={editForm.addressCity}
+                    onChange={(e) => setEditForm({ ...editForm, addressCity: e.target.value })}
+                    data-testid="input-edit-city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addressState">State</Label>
+                  <Input
+                    id="addressState"
+                    value={editForm.addressState}
+                    onChange={(e) => setEditForm({ ...editForm, addressState: e.target.value })}
+                    data-testid="input-edit-state"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addressZip">ZIP Code</Label>
+                  <Input
+                    id="addressZip"
+                    value={editForm.addressZip}
+                    onChange={(e) => setEditForm({ ...editForm, addressZip: e.target.value })}
+                    data-testid="input-edit-zip"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isUpdating} data-testid="button-save-client">
+              {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
