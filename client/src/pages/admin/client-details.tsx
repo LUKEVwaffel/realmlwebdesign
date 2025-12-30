@@ -197,6 +197,9 @@ function EmbeddedPhaseTools({ client, project, status }: {
   const { toast } = useToast();
   const phase = phaseLabels[status]?.phase || 0;
   const [liveWebsiteUrl, setLiveWebsiteUrl] = useState(project?.websiteUrl || "");
+  const [showPaymentOverridePin, setShowPaymentOverridePin] = useState(false);
+  const [paymentPinValue, setPaymentPinValue] = useState("");
+  const [paymentPinError, setPaymentPinError] = useState("");
   
   const clientId = String(client.id);
   
@@ -254,6 +257,24 @@ function EmbeddedPhaseTools({ client, project, status }: {
       toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
     },
   });
+
+  const verifyPinAndOverridePayment = async () => {
+    try {
+      const res = await apiRequest("POST", "/api/admin/pin/verify", { pin: paymentPinValue });
+      const data = await res.json();
+      if (data.valid) {
+        setShowPaymentOverridePin(false);
+        setPaymentPinValue("");
+        setPaymentPinError("");
+        advanceStatusMutation.mutate("payment_complete");
+        toast({ title: "Payment overridden", description: "Proceeding without final payment." });
+      } else {
+        setPaymentPinError("Invalid PIN");
+      }
+    } catch (error: any) {
+      setPaymentPinError(error.message || "PIN verification failed");
+    }
+  };
 
   if (!project) return <div className="text-center text-muted-foreground py-4">No project found</div>;
 
@@ -513,10 +534,80 @@ function EmbeddedPhaseTools({ client, project, status }: {
         {status === "awaiting_final_payment" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Waiting for final 50% payment. Go to Payments tab to send invoice.</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => sendReminderMutation.mutate("payment")} disabled={sendReminderMutation.isPending}>Send Reminder</Button>
               <Button onClick={() => advanceStatusMutation.mutate("payment_complete")} disabled={advanceStatusMutation.isPending}>Mark Paid</Button>
+              <Button 
+                variant="ghost" 
+                className="text-amber-600"
+                onClick={() => setShowPaymentOverridePin(true)}
+              >
+                <Lock className="w-4 h-4 mr-1" />
+                Override Payment
+              </Button>
             </div>
+            
+            {/* PIN Override Modal */}
+            <Dialog open={showPaymentOverridePin} onOpenChange={(open) => {
+              if (!open) {
+                setShowPaymentOverridePin(false);
+                setPaymentPinValue("");
+                setPaymentPinError("");
+              }
+            }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <KeyRound className="w-5 h-5" />
+                    Override Final Payment
+                  </DialogTitle>
+                  <DialogDescription>
+                    This will skip the final payment requirement. Enter your 5-digit PIN to confirm.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="py-4 space-y-4">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span className="font-medium">Warning: Payment will be marked as complete without receiving funds.</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center gap-4">
+                    <InputOTP 
+                      maxLength={5} 
+                      value={paymentPinValue}
+                      onChange={setPaymentPinValue}
+                      data-testid="input-payment-override-pin"
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                    
+                    {paymentPinError && (
+                      <p className="text-sm text-destructive">{paymentPinError}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowPaymentOverridePin(false)}>Cancel</Button>
+                  <Button 
+                    onClick={verifyPinAndOverridePayment}
+                    disabled={paymentPinValue.length !== 5}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    Confirm Override
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
         {status === "payment_complete" && (
