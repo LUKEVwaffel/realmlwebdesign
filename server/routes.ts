@@ -3751,6 +3751,56 @@ export async function registerRoutes(
     }
   });
 
+  // Client submits Hostinger credentials for Phase 7A
+  app.post("/api/client/projects/:id/hosting-credentials", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { email, tempPassword } = req.body;
+      
+      if (!email || !tempPassword) {
+        return res.status(400).json({ error: "Email and temporary password are required" });
+      }
+      
+      // Verify project belongs to client
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client profile not found" });
+      }
+      
+      const project = await storage.getProject(id);
+      if (!project || project.clientId !== client.id) {
+        return res.status(403).json({ error: "You do not have access to this project" });
+      }
+      
+      // Verify project is in correct phase
+      if (project.status !== "hosting_setup_pending") {
+        return res.status(400).json({ error: "Project is not in hosting setup phase" });
+      }
+      
+      // Update project with Hostinger credentials
+      await storage.updateProject(id, {
+        hostingerEmail: email,
+        hostingerTempPassword: tempPassword,
+        hostingerCredentialsSubmittedAt: new Date(),
+        hostingCredentialsReceived: true,
+        hostingCredentialsReceivedAt: new Date(),
+      });
+      
+      // Log activity
+      await storage.createActivityLog({
+        clientId: client.id,
+        userId: req.user!.id,
+        action: "hosting_credentials_submitted",
+        description: `Client submitted Hostinger credentials for ${project.domainName || "project"}`,
+      });
+      
+      res.json({ success: true, message: "Hosting credentials submitted successfully. We'll begin configuration shortly." });
+    } catch (error) {
+      console.error("Submit hosting credentials error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ CANCELLATION ROUTES ============
   
   // Get all cancellations (admin)

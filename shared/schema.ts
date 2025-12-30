@@ -282,9 +282,12 @@ export const projects = pgTable("projects", {
   websitePlatform: varchar("website_platform", { length: 50 }),  // wix, shopify, custom
   
   // Phase 7A: Hosting Setup
-  hostingProvider: varchar("hosting_provider", { length: 100 }),  // hostinger, etc.
+  hostingProvider: varchar("hosting_provider", { length: 100 }).default("hostinger"),  // hostinger, etc.
   hostingCredentialsReceived: boolean("hosting_credentials_received").default(false),
   hostingCredentialsReceivedAt: timestamp("hosting_credentials_received_at"),
+  hostingerEmail: varchar("hostinger_email", { length: 255 }),  // Client's Hostinger account email
+  hostingerTempPassword: varchar("hostinger_temp_password", { length: 255 }),  // Temporary password for setup
+  hostingerCredentialsSubmittedAt: timestamp("hostinger_credentials_submitted_at"),
   domainConnected: boolean("domain_connected").default(false),
   sslConfigured: boolean("ssl_configured").default(false),
   dnsConfigured: boolean("dns_configured").default(false),

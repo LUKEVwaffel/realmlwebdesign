@@ -27,7 +27,11 @@ import {
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
-  DollarSign
+  DollarSign,
+  Globe,
+  Lock,
+  Mail,
+  Key
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +39,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -184,10 +190,33 @@ const getNextAction = (status: string, hasUnsignedDocs: boolean, hasPendingPayme
     }
   }
 
-  if (status === "payment_complete" || status === "hosting_setup_pending" || status === "hosting_configured") {
+  if (status === "payment_complete") {
     return {
-      title: "Setting Up Your Website",
-      description: "Payment received! We're finalizing your website setup and will deliver it soon.",
+      title: "Payment Complete!",
+      description: "Your payment has been received. We're preparing the next step for your website.",
+      buttonText: "View Status",
+      href: "/client/dashboard",
+      icon: Rocket,
+      priority: "medium"
+    };
+  }
+
+  if (status === "hosting_setup_pending") {
+    return {
+      title: "Set Up Your Hosting Account",
+      description: "We need you to create a Hostinger account so we can configure your website hosting. See instructions below.",
+      buttonText: "See Instructions Below",
+      href: "#hosting-setup",
+      icon: Globe,
+      priority: "high",
+      pulse: true
+    };
+  }
+
+  if (status === "hosting_configured") {
+    return {
+      title: "Almost There!",
+      description: "We're putting the finishing touches on your website. You'll be notified when it's live!",
       buttonText: "View Status",
       href: "/client/dashboard",
       icon: Rocket,
@@ -660,6 +689,202 @@ function PaymentItem({ payment }: { payment: any }) {
   );
 }
 
+function HostingSetupPanel({ project }: { project: any }) {
+  const [hostingerEmail, setHostingerEmail] = useState(project?.hostingerEmail || "");
+  const [tempPassword, setTempPassword] = useState(project?.hostingerTempPassword || "");
+  const { toast } = useToast();
+
+  const submitCredentialsMutation = useMutation({
+    mutationFn: async (data: { email: string; tempPassword: string }) => {
+      const res = await apiRequest("POST", `/api/client/projects/${project.id}/hosting-credentials`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/dashboard"] });
+      toast({ title: "Credentials submitted!", description: "We'll begin configuring your hosting shortly." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to submit credentials", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hostingerEmail || !tempPassword) {
+      toast({ title: "Missing information", description: "Please enter both email and temporary password.", variant: "destructive" });
+      return;
+    }
+    submitCredentialsMutation.mutate({ email: hostingerEmail, tempPassword });
+  };
+
+  // Already submitted
+  if (project?.hostingCredentialsReceived) {
+    return (
+      <motion.div variants={fadeInUp}>
+        <Card className="border-2 border-green-500/30 bg-gradient-to-br from-green-500/5 via-background to-green-500/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Hosting Credentials Received</CardTitle>
+                <CardDescription>
+                  We're configuring your website hosting now
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Your website:</span>
+                <span className="font-medium">{project.domainName || "Being configured..."}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                We'll notify you once your website is live!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div variants={fadeInUp}>
+      <Card className="border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-blue-500/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <motion.div 
+              className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+            >
+              <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </motion.div>
+            <div>
+              <CardTitle className="text-lg">Set Up Your Hosting Account</CardTitle>
+              <CardDescription>
+                Action required - Create your Hostinger account
+              </CardDescription>
+            </div>
+            <Badge className="ml-auto bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              Action Required
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Domain Display */}
+          <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="w-4 h-4 text-primary" />
+              <span className="font-medium">Your Website Domain</span>
+            </div>
+            <p className="text-xl font-bold text-primary">{project?.domainName || "your-business.com"}</p>
+          </div>
+
+          {/* Instructions */}
+          <div className="space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Setup Instructions
+            </h4>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex gap-3 p-3 bg-muted/30 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-xs">1</div>
+                <div>
+                  <p className="font-medium">Go to hostinger.com</p>
+                  <p className="text-muted-foreground">Click "My Account" then "Sign Up"</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 p-3 bg-muted/30 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-xs">2</div>
+                <div>
+                  <p className="font-medium">Create account manually</p>
+                  <p className="text-muted-foreground">Do NOT use Google or other sign-in options</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 p-3 bg-muted/30 rounded-lg">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-xs">3</div>
+                <div>
+                  <p className="font-medium">Use a temporary password</p>
+                  <p className="text-muted-foreground">Example: TempPass2025! - You'll change this after setup</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Important</p>
+                  <p className="text-muted-foreground">We need temporary access to configure your hosting. Once complete, you'll set a new password only you know.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Credential Submission Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              Submit Your Hostinger Credentials
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="hostinger-email" className="flex items-center gap-2">
+                  <Mail className="w-3 h-3" />
+                  Hostinger Email
+                </Label>
+                <Input
+                  id="hostinger-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={hostingerEmail}
+                  onChange={(e) => setHostingerEmail(e.target.value)}
+                  data-testid="input-hostinger-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="temp-password" className="flex items-center gap-2">
+                  <Lock className="w-3 h-3" />
+                  Temporary Password
+                </Label>
+                <Input
+                  id="temp-password"
+                  type="text"
+                  placeholder="TempPass2025!"
+                  value={tempPassword}
+                  onChange={(e) => setTempPassword(e.target.value)}
+                  data-testid="input-hostinger-password"
+                />
+              </div>
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full gap-2"
+              disabled={submitCredentialsMutation.isPending || !hostingerEmail || !tempPassword}
+              data-testid="button-submit-hosting-credentials"
+            >
+              {submitCredentialsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Submit Credentials
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 function PendingPaymentsPanel({ payments }: { payments: any[] }) {
   if (payments.length === 0) return null;
 
@@ -913,6 +1138,13 @@ export default function ClientDashboard() {
         )}
 
         <NextActionCard action={nextAction} isLoading={isLoading} />
+
+        {/* Hosting Setup Panel - for hosting_setup_pending status */}
+        {project?.status === "hosting_setup_pending" && project?.id && (
+          <div id="hosting-setup">
+            <HostingSetupPanel project={project} />
+          </div>
+        )}
 
         {/* Website Review Panel - for client_review status */}
         {project?.status === "client_review" && project?.id && (

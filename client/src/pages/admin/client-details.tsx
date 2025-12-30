@@ -891,6 +891,10 @@ export default function ClientDetails() {
                 <Activity className="w-4 h-4" />
                 <span className="hidden sm:inline">Activity</span>
               </TabsTrigger>
+              <TabsTrigger value="portal-preview" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg" data-testid="tab-portal-preview">
+                <Eye className="w-4 h-4" />
+                <span className="hidden sm:inline">Portal Preview</span>
+              </TabsTrigger>
             </TabsList>
 
           <TabsContent value="settings" className="mt-4">
@@ -2309,6 +2313,173 @@ export default function ClientDetails() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">No activity yet</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="portal-preview" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <Eye className="w-4 h-4" />
+                  Client Portal Preview
+                </CardTitle>
+                <CardDescription>
+                  See what your client currently sees on their dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Pending Payments Section */}
+                <div className="space-y-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Visible Payments ({client.payments?.filter((p: any) => p.status !== "paid").length || 0})
+                  </h3>
+                  {client.payments?.filter((p: any) => p.status !== "paid").length > 0 ? (
+                    <div className="space-y-2">
+                      {client.payments.filter((p: any) => p.status !== "paid").map((payment: any) => (
+                        <div 
+                          key={payment.id} 
+                          className="flex items-center justify-between p-4 rounded-lg border bg-amber-500/5 border-amber-500/30"
+                          data-testid={`portal-payment-${payment.id}`}
+                        >
+                          <div>
+                            <p className="font-medium capitalize">{payment.paymentType?.replace('_', ' ') || 'Payment'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {payment.description || "No description"} - Due: {payment.dueDate ? format(new Date(payment.dueDate), 'MMM d, yyyy') : 'Not set'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold">${parseFloat(payment.amount || 0).toFixed(2)}</span>
+                            <Badge variant="outline">{payment.status}</Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => deletePaymentMutation.mutate(payment.id)}
+                              disabled={deletePaymentMutation.isPending}
+                              data-testid={`button-delete-payment-${payment.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-4 text-center bg-muted/30 rounded-lg">
+                      No pending payments showing on client portal
+                    </p>
+                  )}
+                </div>
+
+                {/* Paid Payments Section */}
+                <div className="space-y-3">
+                  <h3 className="font-medium flex items-center gap-2 text-muted-foreground">
+                    <Check className="w-4 h-4 text-green-600" />
+                    Paid Payments ({client.payments?.filter((p: any) => p.status === "paid").length || 0})
+                  </h3>
+                  {client.payments?.filter((p: any) => p.status === "paid").length > 0 ? (
+                    <div className="space-y-2">
+                      {client.payments.filter((p: any) => p.status === "paid").map((payment: any) => (
+                        <div 
+                          key={payment.id} 
+                          className="flex items-center justify-between p-4 rounded-lg border bg-green-500/5 border-green-500/30"
+                          data-testid={`portal-paid-payment-${payment.id}`}
+                        >
+                          <div>
+                            <p className="font-medium capitalize">{payment.paymentType?.replace('_', ' ') || 'Payment'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {payment.description || "No description"} - Paid: {payment.paidAt ? format(new Date(payment.paidAt), 'MMM d, yyyy') : 'Unknown'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold">${parseFloat(payment.amount || 0).toFixed(2)}</span>
+                            <Badge className="bg-green-500/10 text-green-600 dark:text-green-400">Paid</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-4 text-center bg-muted/30 rounded-lg">
+                      No paid payments yet
+                    </p>
+                  )}
+                </div>
+
+                {/* Pending Documents Section */}
+                <div className="space-y-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Pending Documents ({client.documents?.filter((d: any) => d.requiresSignature && !d.signedAt).length || 0})
+                  </h3>
+                  {client.documents?.filter((d: any) => d.requiresSignature && !d.signedAt).length > 0 ? (
+                    <div className="space-y-2">
+                      {client.documents.filter((d: any) => d.requiresSignature && !d.signedAt).map((doc: any) => (
+                        <div 
+                          key={doc.id} 
+                          className="flex items-center justify-between p-4 rounded-lg border"
+                          data-testid={`portal-document-${doc.id}`}
+                        >
+                          <div>
+                            <p className="font-medium">{doc.title}</p>
+                            <p className="text-sm text-muted-foreground">{doc.documentType}</p>
+                          </div>
+                          <Badge variant="outline">Awaiting Signature</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-4 text-center bg-muted/30 rounded-lg">
+                      No pending documents on client portal
+                    </p>
+                  )}
+                </div>
+
+                {/* Hosting Setup Section - Phase 7A */}
+                {(client.projects?.[0]?.status === "hosting_setup_pending" || client.projects?.[0]?.hostingerEmail) && (
+                  <div className="space-y-3">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      Hosting Setup (Phase 7A)
+                    </h3>
+                    <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/30 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Target Domain</Label>
+                          <p className="font-medium">{client.projects?.[0]?.domainName || "Not set"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Credentials Status</Label>
+                          <p className="font-medium flex items-center gap-2">
+                            {client.projects?.[0]?.hostingCredentialsReceived ? (
+                              <>
+                                <Check className="w-4 h-4 text-green-600" />
+                                Received
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                Waiting for client
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      {client.projects?.[0]?.hostingerEmail && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Hostinger Email</Label>
+                            <p className="font-medium">{client.projects[0].hostingerEmail}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Temp Password</Label>
+                            <p className="font-medium font-mono">{client.projects[0].hostingerTempPassword}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
