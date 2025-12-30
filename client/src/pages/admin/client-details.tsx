@@ -34,7 +34,10 @@ import {
   LayoutGrid,
   Receipt,
   FolderOpen,
-  Activity
+  Activity,
+  KeyRound,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,10 +53,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
 import { FileUploader } from "@/components/FileUploader";
@@ -63,40 +68,92 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 const statusColors: Record<string, string> = {
+  draft: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
   created: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
   questionnaire_pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   questionnaire_complete: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  quote_draft: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  quote_sent: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  quote_approved: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   tos_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   tos_signed: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  deposit_pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  deposit_paid: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   design_pending: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  design_sent: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   design_approved: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   in_development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  hosting_setup: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  deployed: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  delivery: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  ready_for_review: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   client_review: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  revisions_pending: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  revisions_complete: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  awaiting_final_payment: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  payment_complete: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  hosting_setup_pending: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  hosting_configured: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   completed: "bg-green-500/10 text-green-600 dark:text-green-400",
   on_hold: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
   cancelled: "bg-red-500/10 text-red-600 dark:text-red-400",
 };
 
 const phaseLabels: Record<string, { label: string; phase: number; description: string }> = {
+  draft: { label: "Draft", phase: 1, description: "Admin created client, not yet sent welcome email" },
   created: { label: "Client Setup", phase: 1, description: "Client account created and ready for onboarding" },
   questionnaire_pending: { label: "Questionnaire", phase: 2, description: "Waiting for client to complete questionnaire" },
   questionnaire_complete: { label: "Questionnaire Complete", phase: 2, description: "Client has completed the questionnaire" },
+  quote_draft: { label: "Quote Draft", phase: 3, description: "Admin is drafting quote" },
+  quote_sent: { label: "Quote Sent", phase: 3, description: "Quote sent to client" },
+  quote_approved: { label: "Quote Approved", phase: 3, description: "Client approved quote" },
   tos_pending: { label: "Terms of Service", phase: 3, description: "Waiting for client to sign Terms of Service" },
   tos_signed: { label: "TOS Signed", phase: 3, description: "Client has signed Terms of Service" },
-  design_pending: { label: "Development", phase: 4, description: "Website development in progress" },
-  design_approved: { label: "Development", phase: 4, description: "Website development in progress" },
-  in_development: { label: "Development", phase: 4, description: "Website is being built" },
-  hosting_setup: { label: "Hosting Setup", phase: 5, description: "Setting up hosting and domain configuration" },
-  deployed: { label: "Deployed", phase: 5, description: "Website has been deployed to hosting" },
-  delivery: { label: "Final Delivery", phase: 6, description: "Final review and handoff to client" },
-  client_review: { label: "Client Review", phase: 6, description: "Client is reviewing the final delivery" },
+  deposit_pending: { label: "Deposit Pending", phase: 3, description: "Awaiting 50% deposit payment" },
+  deposit_paid: { label: "Deposit Paid", phase: 3, description: "50% deposit received" },
+  design_pending: { label: "Design Pending", phase: 4, description: "Awaiting design template selection" },
+  design_sent: { label: "Design Sent", phase: 4, description: "Admin sent design options to client" },
+  design_approved: { label: "Design Approved", phase: 4, description: "Client approved design" },
+  in_development: { label: "Development", phase: 5, description: "Website is being built" },
+  ready_for_review: { label: "Ready for Review", phase: 6, description: "Development complete, ready for client preview" },
+  client_review: { label: "Client Review", phase: 7, description: "Client reviewing the site" },
+  revisions_pending: { label: "Revisions Pending", phase: 7, description: "Client requested revisions" },
+  revisions_complete: { label: "Revisions Complete", phase: 7, description: "All revisions done" },
+  awaiting_final_payment: { label: "Awaiting Final Payment", phase: 7, description: "Awaiting 50% final payment" },
+  payment_complete: { label: "Payment Complete", phase: 7, description: "Final payment received" },
+  hosting_setup_pending: { label: "Hosting Setup", phase: 7, description: "Awaiting client hosting credentials" },
+  hosting_configured: { label: "Hosting Configured", phase: 7, description: "Hosting configured, ready for final delivery" },
   completed: { label: "Project Complete", phase: 7, description: "Project has been successfully completed" },
   on_hold: { label: "On Hold", phase: 0, description: "Project is temporarily paused" },
   cancelled: { label: "Cancelled", phase: 0, description: "Project has been cancelled" },
 };
+
+// All valid project statuses for the override dropdown
+const ALL_PROJECT_STATUSES = [
+  { value: "draft", label: "Phase 1: Draft", phase: 1 },
+  { value: "created", label: "Phase 1: Created", phase: 1 },
+  { value: "questionnaire_pending", label: "Phase 2: Questionnaire Pending", phase: 2 },
+  { value: "questionnaire_complete", label: "Phase 2: Questionnaire Complete", phase: 2 },
+  { value: "quote_draft", label: "Phase 3: Quote Draft", phase: 3 },
+  { value: "quote_sent", label: "Phase 3: Quote Sent", phase: 3 },
+  { value: "quote_approved", label: "Phase 3: Quote Approved", phase: 3 },
+  { value: "tos_pending", label: "Phase 3: TOS Pending", phase: 3 },
+  { value: "tos_signed", label: "Phase 3: TOS Signed", phase: 3 },
+  { value: "deposit_pending", label: "Phase 3: Deposit Pending", phase: 3 },
+  { value: "deposit_paid", label: "Phase 3: Deposit Paid", phase: 3 },
+  { value: "design_pending", label: "Phase 4: Design Pending", phase: 4 },
+  { value: "design_sent", label: "Phase 4: Design Sent", phase: 4 },
+  { value: "design_approved", label: "Phase 4: Design Approved", phase: 4 },
+  { value: "in_development", label: "Phase 5: In Development", phase: 5 },
+  { value: "ready_for_review", label: "Phase 6: Ready for Review", phase: 6 },
+  { value: "client_review", label: "Phase 7: Client Review", phase: 7 },
+  { value: "revisions_pending", label: "Phase 7: Revisions Pending", phase: 7 },
+  { value: "revisions_complete", label: "Phase 7: Revisions Complete", phase: 7 },
+  { value: "awaiting_final_payment", label: "Phase 7: Awaiting Final Payment", phase: 7 },
+  { value: "payment_complete", label: "Phase 7: Payment Complete", phase: 7 },
+  { value: "hosting_setup_pending", label: "Phase 7A: Hosting Setup Pending", phase: 7 },
+  { value: "hosting_configured", label: "Phase 7A: Hosting Configured", phase: 7 },
+  { value: "completed", label: "Completed", phase: 7 },
+  { value: "on_hold", label: "On Hold", phase: 0 },
+  { value: "cancelled", label: "Cancelled", phase: 0 },
+];
 
 const paymentStatusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
@@ -180,6 +237,14 @@ export default function ClientDetails() {
     hosting: "",
     specialRequirements: "",
   });
+  
+  // PIN verification state for status override
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [originalStatus, setOriginalStatus] = useState<string>("");
 
   const { data: client, isLoading } = useQuery<any>({
     queryKey: ["/api/admin/clients", clientId],
@@ -456,15 +521,68 @@ export default function ClientDetails() {
       const project = client.projects[0];
       setProjectSettings({
         projectType: project.projectType || "new_website",
-        status: project.status || "pending_payment",
+        status: project.status || "questionnaire_pending",
         totalCost: project.totalCost || "0.00",
         paymentStructure: project.paymentStructure || "50_50",
         domain: project.domain || "",
         hosting: project.hosting || "",
         specialRequirements: project.specialRequirements || "",
       });
+      setOriginalStatus(project.status || "questionnaire_pending");
     }
   }, [client]);
+
+  // Handle status change - requires PIN verification
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus !== originalStatus) {
+      setPendingStatus(newStatus);
+      setShowPinModal(true);
+      setPinValue("");
+      setPinError("");
+    } else {
+      setProjectSettings({ ...projectSettings, status: newStatus });
+    }
+  };
+
+  // Verify PIN and apply status change
+  const handleVerifyPin = async () => {
+    setIsVerifyingPin(true);
+    setPinError("");
+    
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/admin/pin/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ pin: pinValue }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        setPinError(data.error || "Invalid PIN");
+        setIsVerifyingPin(false);
+        return;
+      }
+      
+      // PIN verified - apply the status change
+      if (pendingStatus) {
+        setProjectSettings({ ...projectSettings, status: pendingStatus });
+        setOriginalStatus(pendingStatus);
+        toast({ title: "Status updated", description: `Project status changed to ${phaseLabels[pendingStatus]?.label || pendingStatus}` });
+      }
+      
+      setShowPinModal(false);
+      setPinValue("");
+      setPendingStatus(null);
+    } catch (error) {
+      setPinError("Failed to verify PIN");
+    } finally {
+      setIsVerifyingPin(false);
+    }
+  };
 
   const handleSaveProjectSettings = () => {
     const project = client?.projects?.[0];
@@ -867,30 +985,26 @@ export default function ClientDetails() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Project Status</Label>
+                          <Label className="flex items-center gap-2">
+                            Project Status
+                            <Lock className="w-3 h-3 text-muted-foreground" />
+                          </Label>
                           <Select 
                             value={projectSettings.status} 
-                            onValueChange={(v) => setProjectSettings({ ...projectSettings, status: v })}
+                            onValueChange={handleStatusChange}
                           >
                             <SelectTrigger data-testid="select-settings-status">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="created">Phase 1: Client Setup</SelectItem>
-                              <SelectItem value="questionnaire_pending">Phase 2: Questionnaire Pending</SelectItem>
-                              <SelectItem value="questionnaire_complete">Phase 2: Questionnaire Complete</SelectItem>
-                              <SelectItem value="tos_pending">Phase 3: TOS Pending</SelectItem>
-                              <SelectItem value="tos_signed">Phase 3: TOS Signed</SelectItem>
-                              <SelectItem value="in_development">Phase 4: In Development</SelectItem>
-                              <SelectItem value="hosting_setup">Phase 5: Hosting Setup</SelectItem>
-                              <SelectItem value="deployed">Phase 5: Deployed</SelectItem>
-                              <SelectItem value="delivery">Phase 6: Final Delivery</SelectItem>
-                              <SelectItem value="client_review">Phase 6: Client Review</SelectItem>
-                              <SelectItem value="completed">Phase 7: Completed</SelectItem>
-                              <SelectItem value="on_hold">On Hold</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectContent className="max-h-80">
+                              {ALL_PROJECT_STATUSES.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>
+                                  {status.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-muted-foreground">PIN required to change status</p>
                         </div>
                         <div className="space-y-2">
                           <Label>Total Cost ($)</Label>
@@ -2202,6 +2316,90 @@ export default function ClientDetails() {
           </Tabs>
         </motion.div>
       </motion.div>
+
+      {/* PIN Verification Modal for Status Override */}
+      <Dialog open={showPinModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowPinModal(false);
+          setPinValue("");
+          setPinError("");
+          setPendingStatus(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5" />
+              Verify PIN to Change Status
+            </DialogTitle>
+            <DialogDescription>
+              Changing project status requires PIN verification. Enter your 5-digit PIN to confirm this change.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span className="font-medium">Status Change:</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-sm">
+                <Badge className={statusColors[originalStatus] || ""}>
+                  {phaseLabels[originalStatus]?.label || originalStatus}
+                </Badge>
+                <span className="text-muted-foreground">to</span>
+                <Badge className={statusColors[pendingStatus || ""] || ""}>
+                  {phaseLabels[pendingStatus || ""]?.label || pendingStatus}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-4">
+              <InputOTP 
+                maxLength={5} 
+                value={pinValue}
+                onChange={setPinValue}
+                data-testid="input-pin-override"
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                </InputOTPGroup>
+              </InputOTP>
+              {pinError && (
+                <motion.p 
+                  className="text-sm text-destructive"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  {pinError}
+                </motion.p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPinModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleVerifyPin}
+              disabled={isVerifyingPin || pinValue.length !== 5}
+              data-testid="button-verify-pin"
+            >
+              {isVerifyingPin ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4 mr-2" />
+              )}
+              Verify & Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PortalLayout>
   );
 }
