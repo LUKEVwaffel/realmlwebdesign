@@ -65,6 +65,22 @@ export function ChatPanel({ clientId, clientName, projectId, className }: ChatPa
     refetchInterval: 5000,
   });
 
+  // Mark messages as read when conversation is opened
+  const markReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/admin/clients/${clientId}/messages/mark-read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/messages/unread-total"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/messages/conversations"] });
+    },
+  });
+
+  useEffect(() => {
+    // Mark messages as read when conversation opens
+    markReadMutation.mutate();
+  }, [clientId]);
+
   const sendMutation = useMutation({
     mutationFn: async (messageText: string) => {
       return apiRequest("POST", `/api/admin/clients/${clientId}/messages`, { 

@@ -33,6 +33,7 @@ import ProjectWorkflow from "@/pages/admin/project-workflow";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminAnalyticsPage from "@/pages/admin/admin-analytics";
 import AdminSettings from "@/pages/admin/settings";
+import AdminMessages from "@/pages/admin/messages";
 
 function Router() {
   return (
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/admin/clients/:id/workflow" component={ProjectWorkflow} />
       <Route path="/admin/clients/:id" component={AdminClientDetails} />
       <Route path="/admin/clients" component={AdminClients} />
+      <Route path="/admin/messages" component={AdminMessages} />
       <Route path="/admin/analytics/:adminId" component={AdminAnalyticsPage} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/settings" component={AdminSettings} />

@@ -49,6 +49,7 @@ const clientNavItems = [
 const adminNavItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Clients", url: "/admin/clients", icon: Users },
+  { title: "Messages", url: "/admin/messages", icon: MessageCircle },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
@@ -63,6 +64,12 @@ export function PortalSidebar() {
   const { data: unreadData } = useQuery<{ unreadCount: number }>({
     queryKey: ["/api/client/messages/unread"],
     enabled: !isAdmin,
+    refetchInterval: 10000,
+  });
+
+  const { data: adminUnreadData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["/api/admin/messages/unread-total"],
+    enabled: isAdmin,
     refetchInterval: 10000,
   });
 
@@ -113,7 +120,9 @@ export function PortalSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const unreadCount = item.title === "Messages" ? unreadData?.unreadCount || 0 : 0;
+                const unreadCount = item.title === "Messages" 
+                  ? (isAdmin ? adminUnreadData?.unreadCount || 0 : unreadData?.unreadCount || 0)
+                  : 0;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

@@ -400,6 +400,15 @@ export class DatabaseStorage implements IStorage {
     return result?.count || 0;
   }
 
+  async getLastMessageByClient(clientId: string): Promise<Message | null> {
+    const result = await db.select()
+      .from(messages)
+      .where(eq(messages.clientId, clientId))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    return result[0] || null;
+  }
+
   // Activity Logs
   async getActivityLogsByClientId(clientId: string): Promise<ActivityLog[]> {
     return db.select().from(activityLogs).where(eq(activityLogs.clientId, clientId)).orderBy(desc(activityLogs.createdAt)).limit(20);
@@ -888,10 +897,6 @@ export class DatabaseStorage implements IStorage {
         eq(payments.status, "paid")
       ));
     return depositPayments.length > 0;
-  }
-
-  async getPaymentsByProjectId(projectId: string): Promise<Payment[]> {
-    return db.select().from(payments).where(eq(payments.projectId, projectId)).orderBy(desc(payments.createdAt));
   }
 
   // Cancellations

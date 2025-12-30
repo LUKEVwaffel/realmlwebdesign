@@ -4175,6 +4175,18 @@ export async function registerRoutes(
     }
   });
 
+  // Mark messages as read (admin viewing client messages)
+  app.post("/api/admin/clients/:id/messages/mark-read", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await storage.markMessagesAsReadByClient(id, "client");
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark messages read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get total unread messages for admin dashboard
   app.get("/api/admin/messages/unread-total", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
@@ -4182,6 +4194,48 @@ export async function registerRoutes(
       res.json({ unreadCount: count });
     } catch (error) {
       console.error("Get total unread count error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all client conversations for admin messages page
+  app.get("/api/admin/messages/conversations", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const clients = await storage.getAllClients();
+      
+      const conversations = await Promise.all(clients.map(async (client) => {
+        const user = await storage.getUser(client.userId);
+        if (!user) return null;
+        
+        // Use optimized single-message query instead of loading all messages
+        const lastMessage = await storage.getLastMessageByClient(client.id);
+        const unreadCount = await storage.getUnreadMessageCount(client.id, "admin");
+        
+        return {
+          id: client.id,
+          businessLegalName: client.businessLegalName || "Unknown Business",
+          user: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+          },
+          lastMessage: lastMessage ? {
+            id: lastMessage.id,
+            messageText: lastMessage.messageText,
+            senderType: lastMessage.senderType,
+            createdAt: lastMessage.createdAt,
+            isRead: lastMessage.isRead,
+          } : undefined,
+          unreadCount,
+          totalMessages: 0, // Don't count all messages for performance
+        };
+      }));
+      
+      // Filter out null values
+      const validConversations = conversations.filter(c => c !== null);
+      res.json(validConversations);
+    } catch (error) {
+      console.error("Get conversations error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
