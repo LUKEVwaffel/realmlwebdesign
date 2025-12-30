@@ -4201,7 +4201,7 @@ export async function registerRoutes(
   // Get all client conversations for admin messages page
   app.get("/api/admin/messages/conversations", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const clients = await storage.getAllClients();
+      const clients = await storage.getClients();
       
       const conversations = await Promise.all(clients.map(async (client) => {
         const user = await storage.getUser(client.userId);
