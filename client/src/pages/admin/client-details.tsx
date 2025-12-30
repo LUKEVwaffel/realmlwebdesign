@@ -512,11 +512,25 @@ function EmbeddedPhaseTools({ client, project, status }: {
         {status === "hosting_setup_pending" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Waiting for client to submit Hostinger credentials via their portal.</p>
-            <div className="p-3 bg-muted/50 rounded-lg text-sm">
-              <span className="text-muted-foreground">Credentials received: </span>
-              <span className={project?.hostingCredentialsReceived ? "text-green-600" : "text-amber-600"}>
-                {project?.hostingCredentialsReceived ? "Yes" : "Not yet"}
-              </span>
+            <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Credentials received: </span>
+                <span className={project?.hostingCredentialsReceived ? "text-green-600 font-medium" : "text-amber-600"}>
+                  {project?.hostingCredentialsReceived ? "Yes" : "Not yet"}
+                </span>
+              </div>
+              {project?.hostingerEmail && (
+                <div className="pt-2 border-t space-y-2">
+                  <div>
+                    <span className="text-muted-foreground text-xs">Email: </span>
+                    <span className="font-medium">{project.hostingerEmail}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Temp Password: </span>
+                    <code className="font-mono bg-background px-2 py-1 rounded">{project.hostingerTempPassword}</code>
+                  </div>
+                </div>
+              )}
             </div>
             <Button onClick={() => advanceStatusMutation.mutate("hosting_configured")} disabled={advanceStatusMutation.isPending || !project?.hostingCredentialsReceived}>
               Mark Hosting Configured
@@ -526,6 +540,18 @@ function EmbeddedPhaseTools({ client, project, status }: {
         {status === "hosting_configured" && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Hosting configured!</span></div>
+            {project?.hostingerEmail && (
+              <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
+                <div>
+                  <span className="text-muted-foreground text-xs">Hostinger Email: </span>
+                  <span className="font-medium">{project.hostingerEmail}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Temp Password: </span>
+                  <code className="font-mono bg-background px-2 py-1 rounded">{project.hostingerTempPassword}</code>
+                </div>
+              </div>
+            )}
             <Button onClick={() => advanceStatusMutation.mutate("completed")} disabled={advanceStatusMutation.isPending}>Complete Project</Button>
           </div>
         )}
