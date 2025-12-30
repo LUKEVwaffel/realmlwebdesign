@@ -188,6 +188,372 @@ const slideIn = {
   exit: { opacity: 0, x: 20 }
 };
 
+function EmbeddedPhaseTools({ client, project, status }: {
+  client: any;
+  project: any;
+  status: string;
+}) {
+  const { toast } = useToast();
+  const phase = phaseLabels[status]?.phase || 0;
+  
+  const clientId = String(client.id);
+  
+  const sendWelcomeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/admin/projects/${project?.id}/send-welcome`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Welcome email sent", description: "Client received login credentials." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send email", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendReminderMutation = useMutation({
+    mutationFn: async (type: string) => {
+      const res = await apiRequest("POST", `/api/admin/projects/${project?.id}/send-reminder`, { type });
+      return res.json();
+    },
+    onSuccess: (_, type) => {
+      toast({ title: "Reminder sent", description: `${type} reminder email sent.` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send reminder", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const advanceStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/projects/${project?.id}/status`, { status: newStatus });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
+      toast({ title: "Status updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (!project) return <div className="text-center text-muted-foreground py-4">No project found</div>;
+
+  // Phase 1: Onboarding
+  if (phase === 1) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <User className="w-4 h-4" />
+          Phase 1: Client Onboarding
+        </h3>
+        {status === "draft" ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Client account is ready. Send welcome email with login credentials.
+            </p>
+            <Button 
+              className="gap-2" 
+              onClick={() => sendWelcomeMutation.mutate()}
+              disabled={sendWelcomeMutation.isPending}
+              data-testid="button-send-welcome"
+            >
+              {sendWelcomeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send Welcome Email
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600">
+              <Check className="w-4 h-4" />
+              <span className="text-sm">Welcome email sent - waiting for questionnaire</span>
+            </div>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => sendReminderMutation.mutate("questionnaire")}
+              disabled={sendReminderMutation.isPending}
+            >
+              {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send Questionnaire Reminder
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Phase 2: Questionnaire
+  if (phase === 2) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <ClipboardList className="w-4 h-4" />
+          Phase 2: Client Questionnaire
+        </h3>
+        {status === "questionnaire_pending" ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Waiting for client to complete the project questionnaire.
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="gap-2"
+                onClick={() => sendReminderMutation.mutate("questionnaire")}
+                disabled={sendReminderMutation.isPending}
+              >
+                {sendReminderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send Reminder
+              </Button>
+              <Button
+                className="gap-2"
+                onClick={() => advanceStatusMutation.mutate("questionnaire_complete")}
+                disabled={advanceStatusMutation.isPending}
+              >
+                Mark Complete
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600">
+              <Check className="w-4 h-4" />
+              <span className="text-sm">Questionnaire completed</span>
+            </div>
+            <Button
+              className="gap-2"
+              onClick={() => advanceStatusMutation.mutate("quote_draft")}
+              disabled={advanceStatusMutation.isPending}
+            >
+              Create Quote
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Phase 3: Quote & Agreement
+  if (phase === 3) {
+    const phase3Steps = ["quote_draft", "quote_sent", "quote_approved", "tos_pending", "tos_signed", "deposit_pending", "deposit_paid"];
+    const currentStep = phase3Steps.indexOf(status);
+    
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          Phase 3: Quote & Agreement
+        </h3>
+        <div className="flex gap-1">
+          {["Quote", "Approved", "TOS", "Deposit"].map((step, i) => (
+            <div key={step} className={`flex-1 h-2 rounded ${currentStep >= i * 2 ? "bg-green-500" : "bg-muted"}`} />
+          ))}
+        </div>
+        
+        {status === "quote_draft" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Create quote with pricing. Go to Quotes tab to add quote details.</p>
+            <Button className="gap-2" onClick={() => advanceStatusMutation.mutate("quote_sent")} disabled={advanceStatusMutation.isPending}>
+              Mark Quote Sent
+            </Button>
+          </div>
+        )}
+        {status === "quote_sent" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Waiting for client to approve quote.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => sendReminderMutation.mutate("quote")} disabled={sendReminderMutation.isPending}>Send Reminder</Button>
+              <Button onClick={() => advanceStatusMutation.mutate("quote_approved")} disabled={advanceStatusMutation.isPending}>Mark Approved</Button>
+            </div>
+          </div>
+        )}
+        {(status === "quote_approved" || status === "tos_pending") && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Waiting for TOS signature. Go to Documents tab to send TOS.</p>
+            <Button variant="outline" onClick={() => sendReminderMutation.mutate("tos")} disabled={sendReminderMutation.isPending}>Resend TOS</Button>
+          </div>
+        )}
+        {(status === "tos_signed" || status === "deposit_pending") && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">TOS signed! Waiting for 50% deposit. Go to Payments tab to send invoice.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => sendReminderMutation.mutate("payment")} disabled={sendReminderMutation.isPending}>Send Reminder</Button>
+              <Button onClick={() => advanceStatusMutation.mutate("deposit_paid")} disabled={advanceStatusMutation.isPending}>Mark Paid</Button>
+            </div>
+          </div>
+        )}
+        {status === "deposit_paid" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Phase 3 Complete!</span></div>
+            <Button onClick={() => advanceStatusMutation.mutate("design_pending")} disabled={advanceStatusMutation.isPending}>Proceed to Design</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Phase 4: Design
+  if (phase === 4) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <LayoutGrid className="w-4 h-4" />
+          Phase 4: Design Consultation
+        </h3>
+        {status === "design_pending" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Add template URLs for client selection. Update project with template URLs.</p>
+            <Button onClick={() => advanceStatusMutation.mutate("design_sent")} disabled={advanceStatusMutation.isPending}>Mark Templates Sent</Button>
+          </div>
+        )}
+        {status === "design_sent" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Waiting for client to select a design template.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => sendReminderMutation.mutate("design")} disabled={sendReminderMutation.isPending}>Send Reminder</Button>
+              <Button onClick={() => advanceStatusMutation.mutate("design_approved")} disabled={advanceStatusMutation.isPending}>Mark Selected</Button>
+            </div>
+          </div>
+        )}
+        {status === "design_approved" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Design approved!</span></div>
+            <Button onClick={() => advanceStatusMutation.mutate("in_development")} disabled={advanceStatusMutation.isPending}>Start Development</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Phase 5: Development
+  if (phase === 5) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Globe className="w-4 h-4" />
+          Phase 5: Website Development
+        </h3>
+        <p className="text-sm text-muted-foreground">Website is being built. Update staging URL in project settings.</p>
+        <div className="p-3 bg-muted/50 rounded-lg">
+          <span className="text-xs text-muted-foreground">Staging URL:</span>
+          <p className="font-medium">{project?.stagingUrl || "Not set"}</p>
+        </div>
+        <Button onClick={() => advanceStatusMutation.mutate("ready_for_review")} disabled={advanceStatusMutation.isPending}>
+          Mark Ready for Review
+        </Button>
+      </div>
+    );
+  }
+
+  // Phase 6: Review
+  if (phase === 6) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Eye className="w-4 h-4" />
+          Phase 6: Ready for Review
+        </h3>
+        <p className="text-sm text-muted-foreground">Complete QA checks and send staging link to client.</p>
+        <Button onClick={() => advanceStatusMutation.mutate("client_review")} disabled={advanceStatusMutation.isPending}>
+          Send to Client for Review
+        </Button>
+      </div>
+    );
+  }
+
+  // Phase 7: Review & Delivery
+  if (phase === 7) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Sparkles className="w-4 h-4" />
+          Phase 7: Review & Delivery
+        </h3>
+        
+        {status === "client_review" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Client is reviewing the website.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => advanceStatusMutation.mutate("revisions_pending")} disabled={advanceStatusMutation.isPending}>Revisions Requested</Button>
+              <Button onClick={() => advanceStatusMutation.mutate("awaiting_final_payment")} disabled={advanceStatusMutation.isPending}>No Revisions - Proceed</Button>
+            </div>
+          </div>
+        )}
+        {status === "revisions_pending" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Working on revisions.</p>
+            <Button onClick={() => advanceStatusMutation.mutate("revisions_complete")} disabled={advanceStatusMutation.isPending}>Mark Revisions Complete</Button>
+          </div>
+        )}
+        {status === "revisions_complete" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Revisions complete!</span></div>
+            <Button onClick={() => advanceStatusMutation.mutate("awaiting_final_payment")} disabled={advanceStatusMutation.isPending}>Request Final Payment</Button>
+          </div>
+        )}
+        {status === "awaiting_final_payment" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Waiting for final 50% payment. Go to Payments tab to send invoice.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => sendReminderMutation.mutate("payment")} disabled={sendReminderMutation.isPending}>Send Reminder</Button>
+              <Button onClick={() => advanceStatusMutation.mutate("payment_complete")} disabled={advanceStatusMutation.isPending}>Mark Paid</Button>
+            </div>
+          </div>
+        )}
+        {status === "payment_complete" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Payment received!</span></div>
+            <Button onClick={() => advanceStatusMutation.mutate("hosting_setup_pending")} disabled={advanceStatusMutation.isPending}>Begin Hosting Setup</Button>
+          </div>
+        )}
+        {status === "hosting_setup_pending" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Waiting for client to submit Hostinger credentials via their portal.</p>
+            <div className="p-3 bg-muted/50 rounded-lg text-sm">
+              <span className="text-muted-foreground">Credentials received: </span>
+              <span className={project?.hostingCredentialsReceived ? "text-green-600" : "text-amber-600"}>
+                {project?.hostingCredentialsReceived ? "Yes" : "Not yet"}
+              </span>
+            </div>
+            <Button onClick={() => advanceStatusMutation.mutate("hosting_configured")} disabled={advanceStatusMutation.isPending || !project?.hostingCredentialsReceived}>
+              Mark Hosting Configured
+            </Button>
+          </div>
+        )}
+        {status === "hosting_configured" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600"><Check className="w-4 h-4" /><span>Hosting configured!</span></div>
+            <Button onClick={() => advanceStatusMutation.mutate("completed")} disabled={advanceStatusMutation.isPending}>Complete Project</Button>
+          </div>
+        )}
+        {status === "completed" && (
+          <div className="text-center py-4">
+            <Check className="w-12 h-12 mx-auto text-green-500 mb-2" />
+            <p className="font-semibold text-green-600">Project Complete!</p>
+            <p className="text-sm text-muted-foreground mt-1">25-day warranty is now active.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Special states
+  if (phase === 0) {
+    return (
+      <div className="text-center py-4">
+        <AlertTriangle className="w-8 h-8 mx-auto text-amber-500 mb-2" />
+        <p className="font-medium">{status === "on_hold" ? "Project On Hold" : "Project Cancelled"}</p>
+        <p className="text-sm text-muted-foreground mt-1">{project?.onHoldReason || ""}</p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function ClientDetails() {
   const { toast } = useToast();
   const [, params] = useRoute("/admin/clients/:id");
@@ -911,13 +1277,13 @@ export default function ClientDetails() {
                         {phaseLabels[projectSettings.status]?.description || "Current project phase"}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-6">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         {[1, 2, 3, 4, 5, 6, 7].map((phase) => {
                           const currentPhase = phaseLabels[projectSettings.status]?.phase || 0;
                           const isComplete = currentPhase > phase;
                           const isCurrent = currentPhase === phase;
-                          const phaseNames = ["Setup", "Questionnaire", "Terms", "Development", "Hosting", "Delivery", "Complete"];
+                          const phaseNames = ["Onboarding", "Questionnaire", "Agreement", "Design", "Development", "Review", "Delivery"];
                           
                           return (
                             <div 
@@ -938,13 +1304,23 @@ export default function ClientDetails() {
                           );
                         })}
                       </div>
-                      <div className="mt-4 p-3 bg-muted/30 rounded-lg flex items-center gap-3">
+                      
+                      <div className="p-3 bg-muted/30 rounded-lg flex items-center gap-3">
                         <Badge className={statusColors[projectSettings.status] || ""}>
                           {phaseLabels[projectSettings.status]?.label || projectSettings.status}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
                           {phaseLabels[projectSettings.status]?.description}
                         </span>
+                      </div>
+
+                      {/* Embedded Phase Tools */}
+                      <div className="border rounded-lg p-4 bg-card">
+                        <EmbeddedPhaseTools 
+                          client={client}
+                          project={client.projects?.[0]}
+                          status={projectSettings.status}
+                        />
                       </div>
                     </CardContent>
                   </Card>
