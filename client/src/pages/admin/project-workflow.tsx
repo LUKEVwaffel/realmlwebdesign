@@ -530,6 +530,8 @@ export default function ProjectWorkflow() {
                   onSendReminder={() => sendReminderMutation.mutate({ projectId: project.id, type: "questionnaire" })}
                   onAdvancePhase={() => updateStatusMutation.mutate({ projectId: project.id, status: "quote_draft" })}
                   isSendingReminder={sendReminderMutation.isPending}
+                  onResendWelcome={() => sendWelcomeEmailMutation.mutate(project.id)}
+                  isResending={sendWelcomeEmailMutation.isPending}
                 />
               )}
               {currentPhase === 3 && (
@@ -761,13 +763,20 @@ function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <RefreshCw className="w-4 h-4" />
-                    Resend Email
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    View Questionnaire Link
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={onSendWelcome}
+                    disabled={isSending}
+                    data-testid="button-resend-welcome"
+                  >
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Resend Welcome Email
                   </Button>
                 </div>
               </div>
@@ -780,7 +789,7 @@ function Phase1Content({ client, project, onSendWelcome, isSending }: any) {
 }
 
 // Phase 2: Questionnaire
-function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSendingReminder }: any) {
+function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSendingReminder, onResendWelcome, isResending }: any) {
   const isPending = project.status === "questionnaire_pending";
   const isComplete = project.status === "questionnaire_complete";
 
@@ -817,7 +826,17 @@ function Phase2Content({ client, project, onSendReminder, onAdvancePhase, isSend
                   The questionnaire was sent on {project.createdAt ? format(new Date(project.createdAt), "MMM d, yyyy") : "N/A"}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant="outline" 
+                  className="gap-2" 
+                  onClick={onResendWelcome}
+                  disabled={isResending}
+                  data-testid="button-resend-welcome-phase2"
+                >
+                  {isResending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Resend Welcome Email
+                </Button>
                 <Button 
                   variant="outline" 
                   className="gap-2" 
