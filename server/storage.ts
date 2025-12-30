@@ -366,6 +366,40 @@ export class DatabaseStorage implements IStorage {
     await db.update(messages).set({ isRead: true, readAt: new Date() }).where(eq(messages.id, id));
   }
 
+  async markMessagesAsReadByClient(clientId: string, senderType: "admin" | "client"): Promise<void> {
+    await db.update(messages)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(
+        eq(messages.clientId, clientId),
+        eq(messages.senderType, senderType),
+        eq(messages.isRead, false)
+      ));
+  }
+
+  async getUnreadMessageCount(clientId: string, forRole: "admin" | "client"): Promise<number> {
+    // For admin: count unread messages from client
+    // For client: count unread messages from admin
+    const senderType = forRole === "admin" ? "client" : "admin";
+    const [result] = await db.select({ count: count() })
+      .from(messages)
+      .where(and(
+        eq(messages.clientId, clientId),
+        eq(messages.senderType, senderType),
+        eq(messages.isRead, false)
+      ));
+    return result?.count || 0;
+  }
+
+  async getTotalUnreadMessagesForAdmin(): Promise<number> {
+    const [result] = await db.select({ count: count() })
+      .from(messages)
+      .where(and(
+        eq(messages.senderType, "client"),
+        eq(messages.isRead, false)
+      ));
+    return result?.count || 0;
+  }
+
   // Activity Logs
   async getActivityLogsByClientId(clientId: string): Promise<ActivityLog[]> {
     return db.select().from(activityLogs).where(eq(activityLogs.clientId, clientId)).orderBy(desc(activityLogs.createdAt)).limit(20);

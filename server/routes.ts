@@ -4071,6 +4071,159 @@ export async function registerRoutes(
     }
   });
 
+  // Get all messages for a client (admin - for chat panel)
+  app.get("/api/admin/clients/:id/messages", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const messagesList = await storage.getMessagesByClientId(id);
+      
+      // Mark client messages as read when admin views them
+      await storage.markMessagesAsReadByClient(id, "client");
+      
+      const enrichedMessages = await Promise.all(messagesList.map(async (msg) => {
+        const sender = await storage.getUser(msg.senderId);
+        return {
+          ...msg,
+          senderName: sender ? `${sender.firstName} ${sender.lastName}` : "Unknown",
+        };
+      }));
+      
+      res.json(enrichedMessages);
+    } catch (error) {
+      console.error("Get client messages error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Send message to client (admin)
+  app.post("/api/admin/clients/:id/messages", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { messageText, projectId } = req.body;
+      
+      if (!messageText || typeof messageText !== "string" || messageText.trim().length === 0) {
+        return res.status(400).json({ error: "Message text is required" });
+      }
+      
+      const client = await storage.getClient(id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Get project ID if not provided (use first project)
+      let msgProjectId = projectId;
+      if (!msgProjectId) {
+        const projects = await storage.getProjectsByClientId(id);
+        if (projects.length > 0) {
+          msgProjectId = projects[0].id;
+        }
+      }
+      
+      const message = await storage.createMessage({
+        clientId: id,
+        projectId: msgProjectId,
+        senderId: req.user!.id,
+        senderType: "admin",
+        messageText: messageText.trim(),
+        category: "general",
+      });
+      
+      // Send real-time WebSocket notification to client
+      notifyNewMessage(id, {
+        senderType: "admin",
+        senderName: `${req.user!.firstName} ${req.user!.lastName}`,
+        preview: messageText.substring(0, 100),
+      });
+      
+      // Send email notification to client
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+      if (user?.email) {
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: "New message from ML WebDesign",
+            text: `You have a new message from the ML WebDesign team:\n\n"${messageText.substring(0, 200)}${messageText.length > 200 ? '...' : ''}"\n\nLog in to your DUO portal to view and respond.`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">New Message</h2>
+                <p>You have a new message from the ML WebDesign team:</p>
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0;">"${messageText.substring(0, 200)}${messageText.length > 200 ? '...' : ''}"</p>
+                </div>
+                <p><a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ''}/client/messages" style="color: #8b5cf6;">Log in to your DUO portal</a> to view and respond.</p>
+              </div>
+            `,
+          });
+        } catch (emailErr) {
+          console.error("Failed to send message notification email:", emailErr);
+        }
+      }
+      
+      res.json(message);
+    } catch (error) {
+      console.error("Send admin message error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get unread message count for a client (admin)
+  app.get("/api/admin/clients/:id/messages/unread", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const count = await storage.getUnreadMessageCount(id, "admin");
+      res.json({ unreadCount: count });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get total unread messages for admin dashboard
+  app.get("/api/admin/messages/unread-total", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const count = await storage.getTotalUnreadMessagesForAdmin();
+      res.json({ unreadCount: count });
+    } catch (error) {
+      console.error("Get total unread count error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Mark messages as read (client)
+  app.post("/api/client/messages/mark-read", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      await storage.markMessagesAsReadByClient(client.id, "admin");
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark messages read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get unread count for client
+  app.get("/api/client/messages/unread", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.json({ unreadCount: 0 });
+      }
+      const count = await storage.getUnreadMessageCount(client.id, "client");
+      res.json({ unreadCount: count });
+    } catch (error) {
+      console.error("Get client unread count error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ REVISION ROUTES ============
   
   // Get all pending revisions (admin)
