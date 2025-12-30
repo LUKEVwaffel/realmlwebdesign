@@ -1014,7 +1014,18 @@ export async function registerRoutes(
       });
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-      sendWelcomeEmail(email, firstName, tempPassword, `${baseUrl}/login`).catch(console.error);
+      console.log(`[Client Setup] Sending welcome email to ${email} for client: ${businessLegalName}`);
+      sendWelcomeEmail(email, firstName, tempPassword, `${baseUrl}/login`)
+        .then(success => {
+          if (success) {
+            console.log(`[Client Setup] Welcome email sent successfully to ${email}`);
+          } else {
+            console.error(`[Client Setup] Failed to send welcome email to ${email}`);
+          }
+        })
+        .catch(err => {
+          console.error(`[Client Setup] Error sending welcome email:`, err);
+        });
 
       res.json({ ...client, user: { firstName, lastName, email }, tempPassword });
     } catch (error) {
