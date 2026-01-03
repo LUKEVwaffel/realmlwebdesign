@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { PortalFeed } from "@/components/portal/portal-feed";
+import { ClientSubscriptionPanel } from "@/components/client/subscription-panel";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1250,6 +1251,9 @@ export default function ClientDashboard() {
           </motion.div>
         )}
 
+        {project?.status === "completed" && (
+          <ClientSubscriptionPanel />
+        )}
 
         <motion.div variants={fadeInUp}>
           <Card className="border-border/50">
