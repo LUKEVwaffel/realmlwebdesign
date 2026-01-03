@@ -1,5 +1,9 @@
 import Stripe from 'stripe';
 
+export function isStripeEnabled(): boolean {
+  return process.env.STRIPE_ENABLED !== 'false';
+}
+
 let connectionSettings: any;
 
 async function getCredentials() {
