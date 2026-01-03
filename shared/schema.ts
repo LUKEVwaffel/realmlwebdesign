@@ -87,6 +87,12 @@ export const accessLevelEnum = pgEnum("access_level", ["view", "edit"]);
 export const revisionTypeEnum = pgEnum("revision_type", ["minor", "major"]);
 export const revisionStatusEnum = pgEnum("revision_status", ["pending", "approved", "declined", "in_progress", "completed"]);
 
+// Service Tiers (Webflow-based pricing)
+export const serviceTierEnum = pgEnum("service_tier", ["standard", "business_premium", "ecommerce"]);
+
+// Maintenance Status
+export const maintenanceStatusEnum = pgEnum("maintenance_status", ["not_started", "active", "paused", "cancelled"]);
+
 // Users Table
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -218,9 +224,31 @@ export const projects = pgTable("projects", {
   needsAnalytics: boolean("needs_analytics").default(true),
   existingGoogleAnalytics: varchar("existing_google_analytics", { length: 50 }),
   
-  // Maintenance Settings
+  // Service Tier (Webflow-based pricing model)
+  serviceTier: serviceTierEnum("service_tier"),
+  
+  // Monthly Maintenance Settings
   maintenancePlan: varchar("maintenance_plan", { length: 50 }),
   maintenanceStartDate: date("maintenance_start_date"),
+  maintenanceStatus: maintenanceStatusEnum("maintenance_status").default("not_started"),
+  monthlyMaintenanceFee: decimal("monthly_maintenance_fee", { precision: 10, scale: 2 }),
+  maintenanceMinimumMonths: integer("maintenance_minimum_months").default(12),
+  maintenanceMonthsCompleted: integer("maintenance_months_completed").default(0),
+  maintenanceNextBillingDate: date("maintenance_next_billing_date"),
+  maintenanceCancelledAt: timestamp("maintenance_cancelled_at"),
+  maintenanceEarlyTerminationFee: decimal("maintenance_early_termination_fee", { precision: 10, scale: 2 }),
+  
+  // Google Ads Management (Optional Service)
+  googleAdsEnabled: boolean("google_ads_enabled").default(false),
+  googleAdsFreeTrialUsed: boolean("google_ads_free_trial_used").default(false),
+  googleAdsMonthlyFee: decimal("google_ads_monthly_fee", { precision: 10, scale: 2 }).default("500"),
+  googleAdsStartDate: date("google_ads_start_date"),
+  googleAdsCancelledAt: timestamp("google_ads_cancelled_at"),
+  googleAdsAccountId: varchar("google_ads_account_id", { length: 50 }),
+  
+  // Revision Rounds (per service tier)
+  includedRevisionRounds: integer("included_revision_rounds").default(1),
+  usedRevisionRounds: integer("used_revision_rounds").default(0),
   
   // Questionnaire Status
   questionnaireStatus: questionnaireStatusEnum("questionnaire_status").default("not_started"),
@@ -281,17 +309,45 @@ export const projects = pgTable("projects", {
   developmentNotes: text("development_notes"),
   websitePlatform: varchar("website_platform", { length: 50 }),  // wix, shopify, custom
   
-  // Phase 7A: Hosting Setup
-  hostingProvider: varchar("hosting_provider", { length: 100 }).default("hostinger"),  // hostinger, etc.
-  hostingCredentialsReceived: boolean("hosting_credentials_received").default(false),
-  hostingCredentialsReceivedAt: timestamp("hosting_credentials_received_at"),
-  hostingerEmail: varchar("hostinger_email", { length: 255 }),  // Client's Hostinger account email
-  hostingerTempPassword: varchar("hostinger_temp_password", { length: 255 }),  // Temporary password for setup
-  hostingerCredentialsSubmittedAt: timestamp("hostinger_credentials_submitted_at"),
+  // Phase 7A: Webflow Hosting Setup (Company-managed hosting model)
+  hostingProvider: varchar("hosting_provider", { length: 100 }).default("webflow"),
+  
+  // Webflow-specific fields
+  webflowSiteId: varchar("webflow_site_id", { length: 100 }),
+  webflowStagingUrl: varchar("webflow_staging_url", { length: 500 }),
+  webflowLiveUrl: varchar("webflow_live_url", { length: 500 }),
+  webflowPublishedAt: timestamp("webflow_published_at"),
+  
+  // Domain Configuration (registered in client's name by company)
+  domainRegisteredInClientName: boolean("domain_registered_in_client_name").default(false),
   domainConnected: boolean("domain_connected").default(false),
   sslConfigured: boolean("ssl_configured").default(false),
   dnsConfigured: boolean("dns_configured").default(false),
+  
+  // CMS Editor Access (for Business/Premium and E-commerce tiers)
+  cmsEditorEnabled: boolean("cms_editor_enabled").default(false),
+  cmsEditorEmail: varchar("cms_editor_email", { length: 255 }),
+  cmsTrainingProvided: boolean("cms_training_provided").default(false),
+  cmsTrainingProvidedAt: timestamp("cms_training_provided_at"),
+  
+  // Form & Integration Setup
+  formsConfigured: boolean("forms_configured").default(false),
+  emailForwardingConfigured: boolean("email_forwarding_configured").default(false),
+  
+  // Site Transfer Option ($400)
+  siteTransferRequested: boolean("site_transfer_requested").default(false),
+  siteTransferRequestedAt: timestamp("site_transfer_requested_at"),
+  siteTransferCompletedAt: timestamp("site_transfer_completed_at"),
+  siteTransferFee: decimal("site_transfer_fee", { precision: 10, scale: 2 }).default("400"),
+  
   hostingNotes: text("hosting_notes"),
+  
+  // Legacy Hostinger fields (for backward compatibility with existing projects)
+  hostingCredentialsReceived: boolean("hosting_credentials_received").default(false),
+  hostingCredentialsReceivedAt: timestamp("hosting_credentials_received_at"),
+  hostingerEmail: varchar("hostinger_email", { length: 255 }),
+  hostingerTempPassword: varchar("hostinger_temp_password", { length: 255 }),
+  hostingerCredentialsSubmittedAt: timestamp("hostinger_credentials_submitted_at"),
   
   // Final Delivery Checklist
   liveSiteTested: boolean("live_site_tested").default(false),
@@ -681,16 +737,41 @@ export const quotes = pgTable("quotes", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   
-  // Line Items (stored as JSON)
-  lineItems: text("line_items"), // JSON: [{name, description, quantity, unitPrice, total}]
+  // Service Tier (Webflow pricing model)
+  serviceTier: serviceTierEnum("service_tier"),
   
-  // Totals
+  // Setup Fee (one-time)
+  setupFee: decimal("setup_fee", { precision: 10, scale: 2 }),
+  
+  // Monthly Maintenance (recurring)
+  monthlyMaintenanceFee: decimal("monthly_maintenance_fee", { precision: 10, scale: 2 }),
+  maintenanceDescription: text("maintenance_description"),
+  
+  // Google Ads Management (optional)
+  includesGoogleAds: boolean("includes_google_ads").default(false),
+  googleAdsMonthlyFee: decimal("google_ads_monthly_fee", { precision: 10, scale: 2 }).default("500"),
+  googleAdsIncludesFreeTrial: boolean("google_ads_includes_free_trial").default(true),
+  
+  // Revision Rounds Included
+  includedRevisionRounds: integer("included_revision_rounds").default(1),
+  
+  // Estimated Timeline
+  estimatedTimelineWeeks: integer("estimated_timeline_weeks"),
+  
+  // Line Items (stored as JSON)
+  lineItems: text("line_items"), // JSON: [{name, description, quantity, unitPrice, total, isRecurring}]
+  
+  // Totals (one-time setup costs)
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
   discountDescription: varchar("discount_description", { length: 255 }),
   taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Deposit Amount (50% of total)
+  depositAmount: decimal("deposit_amount", { precision: 10, scale: 2 }),
+  finalPaymentAmount: decimal("final_payment_amount", { precision: 10, scale: 2 }),
   
   // Status
   status: quoteStatusEnum("status").notNull().default("draft"),
@@ -1073,10 +1154,17 @@ export const cancellations = pgTable("cancellations", {
   // Financial Summary at time of cancellation
   totalPaid: decimal("total_paid", { precision: 10, scale: 2 }).default("0"),
   workCompleted: integer("work_completed_percentage").default(0), // % of work done
+  workHadBegun: boolean("work_had_begun").default(false), // Was development started?
   
-  // Fee Calculation
-  cancellationFeePercentage: integer("cancellation_fee_percentage").default(25), // Default 25%
+  // Fee Calculation (New TOS: $150 before work, $200 after work begins)
+  cancellationFeeBeforeWork: decimal("cancellation_fee_before_work", { precision: 10, scale: 2 }).default("150"),
+  cancellationFeeAfterWork: decimal("cancellation_fee_after_work", { precision: 10, scale: 2 }).default("200"),
   cancellationFeeAmount: decimal("cancellation_fee_amount", { precision: 10, scale: 2 }),
+  depositNonRefundable: boolean("deposit_non_refundable").default(false), // After work begins, deposit is non-refundable
+  
+  // Early Maintenance Termination (if applicable)
+  maintenanceMonthsRemaining: integer("maintenance_months_remaining"),
+  maintenanceEarlyTerminationFee: decimal("maintenance_early_termination_fee", { precision: 10, scale: 2 }),
   
   // Refund Details
   refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default("0"),
