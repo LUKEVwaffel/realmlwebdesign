@@ -2859,23 +2859,50 @@ export async function registerRoutes(
   // Get available maintenance products/prices from Stripe
   app.get("/api/admin/maintenance-products", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const result = await db.execute(
-        sql`SELECT 
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency,
-          pr.recurring
-        FROM stripe.products p
-        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        WHERE p.active = true 
-        AND p.metadata->>'tier' IS NOT NULL
-        ORDER BY pr.unit_amount ASC`
+      const stripeClient = await getUncachableStripeClient();
+      
+      // Fetch products directly from Stripe API with tier metadata
+      const products = await stripeClient.products.list({
+        active: true,
+        limit: 100,
+      });
+
+      // Filter for maintenance products (those with tier metadata)
+      const maintenanceProducts = products.data.filter(
+        (p) => p.metadata?.tier && ["standard", "business", "ecommerce"].includes(p.metadata.tier)
       );
-      res.json({ products: result.rows });
+
+      // Fetch prices for each maintenance product
+      const productsWithPrices = await Promise.all(
+        maintenanceProducts.map(async (product) => {
+          const prices = await stripeClient.prices.list({
+            product: product.id,
+            active: true,
+            type: "recurring",
+          });
+          
+          const price = prices.data[0]; // Get the first active recurring price
+          if (!price) return null;
+
+          return {
+            product_id: product.id,
+            product_name: product.name,
+            product_description: product.description,
+            product_metadata: product.metadata,
+            price_id: price.id,
+            unit_amount: price.unit_amount,
+            currency: price.currency,
+            recurring: price.recurring,
+          };
+        })
+      );
+
+      // Filter out nulls and sort by unit_amount
+      const validProducts = productsWithPrices
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .sort((a, b) => (a.unit_amount || 0) - (b.unit_amount || 0));
+
+      res.json({ products: validProducts });
     } catch (error) {
       console.error("Get maintenance products error:", error);
       res.status(500).json({ error: "Failed to fetch maintenance products" });
