@@ -8,7 +8,7 @@ import { loginSchema, changePasswordSchema, insertClientSchema, insertProjectSch
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { getUncachableStripeClient, getStripePublishableKey, isStripeEnabled } from "./stripeClient";
 import {
   isEmailConfigured,
   sendWelcomeEmail,
@@ -2582,7 +2582,15 @@ export async function registerRoutes(
 
   // ============ STRIPE ROUTES ============
 
+  // Check if Stripe is enabled
+  app.get("/api/stripe/status", async (req, res) => {
+    res.json({ enabled: isStripeEnabled() });
+  });
+
   app.get("/api/stripe/publishable-key", async (req, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Stripe is temporarily disabled" });
+    }
     try {
       const publishableKey = await getStripePublishableKey();
       res.json({ publishableKey });
@@ -2594,6 +2602,9 @@ export async function registerRoutes(
 
   // Create Payment Intent for embedded payment form
   app.post("/api/payments/:id/create-payment-intent", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Payment processing is temporarily disabled" });
+    }
     try {
       const { id } = req.params;
       const payment = await storage.getPayment(id);
@@ -2643,6 +2654,9 @@ export async function registerRoutes(
 
   // Confirm Payment Intent after embedded payment
   app.post("/api/payments/:id/confirm-payment", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Payment processing is temporarily disabled" });
+    }
     try {
       const { id } = req.params;
       const { paymentIntentId } = req.body;
@@ -2722,6 +2736,9 @@ export async function registerRoutes(
 
   // Legacy checkout session route (kept for backwards compatibility)
   app.post("/api/payments/:id/checkout", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Payment processing is temporarily disabled" });
+    }
     try {
       const { id } = req.params;
       const payment = await storage.getPayment(id);
@@ -2780,6 +2797,9 @@ export async function registerRoutes(
   });
 
   app.post("/api/payments/verify-session", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Payment processing is temporarily disabled" });
+    }
     try {
       const { sessionId, paymentId } = req.body;
       
@@ -2858,6 +2878,9 @@ export async function registerRoutes(
 
   // Get available maintenance products/prices from Stripe
   app.get("/api/admin/maintenance-products", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.json({ products: [], disabled: true });
+    }
     try {
       const stripeClient = await getUncachableStripeClient();
       
@@ -2911,6 +2934,9 @@ export async function registerRoutes(
 
   // Start a maintenance subscription for a project
   app.post("/api/admin/projects/:id/start-maintenance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Subscription management is temporarily disabled" });
+    }
     try {
       const { id } = req.params;
       const { priceId, tier } = req.body;
@@ -3013,6 +3039,9 @@ export async function registerRoutes(
 
   // Cancel a maintenance subscription
   app.post("/api/admin/projects/:id/cancel-maintenance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Subscription management is temporarily disabled" });
+    }
     try {
       const { id } = req.params;
       const { cancelImmediately = false, applyTerminationFee = true } = req.body;
@@ -3096,6 +3125,9 @@ export async function registerRoutes(
 
   // Get subscription status for a project
   app.get("/api/admin/projects/:id/subscription", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.json({ hasSubscription: false, disabled: true });
+    }
     try {
       const { id } = req.params;
       const project = await storage.getProject(id);
@@ -3154,6 +3186,9 @@ export async function registerRoutes(
 
   // Client view of their subscription
   app.get("/api/client/subscription", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.json({ subscriptions: [], disabled: true });
+    }
     try {
       const client = await storage.getClientByUserId(req.user!.id);
       if (!client) {
