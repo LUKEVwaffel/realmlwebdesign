@@ -1192,6 +1192,56 @@ export const insertCancellationSchema = createInsertSchema(cancellations).omit({
 export type InsertCancellation = z.infer<typeof insertCancellationSchema>;
 export type Cancellation = typeof cancellations.$inferSelect;
 
+// Portal Item Types (for simplified admin-push model)
+export const portalItemTypeEnum = pgEnum("portal_item_type", [
+  "payment_request",    // Admin requests payment from client
+  "document",           // Admin shares a document
+  "message",            // Admin sends a message/update
+  "action_required",    // Client needs to take action
+  "info"                // General information/update
+]);
+
+// Portal Items Table (simplified admin-to-client communication)
+export const portalItems = pgTable("portal_items", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 36 }).references(() => clients.id).notNull(),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  
+  // Item Type and Content
+  itemType: portalItemTypeEnum("item_type").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Optional links to existing records
+  paymentId: varchar("payment_id", { length: 36 }).references(() => payments.id),
+  documentId: varchar("document_id", { length: 36 }).references(() => documents.id),
+  
+  // Display settings
+  isPinned: boolean("is_pinned").default(false),
+  isUrgent: boolean("is_urgent").default(false),
+  
+  // Client interaction
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  isAcknowledged: boolean("is_acknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  
+  // Who created it
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPortalItemSchema = createInsertSchema(portalItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPortalItem = z.infer<typeof insertPortalItemSchema>;
+export type PortalItem = typeof portalItems.$inferSelect;
+
 // Login schema
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),

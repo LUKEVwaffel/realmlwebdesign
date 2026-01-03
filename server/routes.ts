@@ -3,8 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { users, clients, projects, payments, documents, messages, clientUploads } from "@shared/schema";
-import { loginSchema, changePasswordSchema, insertClientSchema, insertProjectSchema, insertMessageSchema } from "@shared/schema";
+import { users, clients, projects, payments, documents, messages, clientUploads, portalItems } from "@shared/schema";
+import { loginSchema, changePasswordSchema, insertClientSchema, insertProjectSchema, insertMessageSchema, insertPortalItemSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -4692,6 +4692,121 @@ export async function registerRoutes(
         return res.status(404).json({ error: "File not found" });
       }
       return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ PORTAL ITEMS ROUTES (Simplified Portal Model) ============
+
+  // Admin: Get all portal items for a client
+  app.get("/api/admin/clients/:clientId/portal-items", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.params;
+      const items = await db.select().from(portalItems).where(eq(portalItems.clientId, clientId)).orderBy(desc(portalItems.createdAt));
+      res.json(items);
+    } catch (error) {
+      console.error("Get portal items error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Admin: Create a portal item (push to client)
+  app.post("/api/admin/clients/:clientId/portal-items", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.params;
+      const validatedData = insertPortalItemSchema.parse({
+        ...req.body,
+        clientId,
+        createdBy: req.userId,
+      });
+      
+      const [newItem] = await db.insert(portalItems).values(validatedData).returning();
+      res.status(201).json(newItem);
+    } catch (error) {
+      console.error("Create portal item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Admin: Update a portal item
+  app.patch("/api/admin/portal-items/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(portalItems).set({ ...req.body, updatedAt: new Date() }).where(eq(portalItems.id, id)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Update portal item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Admin: Delete a portal item
+  app.delete("/api/admin/portal-items/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(portalItems).where(eq(portalItems.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete portal item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Client: Get my portal items (feed)
+  app.get("/api/client/portal-items", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.userId!);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const items = await db.select().from(portalItems).where(eq(portalItems.clientId, client.id)).orderBy(desc(portalItems.createdAt));
+      res.json(items);
+    } catch (error) {
+      console.error("Get client portal items error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Client: Mark item as read
+  app.patch("/api/client/portal-items/:id/read", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.userId!);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const [item] = await db.select().from(portalItems).where(eq(portalItems.id, id));
+      if (!item || item.clientId !== client.id) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      const [updated] = await db.update(portalItems).set({ isRead: true, readAt: new Date() }).where(eq(portalItems.id, id)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Mark portal item read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Client: Acknowledge item
+  app.patch("/api/client/portal-items/:id/acknowledge", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClientByUserId(req.userId!);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const [item] = await db.select().from(portalItems).where(eq(portalItems.id, id));
+      if (!item || item.clientId !== client.id) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      const [updated] = await db.update(portalItems).set({ isAcknowledged: true, acknowledgedAt: new Date() }).where(eq(portalItems.id, id)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Acknowledge portal item error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
