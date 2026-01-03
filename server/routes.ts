@@ -3933,10 +3933,12 @@ export async function registerRoutes(
   });
   
   // Cancel a project and log cancellation (admin)
+  // New fee structure: $150 before work begins, $200 after work begins
+  // Deposit is non-refundable after development begins
   app.post("/api/admin/projects/:id/cancel", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { reason, reasonNotes, cancellationFeePercentage = 25, workCompletedPercentage = 0 } = req.body;
+      const { reason, reasonNotes, workCompletedPercentage = 0 } = req.body;
       
       if (!reason) {
         return res.status(400).json({ error: "Cancellation reason is required" });
@@ -3953,16 +3955,49 @@ export async function registerRoutes(
         return res.status(403).json({ error: "You don't have edit permissions for this client" });
       }
       
+      // Determine if work has begun (development phase or later)
+      const workBegunStatuses = ["in_development", "ready_for_review", "client_review", "revisions_pending", 
+        "revisions_complete", "awaiting_final_payment", "payment_complete", "hosting_setup_pending", "hosting_configured"];
+      const workHadBegun = workBegunStatuses.includes(project.status);
+      
+      // New fee structure: $150 before work, $200 after work begins
+      const cancellationFee = workHadBegun ? 200 : 150;
+      
       // Calculate total paid for this project
       const projectPayments = await storage.getPaymentsByProjectId(id);
       const totalPaid = projectPayments
         .filter(p => p.status === "paid")
         .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
       
-      // Calculate cancellation fee
-      const feePercentage = Math.min(Math.max(cancellationFeePercentage, 0), 100);
-      const cancellationFeeAmount = (totalPaid * feePercentage) / 100;
-      const refundAmount = totalPaid - cancellationFeeAmount;
+      // Check if deposit was paid
+      const depositPayment = projectPayments.find(p => p.paymentType === "deposit" && p.status === "paid");
+      const depositAmount = depositPayment ? parseFloat(depositPayment.amount || "0") : 0;
+      
+      // Deposit is non-refundable after development begins
+      const depositNonRefundable = workHadBegun && depositAmount > 0;
+      
+      // Calculate refund amount
+      // If work began: Total paid - deposit (non-refundable) - cancellation fee
+      // If work hasn't begun: Total paid - cancellation fee
+      let refundAmount = 0;
+      if (depositNonRefundable) {
+        refundAmount = Math.max(0, totalPaid - depositAmount - cancellationFee);
+      } else {
+        refundAmount = Math.max(0, totalPaid - cancellationFee);
+      }
+      
+      // Calculate early maintenance termination fee if applicable
+      let maintenanceTerminationFee = 0;
+      const maintenanceMonthsCompleted = project.maintenanceMonthsCompleted || 0;
+      const maintenanceMinimum = project.maintenanceMinimumMonths || 12;
+      const monthlyFee = parseFloat(project.monthlyMaintenanceFee || "0");
+      
+      if (project.maintenanceStatus === "active" && maintenanceMonthsCompleted < maintenanceMinimum && monthlyFee > 0) {
+        const remainingMonths = maintenanceMinimum - maintenanceMonthsCompleted;
+        maintenanceTerminationFee = (remainingMonths * monthlyFee) * 0.5; // 50% of remaining months
+      }
+      
+      const totalFees = cancellationFee + maintenanceTerminationFee;
       
       // Create cancellation record
       const cancellation = await storage.createCancellation({
@@ -3972,8 +4007,7 @@ export async function registerRoutes(
         reasonNotes,
         totalPaid: totalPaid.toString(),
         workCompleted: workCompletedPercentage,
-        cancellationFeePercentage: feePercentage,
-        cancellationFeeAmount: cancellationFeeAmount.toString(),
+        cancellationFeeAmount: totalFees.toString(),
         refundAmount: refundAmount.toString(),
         refundStatus: refundAmount > 0 ? "pending" : "paid",
         cancelledBy: req.user!.id,
@@ -3981,13 +4015,16 @@ export async function registerRoutes(
       });
       
       // Update project status to cancelled
-      await storage.updateProject(id, { status: "cancelled" });
+      await storage.updateProject(id, { 
+        status: "cancelled",
+        maintenanceStatus: project.maintenanceStatus === "active" ? "cancelled" : project.maintenanceStatus,
+      });
       
       await storage.createActivityLog({
         userId: req.user!.id,
         clientId: project.clientId,
         action: "project_cancelled",
-        description: `Project cancelled. Reason: ${reason}. Fee: $${cancellationFeeAmount.toFixed(2)}, Refund: $${refundAmount.toFixed(2)}`,
+        description: `Project cancelled. Reason: ${reason}. Processing fee: $${cancellationFee}${maintenanceTerminationFee > 0 ? `, Maintenance termination: $${maintenanceTerminationFee.toFixed(2)}` : ""}. Refund: $${refundAmount.toFixed(2)}`,
         ipAddress: req.ip,
       });
       
@@ -3995,9 +4032,13 @@ export async function registerRoutes(
         cancellation,
         summary: {
           totalPaid,
-          cancellationFeeAmount,
+          cancellationFee,
+          maintenanceTerminationFee,
+          totalFees,
           refundAmount,
-          feePercentage,
+          workHadBegun,
+          depositNonRefundable,
+          depositAmount,
         }
       });
     } catch (error) {

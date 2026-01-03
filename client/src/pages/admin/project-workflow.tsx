@@ -45,6 +45,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -147,8 +155,8 @@ const getStatusLabel = (status: string): string => {
     revisions_complete: "Revisions Complete",
     awaiting_final_payment: "Awaiting Final Payment",
     payment_complete: "Payment Complete",
-    hosting_setup_pending: "Hosting Setup Pending",
-    hosting_configured: "Hosting Configured",
+    hosting_setup_pending: "Webflow Setup Pending",
+    hosting_configured: "Webflow Configured",
     completed: "Project Complete",
     on_hold: "On Hold",
     cancelled: "Cancelled",
@@ -1148,17 +1156,49 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
   const [tosSent, setTosSent] = useState(false);
   const { toast } = useToast();
   
+  // Service tier pricing configuration
+  const SERVICE_TIERS = {
+    standard: { name: "Standard", setupFee: 1200, monthlyFee: 50, revisionRounds: 1 },
+    business_premium: { name: "Business/Premium", setupFee: 2500, monthlyFee: 100, revisionRounds: 2 },
+    ecommerce: { name: "E-commerce", setupFee: 3500, monthlyFee: 200, revisionRounds: 2 },
+  };
+  
   // Full quote form state
   const [quoteForm, setQuoteForm] = useState({
     title: `Website Development - ${client.businessLegalName || "Project"}`,
     description: "",
+    serviceTier: "" as "" | "standard" | "business_premium" | "ecommerce",
     lineItems: [{ name: "Website Design & Development", description: "", quantity: 1, unitPrice: 0 }] as Array<{name: string; description: string; quantity: number; unitPrice: number}>,
+    monthlyMaintenanceFee: 0,
+    maintenanceDescription: "Monthly hosting, security updates, backups, and support (12-month minimum commitment)",
+    includesGoogleAds: false,
+    googleAdsMonthlyFee: 500,
+    googleAdsIncludesFreeTrial: true,
+    includedRevisionRounds: 1,
+    estimatedTimelineWeeks: 4,
     discountAmount: 0,
     discountDescription: "",
     taxRate: 0,
     validUntil: "",
     notes: "",
   });
+
+  // Auto-fill form when service tier changes
+  const handleTierChange = (tier: "standard" | "business_premium" | "ecommerce") => {
+    const config = SERVICE_TIERS[tier];
+    setQuoteForm(prev => ({
+      ...prev,
+      serviceTier: tier,
+      monthlyMaintenanceFee: config.monthlyFee,
+      includedRevisionRounds: config.revisionRounds,
+      lineItems: [{ 
+        name: `${config.name} Website Package`, 
+        description: `Includes design, development, Webflow hosting setup, and ${config.revisionRounds} revision round${config.revisionRounds > 1 ? 's' : ''}`,
+        quantity: 1, 
+        unitPrice: config.setupFee 
+      }]
+    }));
+  };
 
   // Fetch existing quotes
   const { data: quotes, isLoading: quotesLoading } = useQuery<any[]>({
@@ -1260,9 +1300,17 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
       toast({ title: "Invalid quote", description: "Please add at least one line item with a price.", variant: "destructive" });
       return;
     }
+    if (!quoteForm.serviceTier) {
+      toast({ title: "Service tier required", description: "Please select a service tier.", variant: "destructive" });
+      return;
+    }
+    const depositAmount = (total / 2);
+    const finalPaymentAmount = total - depositAmount;
+    
     createQuoteMutation.mutate({
       title: quoteForm.title,
       description: quoteForm.description,
+      serviceTier: quoteForm.serviceTier,
       lineItems: quoteForm.lineItems,
       subtotal: subtotal.toFixed(2),
       discountAmount: quoteForm.discountAmount.toFixed(2),
@@ -1270,6 +1318,16 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
       taxRate: quoteForm.taxRate.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       totalAmount: total.toFixed(2),
+      depositAmount: depositAmount.toFixed(2),
+      finalPaymentAmount: finalPaymentAmount.toFixed(2),
+      setupFee: subtotal.toFixed(2),
+      monthlyMaintenanceFee: quoteForm.monthlyMaintenanceFee.toFixed(2),
+      maintenanceDescription: quoteForm.maintenanceDescription,
+      includesGoogleAds: quoteForm.includesGoogleAds,
+      googleAdsMonthlyFee: quoteForm.googleAdsMonthlyFee.toFixed(2),
+      googleAdsIncludesFreeTrial: quoteForm.googleAdsIncludesFreeTrial,
+      includedRevisionRounds: quoteForm.includedRevisionRounds,
+      estimatedTimelineWeeks: quoteForm.estimatedTimelineWeeks,
       validUntil: quoteForm.validUntil || null,
       notes: quoteForm.notes,
       termsAndConditions: "",
@@ -1300,9 +1358,33 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
       // Mark the quote as approved in the database
       await approveQuoteMutation.mutateAsync(pendingQuote.id);
       
-      // Update project total cost
+      // Transfer service tier and maintenance settings to the project
+      const projectUpdates: any = { totalCost: amount.toFixed(2) };
+      
+      if (pendingQuote.serviceTier) {
+        projectUpdates.serviceTier = pendingQuote.serviceTier;
+        projectUpdates.monthlyMaintenanceFee = pendingQuote.monthlyMaintenanceFee;
+        projectUpdates.includedRevisionRounds = pendingQuote.includedRevisionRounds || 1;
+        projectUpdates.usedRevisionRounds = 0;
+        projectUpdates.maintenanceStatus = "not_started";
+        projectUpdates.maintenanceMinimumMonths = 12;
+        projectUpdates.maintenanceMonthsCompleted = 0;
+        
+        // CMS Editor enabled for business_premium and ecommerce tiers
+        if (pendingQuote.serviceTier === "business_premium" || pendingQuote.serviceTier === "ecommerce") {
+          projectUpdates.cmsEditorEnabled = true;
+        }
+      }
+      
+      if (pendingQuote.includesGoogleAds) {
+        projectUpdates.googleAdsEnabled = true;
+        projectUpdates.googleAdsMonthlyFee = pendingQuote.googleAdsMonthlyFee || 500;
+        projectUpdates.googleAdsFreeTialUsed = false;
+      }
+      
+      // Update project with all the settings from the quote
       if (onUpdateProject && amount > 0) {
-        onUpdateProject({ totalCost: amount.toFixed(2) });
+        onUpdateProject(projectUpdates);
       }
       
       // Create deposit payment automatically
@@ -1548,6 +1630,70 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                     />
                   </div>
 
+                  {/* Service Tier Selection */}
+                  <div className="p-4 bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Service Tier *</Label>
+                      <p className="text-xs text-muted-foreground">Select a tier to auto-fill pricing. All tiers include mandatory monthly maintenance (12-month minimum).</p>
+                      <Select value={quoteForm.serviceTier} onValueChange={(value) => handleTierChange(value as "standard" | "business_premium" | "ecommerce")}>
+                        <SelectTrigger data-testid="select-service-tier">
+                          <SelectValue placeholder="Select a service tier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard - $1,200 setup + $50/mo</SelectItem>
+                          <SelectItem value="business_premium">Business/Premium - $2,500 setup + $100/mo</SelectItem>
+                          <SelectItem value="ecommerce">E-commerce - $3,500 setup + $200/mo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {quoteForm.serviceTier && (
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="p-3 bg-background rounded-lg border">
+                          <p className="text-muted-foreground text-xs">Monthly Maintenance</p>
+                          <p className="font-semibold">${quoteForm.monthlyMaintenanceFee}/mo</p>
+                          <p className="text-xs text-muted-foreground">12-month minimum</p>
+                        </div>
+                        <div className="p-3 bg-background rounded-lg border">
+                          <p className="text-muted-foreground text-xs">Revision Rounds</p>
+                          <p className="font-semibold">{quoteForm.includedRevisionRounds} round{quoteForm.includedRevisionRounds > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground">+$150 per extra</p>
+                        </div>
+                        <div className="p-3 bg-background rounded-lg border">
+                          <p className="text-muted-foreground text-xs">Est. Timeline</p>
+                          <Input 
+                            type="number" 
+                            min="1"
+                            value={quoteForm.estimatedTimelineWeeks}
+                            onChange={(e) => setQuoteForm({...quoteForm, estimatedTimelineWeeks: parseInt(e.target.value) || 4})}
+                            className="h-7 mt-1"
+                            data-testid="input-timeline-weeks"
+                          />
+                          <p className="text-xs text-muted-foreground">weeks</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Google Ads Add-on */}
+                    <div className="flex items-start gap-4 p-3 bg-background rounded-lg border">
+                      <Switch
+                        checked={quoteForm.includesGoogleAds}
+                        onCheckedChange={(checked) => setQuoteForm({...quoteForm, includesGoogleAds: checked})}
+                        data-testid="switch-google-ads"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Google Ads Management</p>
+                          <Badge variant="secondary">Optional</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">$500/month - First month FREE trial included</p>
+                        {quoteForm.includesGoogleAds && (
+                          <p className="text-xs text-green-600 mt-1">Client gets 1 month free trial before billing starts</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Line Items */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -1654,7 +1800,8 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                   </div>
 
                   {/* Totals */}
-                  <div className="border-t pt-4 space-y-2">
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-semibold text-muted-foreground">One-Time Setup Costs</p>
                     <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
                       <span>${subtotal.toFixed(2)}</span>
@@ -1672,13 +1819,41 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-lg border-t pt-2">
-                      <span>Total:</span>
+                      <span>Setup Total:</span>
                       <span>${total.toFixed(2)}</span>
                     </div>
                     {total > 0 && (
                       <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>50% Deposit:</span>
+                        <span>50% Deposit (Due Now):</span>
+                        <span className="font-medium">${(total / 2).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {total > 0 && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>50% Final Payment:</span>
                         <span>${(total / 2).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {/* Recurring Fees Summary */}
+                    {quoteForm.serviceTier && (
+                      <div className="mt-4 pt-4 border-t border-dashed space-y-2">
+                        <p className="text-sm font-semibold text-muted-foreground">Monthly Recurring Fees</p>
+                        <div className="flex justify-between text-sm">
+                          <span>Maintenance (mandatory):</span>
+                          <span>${quoteForm.monthlyMaintenanceFee}/mo</span>
+                        </div>
+                        {quoteForm.includesGoogleAds && (
+                          <div className="flex justify-between text-sm">
+                            <span>Google Ads Management:</span>
+                            <span>${quoteForm.googleAdsMonthlyFee}/mo <span className="text-green-600 text-xs">(1st mo FREE)</span></span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-medium text-sm border-t pt-2">
+                          <span>Monthly Total:</span>
+                          <span>${(quoteForm.monthlyMaintenanceFee + (quoteForm.includesGoogleAds ? quoteForm.googleAdsMonthlyFee : 0)).toFixed(2)}/mo</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Maintenance has a 12-month minimum commitment. Early cancellation = 50% of remaining months.</p>
                       </div>
                     )}
                   </div>
@@ -1688,7 +1863,7 @@ function Phase3Content({ client, project, onAdvancePhase, onSendReminder, isSend
                       variant="outline"
                       className="gap-2" 
                       onClick={handleCreateQuote}
-                      disabled={createQuoteMutation.isPending || total <= 0 || !quoteForm.title}
+                      disabled={createQuoteMutation.isPending || total <= 0 || !quoteForm.title || !quoteForm.serviceTier}
                       data-testid="button-save-quote"
                     >
                       {createQuoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -2491,10 +2666,22 @@ function Phase7Content({ client, project, payments, onAdvancePhase, onCreatePaym
           {status === "payment_complete" && (
             <div className="text-center space-y-4 py-4">
               <Globe className="w-12 h-12 mx-auto text-primary" />
-              <h3 className="font-semibold">Payment Received - Setup Hosting</h3>
+              <h3 className="font-semibold">Payment Received - Webflow Hosting Setup</h3>
               <p className="text-sm text-muted-foreground">
-                Full payment received. Configure hosting and domain.
+                Full payment received. Configure Webflow hosting and domain.
               </p>
+              <div className="text-left bg-muted/50 rounded-lg p-4 max-w-md mx-auto space-y-2">
+                <p className="text-xs font-medium">Webflow Hosting Checklist:</p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>1. Create/assign Webflow site to client project</p>
+                  <p>2. Configure domain (registered in client's name)</p>
+                  <p>3. Set up SSL certificate</p>
+                  <p>4. Configure forms and email forwarding</p>
+                  {project.serviceTier === "business_premium" || project.serviceTier === "ecommerce" ? (
+                    <p className="text-primary">5. Set up CMS Editor access for client</p>
+                  ) : null}
+                </div>
+              </div>
               <Button 
                 className="gap-2" 
                 onClick={() => onAdvancePhase("hosting_setup_pending")}
@@ -2502,47 +2689,141 @@ function Phase7Content({ client, project, payments, onAdvancePhase, onCreatePaym
                 data-testid="button-setup-hosting"
               >
                 {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Begin Hosting Setup
+                Begin Webflow Setup
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           )}
 
           {status === "hosting_setup_pending" && (
-            <div className="text-center space-y-4 py-4">
-              <Globe className="w-12 h-12 mx-auto text-amber-500" />
-              <h3 className="font-semibold">Configuring Hosting</h3>
-              <p className="text-sm text-muted-foreground">
-                Awaiting client hosting credentials or domain configuration.
-              </p>
-              <Button 
-                className="gap-2" 
-                onClick={() => onAdvancePhase("hosting_configured")}
-                disabled={isUpdating}
-                data-testid="button-hosting-configured"
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Mark Hosting Configured
-              </Button>
+            <div className="space-y-4 py-4">
+              <div className="text-center space-y-2">
+                <Globe className="w-12 h-12 mx-auto text-amber-500" />
+                <h3 className="font-semibold">Configuring Webflow Hosting</h3>
+                <p className="text-sm text-muted-foreground">
+                  Complete the Webflow setup tasks below. Company manages all hosting.
+                </p>
+              </div>
+              
+              {/* Webflow Setup Form */}
+              <div className="bg-muted/30 rounded-lg p-4 space-y-4 max-w-lg mx-auto">
+                <div className="space-y-2">
+                  <Label className="text-sm">Webflow Site ID</Label>
+                  <Input 
+                    placeholder="e.g., 65abc123def456..."
+                    defaultValue={project.webflowSiteId || ""}
+                    data-testid="input-webflow-site-id"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Staging URL</Label>
+                  <Input 
+                    placeholder="e.g., client-project.webflow.io"
+                    defaultValue={project.webflowStagingUrl || ""}
+                    data-testid="input-webflow-staging-url"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Live Domain</Label>
+                  <Input 
+                    placeholder="e.g., www.clientbusiness.com"
+                    defaultValue={project.webflowLiveUrl || project.domainName || ""}
+                    data-testid="input-webflow-live-url"
+                  />
+                </div>
+                
+                {/* CMS Editor for premium tiers */}
+                {(project.serviceTier === "business_premium" || project.serviceTier === "ecommerce") && (
+                  <div className="p-3 bg-primary/5 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">CMS Editor Access</Badge>
+                      <span className="text-xs text-muted-foreground">Included in {project.serviceTier === "business_premium" ? "Business/Premium" : "E-commerce"} tier</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Client Editor Email</Label>
+                      <Input 
+                        type="email"
+                        placeholder="client@example.com"
+                        defaultValue={project.cmsEditorEmail || ""}
+                        data-testid="input-cms-editor-email"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Domain registered in client's name</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Company manages hosting via Webflow</span>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("hosting_configured")}
+                  disabled={isUpdating}
+                  data-testid="button-hosting-configured"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Mark Webflow Configured
+                </Button>
+              </div>
             </div>
           )}
 
           {status === "hosting_configured" && (
-            <div className="text-center space-y-4 py-4">
-              <Rocket className="w-12 h-12 mx-auto text-green-500" />
-              <h3 className="font-semibold">Ready for Final Delivery</h3>
-              <p className="text-sm text-muted-foreground">
-                Hosting is configured. Complete the project handover.
-              </p>
-              <Button 
-                className="gap-2" 
-                onClick={() => onAdvancePhase("completed")}
-                disabled={isUpdating}
-                data-testid="button-complete-project"
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Complete Project
-              </Button>
+            <div className="space-y-4 py-4">
+              <div className="text-center space-y-2">
+                <Rocket className="w-12 h-12 mx-auto text-green-500" />
+                <h3 className="font-semibold">Ready for Final Delivery</h3>
+                <p className="text-sm text-muted-foreground">
+                  Webflow hosting is live. Send credentials and complete the handover.
+                </p>
+              </div>
+              
+              {/* Delivery Summary */}
+              <div className="bg-green-500/10 rounded-lg p-4 space-y-3 max-w-lg mx-auto text-sm">
+                <p className="font-medium text-green-600">Final Delivery Includes:</p>
+                <div className="space-y-2 text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    <span>Live website on Webflow hosting</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    <span>SSL certificate active</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    <span>Forms and email forwarding configured</span>
+                  </div>
+                  {(project.serviceTier === "business_premium" || project.serviceTier === "ecommerce") && (
+                    <div className="flex items-center gap-2 text-primary">
+                      <KeyRound className="w-4 h-4" />
+                      <span>CMS Editor access credentials sent</span>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-green-500/20">
+                  <p className="text-xs">25-day warranty period starts upon completion</p>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Button 
+                  className="gap-2" 
+                  onClick={() => onAdvancePhase("completed")}
+                  disabled={isUpdating}
+                  data-testid="button-complete-project"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Complete Project & Start Warranty
+                </Button>
+              </div>
             </div>
           )}
 

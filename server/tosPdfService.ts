@@ -198,7 +198,7 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
     addParagraph("The Client agrees to pay all fees according to the payment schedule outlined in the project agreement. The standard payment structure is:");
     addBulletList([
       "50% deposit due upon quote approval and signing of this agreement",
-      "50% final payment due after hosting setup is complete and before Final Delivery",
+      "50% final payment due after Webflow hosting setup is complete and before Final Delivery",
     ]);
     addParagraph("Work will not commence until the initial deposit has been received and cleared. Final Delivery will not occur until all payments have been received and cleared. Late payments may incur interest charges of 1.5% per month (18% annually) or the maximum rate permitted by law, whichever is lower.");
 
@@ -228,7 +228,7 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
     ]);
 
     addHeading("3.3 Limited Warranty", 3);
-    addParagraph("The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is transferred to the Client's hosting and all credentials are provided).");
+    addParagraph("The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is published on Webflow hosting and all credentials/access are provided).");
     addParagraph("Warranty Coverage Includes:");
     addBulletList([
       "Bug fixes and broken functionality",
@@ -245,8 +245,8 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
       "Major functional additions (e.g., photo galleries, blogs, e-commerce features, member areas)",
       "Complete design revisions, layout restructuring, or redesigns",
       "Content creation or substantial content additions",
-      "Third-party service failures (hosting, plugins, APIs, payment processors)",
-      "Issues caused by Client modifications to code, content, or hosting settings",
+      "Third-party service failures (Webflow, plugins, APIs, payment processors)",
+      "Issues caused by Client modifications to code, content, or CMS settings",
       "Training sessions or extended consultations beyond initial handoff",
       "SEO services, marketing, analytics setup, or ongoing optimization",
       "Performance issues caused by excessive content or third-party plugins added by Client",
@@ -268,8 +268,8 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
       "Phase 5 - Development: Website built on staging environment",
       "Phase 6 - Review Preparation: Development complete, ready for preview",
       "Phase 7 - Client Review: Review, revisions, final approval",
-      "Phase 7A - Hosting Setup: Client provides Hostinger credentials, Company configures hosting",
-      "Phase 7B - Final Payment and Delivery: Final payment, credentials provided, warranty begins",
+      "Phase 7A - Webflow Hosting Setup: Company configures Webflow hosting and domain (registered in Client's name)",
+      "Phase 7B - Final Payment and Delivery: Final payment, CMS access provided (if applicable), warranty begins",
     ]);
     addParagraph("All phase approvals must be submitted electronically through the Duo platform. Approvals are timestamped and legally binding. Once a phase is approved, any subsequent changes may be considered out of scope.");
 
@@ -292,37 +292,47 @@ export async function generateTosPdf(data: TosData): Promise<TosGenerationResult
     addParagraph("The standard payment structure is:");
     addBulletList([
       "50% deposit: Due upon quote approval and signing of this agreement, before development begins",
-      "50% final payment: Due after hosting setup is complete (Phase 7A) and before Final Delivery (Phase 7B)",
+      "50% final payment: Due after Webflow hosting setup is complete (Phase 7A) and before Final Delivery (Phase 7B)",
     ]);
-    addParagraph("\"Final Delivery\" is defined as the transfer of the completed website to the Client's Hostinger hosting account and provision of all access credentials, passwords, and documentation. The 25-day warranty period begins on the date of Final Delivery.");
+    addParagraph("\"Final Delivery\" is defined as the publication of the completed website on the Company's Webflow hosting platform and provision of CMS Editor access (for Business/Premium and E-commerce tiers). The 25-day warranty period begins on the date of Final Delivery.");
 
-    addHeading("5.2 Cancellation and Refund Policy", 3);
-    addParagraph("Before work begins: If the Client cancels after paying the 50% deposit but before any development work has commenced, the Client will receive a refund of the deposit minus a $75 processing fee.");
-    addParagraph("After work begins: If the Client cancels after development has begun, a $150 cancellation fee applies. The 50% deposit is non-refundable once work begins.");
-    addParagraph("After Final Delivery: No refunds once the website has been transferred to the Client's hosting account and credentials have been provided.");
+    addHeading("5.2 Monthly Maintenance Subscription", 3);
+    addParagraph("All projects include mandatory monthly maintenance services with a 12-month minimum commitment:");
+    addBulletList([
+      "Standard tier: $50/month - Hosting, security updates, backups, and basic support",
+      "Business/Premium tier: $100/month - Includes CMS Editor access and priority support",
+      "E-commerce tier: $200/month - Includes CMS Editor access, e-commerce maintenance, and priority support",
+    ]);
+    addParagraph("Early cancellation of maintenance within the 12-month commitment period incurs a termination fee of 50% of remaining months' fees.");
+
+    addHeading("5.3 Cancellation and Refund Policy", 3);
+    addParagraph("Before work begins: If the Client cancels after paying the 50% deposit but before any development work has commenced, the Client will receive a refund of the deposit minus a $150 processing fee.");
+    addParagraph("After work begins: If the Client cancels after development has begun (Phase 5 or later), a $200 cancellation fee applies. The 50% deposit is non-refundable once work begins.");
+    addParagraph("Maintenance early termination: 50% of remaining monthly fees under the 12-month commitment.");
+    addParagraph("After Final Delivery: No refunds once the website has been published on Webflow and credentials have been provided.");
 
     addHeading("6. Domain Registration and Hosting");
 
-    addHeading("6.1 Client-Owned Hosting Accounts", 3);
-    addParagraph("To ensure long-term ownership and control, the Client is required to create a Hostinger hosting account and domain registrar account in their own name, using their own email address and payment method.");
+    addHeading("6.1 Company-Managed Webflow Hosting", 3);
+    addParagraph("The Company manages all website hosting through the Webflow platform. This includes:");
     addBulletList([
-      "Ensures the Client maintains 100% ownership and control of their website and domain",
-      "Protects the Client's investment regardless of the Company's business status",
-      "Prevents vendor lock-in or dependency on the Company",
-      "Represents industry best practice for client asset protection",
+      "Webflow hosting and SSL certificate",
+      "Domain configuration (domain registered in Client's name)",
+      "Security monitoring and updates",
+      "Regular backups and maintenance",
+      "CMS Editor access for Business/Premium and E-commerce tiers",
     ]);
 
-    addHeading("6.2 Initial Coverage Period", 3);
-    addParagraph("The cost of one full year of domain registration and Hostinger hosting services is included in the project flat fee. This includes domain registration, hosting service, SSL certificate, initial DNS configuration, website transfer, and basic SEO setup.");
+    addHeading("6.2 Domain Ownership", 3);
+    addParagraph("The domain name will be registered in the Client's name to ensure long-term ownership. The Company manages DNS configuration and SSL certificates on behalf of the Client.");
 
-    addHeading("6.3 Ongoing Responsibility After Year One", 3);
-    addParagraph("After the first year, the Client acknowledges and accepts full responsibility for:");
+    addHeading("6.3 Site Transfer Option", 3);
+    addParagraph("Clients may request a full site transfer to their own Webflow account for a one-time fee of $400. Upon transfer:");
     addBulletList([
-      "Domain registration renewal (annually)",
-      "Hostinger hosting service payments and renewals",
-      "Website security monitoring and updates",
-      "Backup management and disaster recovery",
-      "Content updates and modifications",
+      "Client assumes full responsibility for hosting fees and maintenance",
+      "Monthly maintenance subscription ends",
+      "Company support and warranty coverage ends",
+      "Client receives full ownership of the Webflow site",
     ]);
 
     addHeading("7. Intellectual Property Rights");
@@ -567,7 +577,7 @@ export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer>
     addParagraph("The Client agrees to pay all fees according to the payment schedule outlined in the project agreement. The standard payment structure is:");
     addBulletList([
       "50% deposit due upon quote approval and signing of this agreement",
-      "50% final payment due after hosting setup is complete and before Final Delivery",
+      "50% final payment due after Webflow hosting setup is complete and before Final Delivery",
     ]);
     addParagraph("Work will not commence until the initial deposit has been received and cleared. Final Delivery will not occur until all payments have been received and cleared. Late payments may incur interest charges of 1.5% per month (18% annually) or the maximum rate permitted by law, whichever is lower.");
 
@@ -597,7 +607,7 @@ export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer>
     ]);
 
     addHeading("3.3 Limited Warranty", 3);
-    addParagraph("The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is transferred to the Client's hosting and all credentials are provided).");
+    addParagraph("The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is published on Webflow hosting and all credentials/access are provided).");
     addParagraph("Warranty Coverage Includes:");
     addBulletList([
       "Bug fixes and broken functionality",
@@ -613,8 +623,8 @@ export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer>
       "Major functional additions (e.g., photo galleries, blogs, e-commerce features)",
       "Complete design revisions or redesigns",
       "Content creation or substantial content additions",
-      "Third-party service failures (hosting, plugins, APIs)",
-      "Issues caused by Client modifications to code or hosting settings",
+      "Third-party service failures (Webflow, plugins, APIs)",
+      "Issues caused by Client modifications to code or CMS settings",
     ]);
 
     addHeading("4. Project Lifecycle and Management");
@@ -629,8 +639,8 @@ export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer>
       "Phase 5 - Development: Website built on staging environment",
       "Phase 6 - Review Preparation: Development complete, ready for preview",
       "Phase 7 - Client Review: Review, revisions, final approval",
-      "Phase 7A - Hosting Setup: Client provides Hostinger credentials, Company configures hosting",
-      "Phase 7B - Final Payment and Delivery: Final payment, credentials provided, warranty begins",
+      "Phase 7A - Webflow Hosting Setup: Company configures Webflow hosting and domain (registered in Client's name)",
+      "Phase 7B - Final Payment and Delivery: Final payment, CMS access provided (if applicable), warranty begins",
     ]);
     addParagraph("All phase approvals must be submitted electronically through the Duo platform. Approvals are timestamped and legally binding.");
 
@@ -646,25 +656,34 @@ export async function generateSignedTosPdf(data: SignedTosData): Promise<Buffer>
     addParagraph("The standard payment structure is:");
     addBulletList([
       "50% deposit: Due upon quote approval and signing of this agreement, before development begins",
-      "50% final payment: Due after hosting setup is complete (Phase 7A) and before Final Delivery (Phase 7B)",
+      "50% final payment: Due after Webflow hosting setup is complete (Phase 7A) and before Final Delivery (Phase 7B)",
     ]);
-    addParagraph("\"Final Delivery\" is defined as the transfer of the completed website to the Client's Hostinger hosting account and provision of all access credentials, passwords, and documentation. The 25-day warranty period begins on the date of Final Delivery.");
+    addParagraph("\"Final Delivery\" is defined as the publication of the completed website on the Company's Webflow hosting platform and provision of CMS Editor access (for Business/Premium and E-commerce tiers). The 25-day warranty period begins on the date of Final Delivery.");
 
-    addHeading("5.2 Cancellation and Refund Policy", 3);
-    addParagraph("Before work begins: If the Client cancels after paying the 50% deposit but before any development work has commenced, the Client will receive a refund of the deposit minus a $75 processing fee.");
-    addParagraph("After work begins: If the Client cancels after development has begun, a $150 cancellation fee applies. The 50% deposit is non-refundable once work begins.");
-    addParagraph("After Final Delivery: No refunds once the website has been transferred to the Client's hosting account and credentials have been provided.");
+    addHeading("5.2 Monthly Maintenance Subscription", 3);
+    addParagraph("All projects include mandatory monthly maintenance services with a 12-month minimum commitment:");
+    addBulletList([
+      "Standard tier: $50/month - Hosting, security updates, backups, and basic support",
+      "Business/Premium tier: $100/month - Includes CMS Editor access and priority support",
+      "E-commerce tier: $200/month - Includes CMS Editor access, e-commerce maintenance, and priority support",
+    ]);
+    addParagraph("Early cancellation of maintenance within the 12-month commitment period incurs a termination fee of 50% of remaining months' fees.");
+
+    addHeading("5.3 Cancellation and Refund Policy", 3);
+    addParagraph("Before work begins: If the Client cancels after paying the 50% deposit but before any development work has commenced, the Client will receive a refund of the deposit minus a $150 processing fee.");
+    addParagraph("After work begins: If the Client cancels after development has begun (Phase 5 or later), a $200 cancellation fee applies. The 50% deposit is non-refundable once work begins.");
+    addParagraph("After Final Delivery: No refunds once the website has been published on Webflow and credentials have been provided.");
 
     addHeading("6. Domain Registration and Hosting");
 
-    addHeading("6.1 Client-Owned Hosting Accounts", 3);
-    addParagraph("To ensure long-term ownership and control, the Client is required to create a Hostinger hosting account and domain registrar account in their own name.");
+    addHeading("6.1 Company-Managed Webflow Hosting", 3);
+    addParagraph("The Company manages all website hosting through the Webflow platform. This includes Webflow hosting and SSL certificate, domain configuration (domain registered in Client's name), security monitoring and updates, and CMS Editor access for Business/Premium and E-commerce tiers.");
 
-    addHeading("6.2 Initial Coverage Period", 3);
-    addParagraph("The cost of one full year of domain registration and Hostinger hosting services is included in the project flat fee. This includes domain registration, hosting service, SSL certificate, initial DNS configuration, and basic SEO setup.");
+    addHeading("6.2 Domain Ownership", 3);
+    addParagraph("The domain name will be registered in the Client's name to ensure long-term ownership. The Company manages DNS configuration and SSL certificates on behalf of the Client.");
 
-    addHeading("6.3 Ongoing Responsibility After Year One", 3);
-    addParagraph("After the first year, the Client acknowledges and accepts full responsibility for domain registration renewal, hosting service payments and renewals, and website security monitoring and updates.");
+    addHeading("6.3 Site Transfer Option", 3);
+    addParagraph("Clients may request a full site transfer to their own Webflow account for a one-time fee of $400. Upon transfer, Client assumes full responsibility for hosting fees and maintenance, and Company support and warranty coverage ends.");
 
     addHeading("7. Intellectual Property Rights");
 
