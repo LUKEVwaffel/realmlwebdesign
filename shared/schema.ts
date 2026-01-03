@@ -173,6 +173,9 @@ export const clients = pgTable("clients", {
   savedSignatureType: signatureTypeEnum("saved_signature_type"),
   signatureSavedAt: timestamp("signature_saved_at"),
   
+  // Stripe Integration
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  
   // Metadata
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -237,6 +240,8 @@ export const projects = pgTable("projects", {
   maintenanceNextBillingDate: date("maintenance_next_billing_date"),
   maintenanceCancelledAt: timestamp("maintenance_cancelled_at"),
   maintenanceEarlyTerminationFee: decimal("maintenance_early_termination_fee", { precision: 10, scale: 2 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  stripeSubscriptionStatus: varchar("stripe_subscription_status", { length: 50 }),
   
   // Google Ads Management (Optional Service)
   googleAdsEnabled: boolean("google_ads_enabled").default(false),
