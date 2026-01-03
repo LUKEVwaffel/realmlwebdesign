@@ -67,6 +67,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import { MaintenanceSubscription } from "@/components/admin/maintenance-subscription";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -2828,21 +2829,28 @@ function Phase7Content({ client, project, payments, onAdvancePhase, onCreatePaym
           )}
 
           {status === "completed" && (
-            <div className="text-center space-y-4 py-6">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", bounce: 0.5 }}
-              >
-                <CheckCircle2 className="w-16 h-16 mx-auto text-green-500" />
-              </motion.div>
-              <h3 className="font-semibold text-xl text-green-600">Project Complete!</h3>
-              <p className="text-muted-foreground">
-                Delivered on {project.completedAt ? format(new Date(project.completedAt), "MMM d, yyyy") : "N/A"}
-              </p>
-              <Badge className="bg-green-500/10 text-green-600">
-                Warranty: {getWarrantyDays()} days remaining
-              </Badge>
+            <div className="space-y-6">
+              <div className="text-center space-y-4 py-6">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", bounce: 0.5 }}
+                >
+                  <CheckCircle2 className="w-16 h-16 mx-auto text-green-500" />
+                </motion.div>
+                <h3 className="font-semibold text-xl text-green-600">Project Complete!</h3>
+                <p className="text-muted-foreground">
+                  Delivered on {project.completedAt ? format(new Date(project.completedAt), "MMM d, yyyy") : "N/A"}
+                </p>
+                <Badge className="bg-green-500/10 text-green-600">
+                  Warranty: {getWarrantyDays()} days remaining
+                </Badge>
+              </div>
+              
+              <MaintenanceSubscription 
+                projectId={project.id}
+                projectStatus={project.status}
+              />
             </div>
           )}
         </CardContent>
