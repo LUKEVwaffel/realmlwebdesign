@@ -23,6 +23,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { EmbeddedCheckout } from "@/components/payment/embedded-checkout";
+import { ClientSubscriptionPanel } from "@/components/client/subscription-panel";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -177,6 +178,9 @@ export default function ClientPayments() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Monthly Subscription */}
+        <ClientSubscriptionPanel />
 
         {/* Payments Table */}
         <Card className="border-border/50" data-testid="card-payments-table">

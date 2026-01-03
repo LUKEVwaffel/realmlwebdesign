@@ -66,6 +66,7 @@ import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-e
 import { FileUploader } from "@/components/FileUploader";
 import { CloseAccountForm } from "@/components/admin/close-account-form";
 import { ChatPanel } from "@/components/admin/chat-panel";
+import { MaintenanceSubscription } from "@/components/admin/maintenance-subscription";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -2581,6 +2582,16 @@ export default function ClientDetails() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Monthly Maintenance Subscription */}
+            {client.projects?.[0] && (
+              <div className="mt-6">
+                <MaintenanceSubscription 
+                  projectId={client.projects[0].id} 
+                  projectStatus={client.projects[0].status}
+                />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="documents" className="mt-4">
