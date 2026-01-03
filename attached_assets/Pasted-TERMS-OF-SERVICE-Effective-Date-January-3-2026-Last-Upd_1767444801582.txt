@@ -1,0 +1,705 @@
+TERMS OF SERVICE
+Effective Date: January 3, 2026
+Last Updated: January 3, 2026
+
+1. Introduction and Acceptance of Terms
+1.1 Agreement to Terms
+By accessing our services, submitting a project inquiry, signing a proposal, making a payment, or otherwise engaging with our company in any capacity, you ("Client," "you," or "your") acknowledge that you have read, understood, and agree to be bound by these Terms of Service ("Terms," "Agreement," or "TOS"). These Terms constitute a legally binding agreement between you and DUO Web Design ("Company," "we," "us," or "our").
+By creating an account in the Duo client portal, submitting a project questionnaire, approving a quote electronically, providing electronic signatures, or otherwise engaging with the Company's services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+1.2 Scope of Application
+These Terms govern all aspects of the business relationship between the Company and the Client, including but not limited to:
+
+All design, development, consulting, and related services
+Project proposals, contracts, and statements of work
+All communications conducted through email, phone, video conference, client portal, or any other medium
+All deliverables, including but not limited to websites, graphics, documents, and digital assets
+Payment transactions and financial arrangements
+Use of any tools, platforms, or portals provided by the Company
+Google Ads management services (if applicable)
+
+1.3 Modifications to Terms
+The Company reserves the right to modify, update, or replace these Terms at any time at its sole discretion. When material changes are made, we will provide notice through email or posting on our website. Continued use of our services after such modifications constitutes acceptance of the updated Terms.
+1.4 Electronic Signatures and Agreement
+By using the Duo client portal to approve quotes, sign documents, or provide project approvals, the Client acknowledges and agrees to the following:
+Legal Validity of Electronic Signatures:
+
+All approvals, signatures, and acceptances submitted through the Duo platform constitute legally binding electronic signatures
+Electronic signatures carry the same force and effect as handwritten signatures under the federal Electronic Signatures in Global and National Commerce Act (E-SIGN Act) and the Uniform Electronic Transactions Act (UETA)
+The Client expressly consents to conducting business electronically through the Duo platform
+
+Electronic Signature Requirements:
+By signing electronically through Duo, the Client confirms:
+
+Intent to be legally bound by the document being signed
+Consent to receive and sign documents electronically
+Understanding that electronic signatures are legally equivalent to handwritten signatures
+Ability to access, retain, and reproduce electronic records
+
+Record Retention:
+
+All electronic signatures are timestamped and stored securely
+The Company maintains records of all signed documents and approvals
+Clients may request copies of signed documents at any time
+Electronic records will be retained for a minimum of 7 years for legal compliance
+
+Communication Methods:
+The Client agrees that the following constitute valid and binding forms of communication:
+
+Approvals submitted through the Duo platform
+Email correspondence from registered email addresses
+Messages sent through the Duo messaging system
+Electronic document signatures within Duo
+
+
+2. Client Responsibilities and Obligations
+2.1 Provision of Accurate Information
+The Client agrees to provide complete, accurate, and truthful information at all stages of the project, including:
+
+All questionnaires, intake forms, and discovery documents
+Brand guidelines, existing marketing materials, and assets
+Target audience information and business objectives
+Technical requirements and specifications
+Access credentials to necessary platforms and systems (Google Ads, analytics, etc.)
+Contact information for all stakeholders and decision-makers
+
+2.2 Timely Responses and Communication
+The Client agrees to:
+
+Respond to requests for information, feedback, or approvals within 5 business days
+Monitor their Duo portal account regularly for project updates and action items
+Maintain a current email address for automated notifications
+Review and respond to phase approval requests promptly
+
+Communication Channels:
+All project communication should occur through:
+
+The Duo client portal messaging system (primary)
+Email correspondence to registered email addresses
+Scheduled video conferences or phone calls as needed
+
+Consequences of Delayed Response:
+
+Failure to provide timely responses may result in project delays
+The Company is not responsible for missing deadlines due to Client delays
+Projects inactive for 30 days will be marked "On Hold"
+Projects inactive for 90 days may be considered abandoned per Section 4.3
+
+Automated Notifications:
+The Client will receive automated email notifications when:
+
+Action is required (questionnaire, approvals, payments, review of live website)
+A project phase is completed
+The warranty period begins or is ending
+Google Ads performance reports are available (if applicable)
+
+The Client is responsible for ensuring these notifications are not blocked by spam filters.
+2.3 Payment Obligations
+The Client agrees to pay all fees according to the payment schedule outlined in the project agreement. The standard payment structure is:
+
+50% deposit due upon quote approval and signing of this agreement
+50% final payment due after hosting setup is complete and before Final Delivery
+
+Service Tiers and Pricing:
+The Company offers three primary service tiers:
+Standard Website:
+
+Setup Fee: Starting at $1,200
+Monthly Maintenance: $50/month
+Typical Timeline: 2-3 weeks
+
+Business/Premium Website:
+
+Setup Fee: Starting at $2,500
+Monthly Maintenance: $100/month
+Typical Timeline: 3-5 weeks
+
+E-commerce/Premium Web Store:
+
+Setup Fee: Starting at $3,500
+Monthly Maintenance: $200/month
+Typical Timeline: 6-8 weeks
+
+Actual pricing may vary based on project scope, features, and add-ons as detailed in the Client's specific project quote.
+Payment Terms:
+Work will not commence until the initial deposit has been received and cleared. Final Delivery will not occur until all payments have been received and cleared.
+Late payments may incur interest charges of 1.5% per month (18% annually) or the maximum rate permitted by law, whichever is lower.
+Monthly Maintenance:
+Monthly maintenance fees begin upon Final Delivery (when the website is published to live Webflow hosting). The Client agrees to maintain active monthly maintenance service for a minimum period of 12 months following Final Delivery. Monthly maintenance is billed automatically on the anniversary of the Final Delivery date.
+Google Ads Management (Optional):
+If Client opts for ongoing Google Ads management services after the free first month trial:
+
+Management Fee: $500/month (separate from website maintenance)
+Billed monthly on the same date each month
+Client pays Google directly for ad spend (separate from management fee)
+See Section 7 for complete Google Ads terms
+
+2.4 Content Responsibility
+The Client is solely responsible for:
+
+Providing all text, images, videos, and other content for the website
+Ensuring all provided content is original, licensed, or properly attributed
+Ensuring content complies with all applicable laws and regulations
+Ensuring content does not infringe on any third-party intellectual property rights
+Accuracy and legality of all business information, claims, and representations
+
+
+3. Company Responsibilities
+3.1 Service Delivery Standards
+The Company commits to:
+
+Deliver design and development services that meet professional industry standards
+Complete work according to the scope and timeline outlined in the project agreement
+Provide work that is free from defects in materials and workmanship
+Build websites on the Webflow platform using modern web design best practices
+Provide professional Google Ads management (if applicable) following industry best practices
+
+3.2 Confidentiality and Data Protection
+The Company agrees to:
+
+Keep all Client information, data, and project details strictly confidential
+Not disclose Client information to third parties except as necessary to complete the project or as required by law
+Implement reasonable security measures to protect Client data
+Comply with applicable data protection and privacy laws
+
+3.3 Limited Warranty
+The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is published to live Webflow hosting and all credentials are provided).
+Warranty Coverage Includes:
+
+Bug fixes and broken functionality present at time of delivery
+Defects in workmanship or coding errors
+Minor content corrections for errors in implementation (typos in Company-entered content)
+Small functional adjustments to features included in original scope
+Minor design corrections to match approved design specifications
+Technical support via email for issues covered under warranty
+
+Warranty Does NOT Cover:
+
+New pages or sections not included in original scope
+Major functional additions (e.g., photo galleries, blogs, e-commerce features, member areas not in original scope)
+Complete design revisions, layout restructuring, or redesigns
+Content creation or substantial content additions
+Third-party service failures (Webflow platform issues, APIs, payment processors, domain registrars, Google Ads platform)
+Issues caused by Client modifications to code, content, or Webflow settings
+Training sessions or extended consultations beyond initial handoff
+SEO services, marketing, analytics setup, or ongoing optimization beyond initial setup
+Performance issues caused by excessive content or third-party integrations added by Client
+Regular content updates (covered under monthly maintenance)
+Google Ads campaign performance or results
+
+Warranty vs. Monthly Maintenance:
+The 25-day warranty covers defects and issues present at delivery. Monthly maintenance covers ongoing support after the warranty period, including:
+Standard Maintenance ($50/month) includes:
+
+Webflow hosting management
+Minor content updates (up to 1 hour/month)
+Email support for technical questions
+Uptime monitoring
+Security updates and patches
+Basic troubleshooting
+
+Business/Premium Maintenance ($100/month) includes:
+
+All Standard tier benefits
+Content updates (up to 3 hours/month)
+Blog post uploads (up to 1 per month)
+Priority email support
+Monthly analytics reports
+Form and integration monitoring
+
+E-commerce Maintenance ($200/month) includes:
+
+All Business/Premium tier benefits
+Product uploads/updates (up to 5 per month)
+Content updates (up to 6 hours/month)
+Order support assistance
+Monthly sales reports
+Priority phone + email support
+E-commerce platform monitoring
+
+Warranty Request Process:
+All warranty requests must be submitted via email with a clear description of the issue. The Company will respond within 2-3 business days and resolve covered issues within a reasonable timeframe based on complexity.
+Post-Warranty Services:
+After the 25-day warranty period, ongoing support and updates are provided through the Client's monthly maintenance plan. Requests beyond the included maintenance hours will be billed at the Company's standard hourly rate of $100/hour or as a fixed fee based on scope.
+3.4 Browser and Device Compatibility
+The Company will ensure the website functions properly on:
+Desktop Browsers: Current and previous major versions of Chrome, Firefox, Safari, and Edge
+Mobile Devices: Responsive design optimized for modern smartphones and tablets
+Screen Sizes: Optimized for common desktop, tablet, and mobile screen resolutions
+The Company does not guarantee compatibility with:
+
+Internet Explorer or other deprecated browsers
+Outdated browser versions more than two major releases old
+Specialized or uncommon devices or screen sizes
+Browsers with JavaScript disabled
+Heavily modified or customized browser configurations
+
+
+4. Project Lifecycle and Management
+4.1 Project Phases and Approvals
+The project follows a structured 7-phase development process managed through the Company's Duo client portal:
+Phase 1 - Account Creation:
+Client account created and initial setup completed
+Phase 2 - Discovery:
+Client completes project questionnaire covering goals, style preferences, target audience, and content requirements
+Phase 3 - Quote and Agreement:
+
+Company sends detailed project quote through Duo
+Client reviews and approves/rejects quote electronically
+Upon approval, Client signs Terms of Service electronically
+Client submits 50% deposit payment
+Development cannot begin until deposit clears
+
+Phase 4 - Design Consultation:
+Design requirements finalized and approved by Client
+Phase 5 - Development:
+Website actively being built on Webflow staging environment
+Phase 6 - Review Preparation:
+Development complete, website ready for Client preview on staging
+Phase 7 - Client Review and Approval:
+
+Client reviews completed website on Webflow staging
+Client requests revisions (within scope and warranty terms)
+Client provides final approval
+
+Phase 7A - Hosting Setup and Publishing:
+
+Company configures Webflow hosting under Company's professional account
+Company registers domain name chosen by Client (in Client's business name)
+Company configures domain: DNS settings, SSL certificate, email forwarding (if applicable)
+Company publishes website from staging to live Webflow hosting
+Company performs final testing: Forms, links, mobile responsiveness, performance
+Company enables CMS Editor access for Client (if applicable to tier)
+Company notifies Client that website is live and provides access credentials
+Client reviews live website and confirms everything is functioning properly
+Company provides CMS training (for Business/Premium and E-commerce tiers)
+
+Note: Client does NOT create their own Webflow account or manage hosting. The Company handles 100% of Webflow hosting setup, configuration, and ongoing management. The Client simply reviews and approves the live website and receives CMS Editor access if applicable.
+Phase 7B - Final Payment and Delivery:
+
+Client submits remaining 50% payment
+Final Delivery occurs after payment clears
+Company provides all credentials and documentation
+25-day warranty period begins
+Monthly maintenance billing begins
+
+Additional Project Statuses:
+
+On Hold: Project temporarily paused due to Client request or inactivity
+Cancelled: Project terminated per Section 5.2
+
+Approval Requirements:
+
+All phase approvals must be submitted electronically through the Duo platform
+Approvals are timestamped and legally binding
+Once a phase is approved, any subsequent changes may be considered out of scope
+The Client may not proceed to the next phase without completing required approvals and payments
+
+Project Timeline:
+
+Timeline begins once Phase 3 is complete (quote approved, TOS signed, deposit received)
+Client delays in providing approvals or materials will extend the timeline accordingly
+Automated notifications will be sent when Client action is required
+
+4.2 Revision Policy
+The project agreement will specify the number of revision rounds included for each deliverable:
+
+Standard tier: 1 round of revisions
+Business/Premium tier: 2 rounds of revisions
+E-commerce tier: 2 rounds of revisions
+
+Revisions beyond the included allowance will be billed at the Company's standard hourly rate ($100/hour) or as a fixed additional fee. Additional revision rounds may be purchased for $150 per round.
+4.3 Project Delays and Dormancy
+If project delays occur due to Client inaction, unresponsiveness, or failure to provide required materials, the original timeline will be adjusted accordingly.
+Dormancy and Inactivity:
+
+After 30 days of inactivity from the Client, the project may be considered dormant
+After 90 days of inactivity, the project may be considered abandoned
+
+Abandoned Project Terms:
+If a project is abandoned due to Client inactivity:
+
+The 50% deposit is non-refundable and fully earned by the Company
+Any work completed remains the property of the Company
+The Client forfeits all rights to the work product
+The project will be officially closed
+
+If the Client wishes to resume an abandoned project, it will be treated as a new project requiring a new quote, agreement, and full payment schedule.
+
+5. Payments, Fees, and Refunds
+5.1 Payment Structure
+Quote and Approval Process:
+
+The Company provides a detailed project quote through the Duo portal outlining:
+
+Service tier (Standard, Business/Premium, or E-commerce)
+Base setup fee (starting at $1,200, $2,500, or $3,500)
+Any additional features or add-ons
+Monthly maintenance fee ($50, $100, or $200/month)
+Google Ads services (if applicable)
+Project timeline and deliverables
+
+
+The Client reviews and either approves or denies the quote through the Duo system
+Upon quote approval, the Client signs this Terms of Service agreement electronically
+The Client submits the 50% deposit payment
+Development begins once the deposit has cleared
+
+Payment Schedule:
+The standard payment structure is:
+
+50% deposit: Due upon quote approval and signing of this agreement, before development begins
+50% final payment: Due after hosting setup is complete (Phase 7A) and before Final Delivery (Phase 7B)
+
+Example Payment Schedules:
+Standard Website ($1,200 setup + $50/month):
+
+Deposit: $600
+Final Payment: $600
+Monthly Maintenance: $50/month (begins after Final Delivery)
+
+Business/Premium Website ($2,500 setup + $100/month):
+
+Deposit: $1,250
+Final Payment: $1,250
+Monthly Maintenance: $100/month (begins after Final Delivery)
+
+E-commerce Website ($3,500 setup + $200/month):
+
+Deposit: $1,750
+Final Payment: $1,750
+Monthly Maintenance: $200/month (begins after Final Delivery)
+
+Actual amounts may vary based on project-specific features and add-ons detailed in the Client's individual quote.
+Monthly Maintenance Billing:
+
+Monthly maintenance fees begin upon Final Delivery
+Billed automatically on the anniversary of the Final Delivery date
+Client agrees to maintain service for minimum 12 months
+Payment processed via credit card or ACH through Stripe
+Client must maintain current payment information to prevent service interruption
+
+Google Ads Billing (if applicable):
+
+First month of Google Ads management is FREE (setup and management only)
+Client pays Google directly for ad spend during free month
+Ongoing management: $500/month (if Client continues after free month)
+Billed separately from website maintenance
+See Section 7 for complete Google Ads terms
+
+Staging and Review Process:
+The website will be built on the Company's Webflow staging environment (a temporary URL controlled by the Company). The Client will have full access to review, test, and request changes during development and throughout the 25-day warranty period.
+Final Delivery:
+"Final Delivery" is defined as the completion of Webflow hosting setup and website publishing to the live domain, with the Client having full access to the live website and all necessary administrative credentials (CMS Editor, form notifications, etc.).
+Final Delivery will occur only after:
+
+The Client has reviewed and formally approved the completed website on Webflow staging
+The Company has configured Webflow hosting and registered the domain
+The Company has published the website to live Webflow hosting with SSL enabled
+The Client has reviewed the live website and confirmed functionality
+The Company has provided CMS Editor training (if applicable)
+The Client has paid the remaining 50% final payment
+All payments have cleared
+
+The website remains the property of the Company until all payments are received in full and Final Delivery is complete. The 25-day warranty period begins on the date of Final Delivery.
+Webflow Hosting Ownership:
+
+The Company maintains Webflow account control as part of ongoing maintenance services
+The domain is registered in the Client's business name for legal ownership
+The Client owns the website content, design, and intellectual property
+The Client receives CMS Editor access to manage content (if applicable to tier)
+The Client may request full Webflow site transfer at any time for $400 (see Section 6.2)
+
+5.2 Cancellation and Refund Policy
+Before work begins (after deposit, before development starts):
+If the Client cancels after paying the 50% deposit but before any development work has commenced, the Client will receive a refund of the deposit minus a $150 processing fee.
+After work begins (before Final Delivery):
+If the Client cancels after development has begun, the following applies:
+
+The 50% deposit is non-refundable once work begins
+A $200 cancellation fee applies
+Any work completed remains the property of the Company and will not be delivered to the Client
+No partial deliverables or work-in-progress files will be provided
+
+Refund Calculation Examples:
+Standard Website ($1,200 setup):
+
+Deposit paid: $600 (non-refundable after work begins)
+Cancellation fee: $200
+No refund issued
+
+Business/Premium Website ($2,500 setup):
+
+Deposit paid: $1,250 (non-refundable after work begins)
+Cancellation fee: $200
+No refund issued
+
+E-commerce Website ($3,500 setup):
+
+Deposit paid: $1,750 (non-refundable after work begins)
+Cancellation fee: $200
+No refund issued
+
+After Final Delivery:
+No refunds once the website has been published to live Webflow hosting and credentials have been provided. The 25-day warranty period applies to all delivered work.
+Non-Payment of Final Balance:
+If the final 50% payment is not received within 10 business days after hosting setup is complete (Phase 7A), the Company reserves the right to:
+
+Unpublish the website from the live domain
+Take the staging website offline
+Cease all work on the project
+Pursue collection of the outstanding balance through legal means
+Charge late fees of 1.5% per month (18% annually) on the unpaid balance
+Report delinquent accounts to credit bureaus
+
+The Client will not receive Final Delivery, access to the completed website files, or credentials until the final payment is received in full.
+Monthly Maintenance Cancellation:
+The Client agrees to maintain monthly maintenance service for a minimum of 12 months following Final Delivery.
+
+Early cancellation within the first 12 months requires payment of 50% of remaining months
+Example: Canceling after 6 months on a $100/month plan = $300 early termination fee (50% × 6 months × $100)
+After 12 months, Client may cancel with 30 days written notice
+No refunds for partial months
+All maintenance fees paid are non-refundable
+
+Maintenance Cancellation Impact:
+If monthly maintenance is cancelled:
+
+The Client loses access to ongoing support and updates
+The Company is no longer responsible for website uptime, security, or performance
+The website will be unpublished from Webflow hosting after 30-day notice period
+The Client may request full Webflow site transfer for $400 (see Section 6.2)
+Future work requests will be billed at standard rates without priority scheduling
+The Client assumes full responsibility for website maintenance and security
+
+Google Ads Cancellation (if applicable):
+
+No obligation to continue after free first month
+Ongoing management ($500/month) can be cancelled with 30 days written notice
+No cancellation fees or penalties for Google Ads services
+Client retains ownership of Google Ads account
+See Section 7.3 for complete terms
+
+5.3 25-Day Warranty Period
+The Company provides a 25-day warranty period beginning on the date of Final Delivery (when the website is published to live Webflow hosting and all credentials are provided).
+Warranty Coverage Includes:
+
+Bug fixes and broken functionality present at time of delivery
+Defects in workmanship or coding errors
+Minor content corrections for errors in implementation (typos in Company-entered content)
+Small functional adjustments to features included in original scope
+Minor design corrections to match approved design specifications
+Technical support via email for issues covered under warranty
+
+Warranty Does NOT Cover:
+
+New pages or sections not included in original scope
+Major functional additions (e.g., photo galleries, blogs, e-commerce features, member areas not in original scope)
+Complete design revisions, layout restructuring, or redesigns
+Content creation or substantial content additions
+Third-party service failures (Webflow platform issues, APIs, payment processors, domain registrars, Google Ads)
+Issues caused by Client modifications to code, content, or Webflow settings
+Training sessions or extended consultations beyond initial handoff
+SEO services, marketing, analytics setup, or ongoing optimization beyond initial setup
+Performance issues caused by excessive content or third-party integrations added by Client
+Regular content updates (covered under monthly maintenance)
+
+Warranty Request Process:
+All warranty requests must be submitted via email with a clear description of the issue. The Company will respond within 2-3 business days and resolve covered issues within a reasonable timeframe based on complexity.
+Post-Warranty Services:
+After the 25-day warranty period, the original project contract is considered complete and fulfilled. Ongoing support and updates are provided through the Client's monthly maintenance plan. The Client may engage the Company for additional modifications, updates, or support services beyond monthly maintenance hours under a new, separate agreement or at hourly rates.
+5.4 Monthly Maintenance Services
+Service Commitment:
+Upon Final Delivery, the Client enters into a monthly maintenance agreement that includes ongoing support, updates, and technical assistance based on the selected service tier.
+Maintenance Tier Inclusions:
+Standard Maintenance ($50/month):
+
+Webflow hosting management and monitoring
+Minor content updates (up to 1 hour per month)
+Email support for technical questions (2-3 business day response)
+Uptime monitoring and alerts
+Security updates and patches
+SSL certificate management
+Basic troubleshooting and bug fixes
+Platform updates and compatibility maintenance
+
+Business/Premium Maintenance ($100/month):
+
+All Standard tier benefits
+Content updates (up to 3 hours per month)
+Blog post uploads and formatting (up to 1 per month)
+Priority email support (24-hour response during business days)
+Monthly analytics reports (traffic, conversions, performance)
+Form submission monitoring and troubleshooting
+Integration monitoring (email marketing, CRM, etc.)
+Backup verification and management
+
+E-commerce Maintenance ($200/month):
+
+All Business/Premium tier benefits
+Product uploads and updates (up to 5 per month)
+Content updates (up to 6 hours per month)
+Order support assistance and troubleshooting
+Monthly sales and performance reports
+Priority phone + email support (4-hour response during business hours)
+E-commerce platform monitoring (payment processing, checkout, inventory)
+Shopping cart and checkout optimization
+Product catalog management
+
+Service Limitations:
+Maintenance hours are non-cumulative and reset monthly. Unused hours do not roll over to the following month.
+Work beyond the included monthly hours will be billed at $100/hour in 15-minute increments or as a fixed fee based on scope.
+Excluded from Maintenance:
+Monthly maintenance does not include:
+
+Major redesigns or layout changes
+New page creation (billed separately at $150/page)
+New features or functionality beyond original scope
+Content writing or copywriting services
+SEO campaigns or ongoing optimization beyond basic maintenance
+Social media management
+Email marketing campaign creation
+Google Ads management (separate service, see Section 7)
+Third-party service fees (Webflow subscription, domains, plugins, APIs)
+Issues caused by Client modifications to code or settings
+Recovery from Client-caused data loss or errors
+
+Emergency Support:
+Emergency support outside of maintenance hours is available at $150/hour with a 2-hour minimum. Emergency support is defined as critical issues affecting website functionality or security requiring immediate attention outside normal business hours.
+Service Level Expectations:
+
+Standard tier: 2-3 business day response, work completed within 5-7 business days
+Business tier: 24-hour response, work completed within 3-5 business days
+E-commerce tier: 4-hour response during business hours, work completed within 1-3 business days
+
+Response times apply to initial acknowledgment. Resolution times vary based on complexity.
+Billing and Payment:
+
+Monthly maintenance is billed automatically on the anniversary of Final Delivery
+Payment is processed via credit card or ACH through Stripe
+Failed payments result in service suspension after 5 days
+Service resumption requires payment of outstanding balance plus $50 reactivation fee
+Accounts delinquent for 30+ days may be terminated
+
+12-Month Minimum Commitment:
+The Client agrees to maintain monthly maintenance service for a minimum of 12 months following Final Delivery. Early cancellation requires payment of 50% of remaining contracted months as an early termination fee.
+After 12 Months:
+
+Client may cancel with 30 days written notice
+Client may upgrade or downgrade tiers with 30 days notice
+Tier changes take effect on the next billing cycle
+No refunds for tier downgrades
+
+
+6. Domain Registration and Hosting
+6.1 Webflow Hosting and Domain Management
+All websites are built, hosted, and managed on the Webflow platform, a premium web design and hosting service that provides enterprise-level performance, security, and reliability.
+Benefits of Webflow Hosting:
+✅ Enterprise-Grade Performance: Fast loading speeds with global CDN (Content Delivery Network)
+✅ 99.99% Uptime Guarantee: Industry-leading reliability and availability
+✅ Automatic SSL Security: Free SSL certificates with automatic renewal (HTTPS)
+✅ Automatic Backups: Built-in version control and backup system
+✅ DDoS Protection: Enterprise-level security against attacks
+✅ Scalable Infrastructure: Handles traffic spikes automatically
+✅ No Server Management Required: Fully managed cloud hosting
+✅ Integrated CMS: Easy content management for authorized users
+✅ Form Submissions: Built-in form handling and notifications
+✅ Professional Platform: Used by Fortune 500 companies and leading brands
+How Webflow Hosting Works:
+
+Company Creates Project: The Company builds the website on the Webflow platform under Company's professional account
+Domain Registration: The Company registers the Client's chosen domain name through Webflow (registered in Client's business name)
+Complete Configuration: The Company handles all technical setup including DNS, SSL, email forwarding, and optimization
+Publishing and Deployment: Website is published to Webflow's global hosting infrastructure
+Client Access: Client receives access to their live website and CMS Editor (if applicable)
+Ongoing Management: Company maintains hosting control and manages all technical aspects
+
+Client Ownership Protection:
+While the Company manages the Webflow hosting infrastructure:
+
+The domain name is registered in the Client's business name
+The Client owns all website content, design, and intellectual property
+The Client may request full hosting control transfer at any time (see Section 6.2)
+Upon project completion and final payment, the Client owns the website itself
+The hosting relationship continues as part of monthly maintenance services
+
+What the Client Receives:
+
+Live, fully functional website on Webflow's premium hosting
+Custom domain name (registered in Client's business name)
+SSL certificate (HTTPS security) with automatic renewal
+CMS Editor access (for Business/Premium and E-commerce tiers)
+Email forwarding setup (if included in project scope)
+Access credentials for website administration
+Documentation for website usage and content management
+
+What the Company Manages:
+
+Webflow account administration and billing
+Server performance and hosting infrastructure
+DNS settings and domain management
+SSL certificate management
+Security monitoring and updates
+Backup and version control
+Performance optimization
+Content Delivery Network (CDN)
+Form submission handling
+Technical troubleshooting
+Platform updates and compatibility
+
+Webflow Hosting Plans:
+The Company assigns the appropriate Webflow hosting plan based on the project tier:
+
+Standard Websites: Webflow Basic or CMS plan (~$14-23/month from Webflow)
+Business/Premium Websites: Webflow CMS plan (~$23/month from Webflow)
+E-commerce Websites: Webflow E-commerce plan (~$29-74/month from Webflow)
+
+These costs are built into the Client's monthly maintenance fees and managed by the Company.
+6.2 Full Control Transfer Option
+Client-Initiated Transfer:
+At any time after Final Delivery, the Client may request a full Webflow hosting control transfer. This transfers complete ownership and administrative access of the Webflow site to the Client's own Webflow account.
+Transfer Process:
+Upon Client request for full control transfer:
+
+Client creates Webflow account using their own email address and payment method
+Company initiates site transfer through Webflow's transfer process
+Complete documentation provided including all credentials, configurations, CMS instructions, and technical documentation
+Domain transferred to Client's Webflow account or external registrar
+30-day transition support included to ensure smooth handoff and answer questions
+
+Transfer Fee:
+Full Webflow hosting control transfer incurs a one-time fee of $400 which covers:
+
+Technical migration assistance and site transfer
+Complete documentation and credential transfer
+Domain configuration and transfer
+CMS training session (up to 1 hour)
+30 days of transition support via email
+Webflow Editor training and guidance
+
+Post-Transfer Costs for Client:
+Once transferred to Client's own Webflow account, the Client becomes responsible for:
+
+Webflow hosting subscription: $14-74/month depending on site complexity
+
+Basic sites: $14/month
+CMS sites: $23/month
+Business sites: $39/month
+E-commerce: $29-212/month (based on sales volume)
+
+
+Domain renewal: ~$12-15/year (if kept with Webflow)
+Form submissions: May incur additional costs beyond Webflow plan limits
+CMS items: May incur additional costs if exceeding plan limits
+
+Post-Transfer Responsibilities:
+Once full control is transferred to the Client, the Client becomes solely responsible for:
+
+Webflow account payments and subscription renewals
+Domain renewal and management
+DNS configuration and technical settings
+Content management and updates
+Form submission monitoring
+CMS collection management
+E-commerce product management (if applicable)
+Technical troubleshooting
+Platform updates and compatibility
