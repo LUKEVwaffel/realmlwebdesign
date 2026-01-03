@@ -98,7 +98,7 @@ const pricingTiers = [
     name: 'Standard Website',
     icon: Layout,
     description: 'Perfect for small businesses and personal sites',
-    price: 'Contact for Quote',
+    price: 'Starting at $1200',
     features: [
       'Free consultation',
       '5-8 pages included',
@@ -114,7 +114,7 @@ const pricingTiers = [
     name: 'Business / Premium',
     icon: Calendar,
     description: 'Advanced features for growing businesses',
-    price: 'Contact for Quote',
+    price: 'Starting at $2,000',
     popular: true,
     features: [
       'Everything in Standard',
@@ -132,7 +132,7 @@ const pricingTiers = [
     name: 'Premium Web Store',
     icon: ShoppingCart,
     description: 'Complete e-commerce solution',
-    price: 'Contact for Quote',
+    price: 'Starting at $3,500',
     features: [
       'Everything in Premium',
       'Full Shopify integration',
