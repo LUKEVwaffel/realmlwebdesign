@@ -158,6 +158,40 @@ const ALL_PROJECT_STATUSES = [
   { value: "cancelled", label: "Cancelled", phase: 0 },
 ];
 
+// Predefined payment types from TOS
+const paymentPresets = [
+  { category: "Project Payments", items: [
+    { id: "deposit", label: "50% Deposit", description: "Initial deposit due upon quote approval - 50% of project total", amount: "" },
+    { id: "final_payment", label: "50% Final Payment", description: "Final payment due after hosting setup is complete - 50% of project total", amount: "" },
+  ]},
+  { category: "Monthly Maintenance", items: [
+    { id: "maintenance_standard", label: "Standard Maintenance", description: "Monthly maintenance: hosting, security updates, backups, and basic support", amount: "50" },
+    { id: "maintenance_business", label: "Business/Premium Maintenance", description: "Monthly maintenance: includes CMS Editor access and priority support", amount: "100" },
+    { id: "maintenance_ecommerce", label: "E-commerce Maintenance", description: "Monthly maintenance: includes CMS Editor access, e-commerce maintenance, and priority support", amount: "200" },
+  ]},
+  { category: "Add-on Services", items: [
+    { id: "additional_revisions", label: "Additional Revisions", description: "Revisions beyond the included allowance - billed at hourly rate", amount: "" },
+    { id: "new_pages", label: "New Pages/Sections", description: "Additional pages or sections not included in original scope", amount: "" },
+    { id: "photo_gallery", label: "Photo Gallery Add-on", description: "Photo gallery functionality addition", amount: "" },
+    { id: "blog", label: "Blog Add-on", description: "Blog functionality with CMS integration", amount: "" },
+    { id: "ecommerce_features", label: "E-commerce Features", description: "E-commerce functionality (shop, cart, checkout)", amount: "" },
+    { id: "member_area", label: "Member Area Add-on", description: "Password-protected member area functionality", amount: "" },
+    { id: "content_creation", label: "Content Creation", description: "Professional content writing or substantial content additions", amount: "" },
+    { id: "training_session", label: "Training Session", description: "Additional training beyond initial handoff", amount: "" },
+    { id: "seo_services", label: "SEO Services", description: "Search engine optimization services", amount: "" },
+    { id: "marketing_analytics", label: "Marketing & Analytics Setup", description: "Analytics setup and marketing integration", amount: "" },
+  ]},
+  { category: "Fees", items: [
+    { id: "site_transfer", label: "Site Transfer Fee", description: "One-time fee to transfer site to client's own Webflow account", amount: "400" },
+    { id: "early_termination", label: "Early Maintenance Termination", description: "50% of remaining monthly fees under 12-month commitment", amount: "" },
+    { id: "cancellation_before_work", label: "Cancellation Fee (Before Work)", description: "Processing fee for cancellation before development begins", amount: "150" },
+    { id: "cancellation_after_work", label: "Cancellation Fee (After Work)", description: "Cancellation fee after development has begun", amount: "200" },
+  ]},
+  { category: "Custom", items: [
+    { id: "custom", label: "Custom Payment", description: "", amount: "" },
+  ]},
+];
+
 const paymentStatusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   paid: "bg-green-500/10 text-green-600 dark:text-green-400",
@@ -767,6 +801,26 @@ export default function ClientDetails() {
     amount: "",
     dueDate: "",
   });
+  const [selectedPaymentPreset, setSelectedPaymentPreset] = useState<string>("");
+
+  const handlePaymentPresetChange = (presetId: string) => {
+    setSelectedPaymentPreset(presetId);
+    if (presetId === "custom") {
+      setNewPayment({ description: "", amount: "", dueDate: "" });
+    } else {
+      for (const category of paymentPresets) {
+        const preset = category.items.find(item => item.id === presetId);
+        if (preset) {
+          setNewPayment(prev => ({
+            ...prev,
+            description: preset.label,
+            amount: preset.amount,
+          }));
+          break;
+        }
+      }
+    }
+  };
 
   const [newDocument, setNewDocument] = useState({
     title: "",
@@ -831,6 +885,7 @@ export default function ClientDetails() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/clients", clientId] });
       setIsPaymentDialogOpen(false);
       setNewPayment({ description: "", amount: "", dueDate: "" });
+      setSelectedPaymentPreset("");
       toast({ title: "Payment created", description: "New payment has been added for this client." });
     },
     onError: (error: Error) => {
@@ -2417,6 +2472,32 @@ export default function ClientDetails() {
                       <DialogDescription>Add a payment for this client to pay through their portal</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreatePayment} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Payment Type</Label>
+                        <Select
+                          value={selectedPaymentPreset}
+                          onValueChange={handlePaymentPresetChange}
+                        >
+                          <SelectTrigger data-testid="select-payment-preset">
+                            <SelectValue placeholder="Select a payment type..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {paymentPresets.map((category) => (
+                              <div key={category.category}>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                                  {category.category}
+                                </div>
+                                {category.items.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.label}
+                                    {item.amount && ` - $${item.amount}`}
+                                  </SelectItem>
+                                ))}
+                              </div>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-2">
                         <Label>Description *</Label>
                         <Input
