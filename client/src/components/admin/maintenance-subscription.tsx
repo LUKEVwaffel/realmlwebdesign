@@ -68,6 +68,12 @@ interface SubscriptionStatus {
   monthlyFee?: string;
   monthsCompleted?: number;
   minimumMonths?: number;
+  disabled?: boolean;
+}
+
+interface ProductsResponse {
+  products: MaintenanceProduct[];
+  disabled?: boolean;
 }
 
 export function MaintenanceSubscription({ projectId, projectStatus }: MaintenanceSubscriptionProps) {
@@ -78,13 +84,16 @@ export function MaintenanceSubscription({ projectId, projectStatus }: Maintenanc
   const [cancelImmediately, setCancelImmediately] = useState(false);
   const [applyTerminationFee, setApplyTerminationFee] = useState(true);
 
-  const { data: products, isLoading: productsLoading } = useQuery<{ products: MaintenanceProduct[] }>({
+  const { data: products, isLoading: productsLoading } = useQuery<ProductsResponse>({
     queryKey: ["/api/admin/maintenance-products"],
   });
 
   const { data: subscription, isLoading: subscriptionLoading, refetch: refetchSubscription } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/admin/projects", projectId, "subscription"],
   });
+
+  // Check if Stripe is disabled
+  const stripeDisabled = products?.disabled || subscription?.disabled;
 
   const startSubscriptionMutation = useMutation({
     mutationFn: async (data: { priceId: string; tier: string }) => {
@@ -190,6 +199,29 @@ export function MaintenanceSubscription({ projectId, projectStatus }: Maintenanc
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show disabled state when Stripe is not available
+  if (stripeDisabled) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Maintenance Subscription
+          </CardTitle>
+          <CardDescription>Monthly website maintenance and support</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              Subscription management is temporarily unavailable.
+            </p>
           </div>
         </CardContent>
       </Card>

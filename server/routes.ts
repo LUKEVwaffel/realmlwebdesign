@@ -3235,6 +3235,9 @@ export async function registerRoutes(
 
   // Create customer portal session for client to manage payment methods
   app.post("/api/client/billing-portal", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    if (!isStripeEnabled()) {
+      return res.status(503).json({ error: "Billing portal is temporarily unavailable" });
+    }
     try {
       const client = await storage.getClientByUserId(req.user!.id);
       if (!client) {

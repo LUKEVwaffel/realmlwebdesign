@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { getStripeSync, getStripeSecretKey, getUncachableStripeClient } from "./stripeClient";
+import { getStripeSync, getStripeSecretKey, getUncachableStripeClient, isStripeEnabled } from "./stripeClient";
 import { handleStripeWebhook } from "./webhookHandlers";
 import Stripe from "stripe";
 
@@ -18,6 +18,10 @@ declare module "http" {
 let stripeWebhookSecret: string | null = null;
 
 async function initStripe() {
+  if (!isStripeEnabled()) {
+    log("Stripe disabled via STRIPE_ENABLED=false", "stripe");
+    return;
+  }
   try {
     const stripe = await getUncachableStripeClient();
     await stripe.balance.retrieve();
@@ -28,6 +32,10 @@ async function initStripe() {
 }
 
 app.post('/api/stripe/webhook/:uuid', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!isStripeEnabled()) {
+    return res.status(503).send('Stripe is temporarily disabled');
+  }
+  
   const sig = req.headers['stripe-signature'];
   
   if (!sig || !stripeWebhookSecret) {

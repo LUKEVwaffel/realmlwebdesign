@@ -82,7 +82,21 @@ export default function ClientPayments() {
     queryKey: ["/api/client/payments"],
   });
 
+  // Check if Stripe is enabled
+  const { data: stripeStatus } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/stripe/status"],
+  });
+  const stripeEnabled = stripeStatus?.enabled ?? true;
+
   const handlePayNow = (payment: any) => {
+    if (!stripeEnabled) {
+      toast({
+        title: "Payments Unavailable",
+        description: "Online payment processing is temporarily unavailable. Please contact us for alternative payment options.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedPayment({
       id: payment.id,
       amount: payment.amount,
@@ -240,6 +254,8 @@ export default function ClientPayments() {
                                   size="sm" 
                                   data-testid={`button-pay-${payment.id}`}
                                   onClick={() => handlePayNow(payment)}
+                                  disabled={!stripeEnabled}
+                                  title={!stripeEnabled ? "Online payments temporarily unavailable" : undefined}
                                 >
                                   Pay Now
                                 </Button>

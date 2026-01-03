@@ -28,6 +28,7 @@ interface SubscriptionInfo {
 
 interface SubscriptionResponse {
   subscriptions: SubscriptionInfo[];
+  disabled?: boolean;
 }
 
 const fadeInUp = {
@@ -66,6 +67,11 @@ export function ClientSubscriptionPanel() {
   });
 
   if (isLoading) {
+    return null;
+  }
+
+  // Don't show panel if Stripe is disabled
+  if (subscriptionData?.disabled) {
     return null;
   }
 
