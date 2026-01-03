@@ -71,6 +71,45 @@ const itemTypeLabels: Record<string, string> = {
   info: "Update",
 };
 
+// Predefined payment types from TOS
+const paymentPresets = [
+  // Project Payments
+  { category: "Project Payments", items: [
+    { id: "deposit", label: "50% Deposit", description: "Initial deposit due upon quote approval - 50% of project total" },
+    { id: "final_payment", label: "50% Final Payment", description: "Final payment due after hosting setup is complete - 50% of project total" },
+  ]},
+  // Monthly Maintenance
+  { category: "Monthly Maintenance", items: [
+    { id: "maintenance_standard", label: "Standard Maintenance - $50/mo", description: "Monthly maintenance: hosting, security updates, backups, and basic support" },
+    { id: "maintenance_business", label: "Business/Premium Maintenance - $100/mo", description: "Monthly maintenance: includes CMS Editor access and priority support" },
+    { id: "maintenance_ecommerce", label: "E-commerce Maintenance - $200/mo", description: "Monthly maintenance: includes CMS Editor access, e-commerce maintenance, and priority support" },
+  ]},
+  // Add-on Services
+  { category: "Add-on Services", items: [
+    { id: "additional_revisions", label: "Additional Revisions", description: "Revisions beyond the included allowance - billed at hourly rate" },
+    { id: "new_pages", label: "New Pages/Sections", description: "Additional pages or sections not included in original scope" },
+    { id: "photo_gallery", label: "Photo Gallery Add-on", description: "Photo gallery functionality addition" },
+    { id: "blog", label: "Blog Add-on", description: "Blog functionality with CMS integration" },
+    { id: "ecommerce_features", label: "E-commerce Features", description: "E-commerce functionality (shop, cart, checkout)" },
+    { id: "member_area", label: "Member Area Add-on", description: "Password-protected member area functionality" },
+    { id: "content_creation", label: "Content Creation", description: "Professional content writing or substantial content additions" },
+    { id: "training_session", label: "Training Session", description: "Additional training beyond initial handoff" },
+    { id: "seo_services", label: "SEO Services", description: "Search engine optimization services" },
+    { id: "marketing_analytics", label: "Marketing & Analytics Setup", description: "Analytics setup and marketing integration" },
+  ]},
+  // Fees
+  { category: "Fees", items: [
+    { id: "site_transfer", label: "Site Transfer Fee - $400", description: "One-time fee to transfer site to client's own Webflow account" },
+    { id: "early_termination", label: "Early Maintenance Termination", description: "50% of remaining monthly fees under 12-month commitment" },
+    { id: "cancellation_before_work", label: "Cancellation Fee (Before Work) - $150", description: "Processing fee for cancellation before development begins" },
+    { id: "cancellation_after_work", label: "Cancellation Fee (After Work) - $200", description: "Cancellation fee after development has begun" },
+  ]},
+  // Custom
+  { category: "Custom", items: [
+    { id: "custom", label: "Custom Payment Request", description: "" },
+  ]},
+];
+
 interface PortalFeedProps {
   clientId?: string;
   isAdmin?: boolean;
@@ -79,6 +118,7 @@ interface PortalFeedProps {
 export function PortalFeed({ clientId, isAdmin = false }: PortalFeedProps) {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedPaymentPreset, setSelectedPaymentPreset] = useState<string>("");
   const [newItem, setNewItem] = useState({
     itemType: "message" as string,
     title: "",
@@ -86,6 +126,25 @@ export function PortalFeed({ clientId, isAdmin = false }: PortalFeedProps) {
     isPinned: false,
     isUrgent: false,
   });
+
+  const handlePaymentPresetChange = (presetId: string) => {
+    setSelectedPaymentPreset(presetId);
+    if (presetId === "custom") {
+      setNewItem(prev => ({ ...prev, title: "", description: "" }));
+    } else {
+      for (const category of paymentPresets) {
+        const preset = category.items.find(item => item.id === presetId);
+        if (preset) {
+          setNewItem(prev => ({
+            ...prev,
+            title: preset.label,
+            description: preset.description,
+          }));
+          break;
+        }
+      }
+    }
+  };
 
   const endpoint = isAdmin && clientId 
     ? `/api/admin/clients/${clientId}/portal-items`
@@ -103,6 +162,7 @@ export function PortalFeed({ clientId, isAdmin = false }: PortalFeedProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [endpoint] });
       setIsAddDialogOpen(false);
+      setSelectedPaymentPreset("");
       setNewItem({
         itemType: "message",
         title: "",
@@ -219,7 +279,10 @@ export function PortalFeed({ clientId, isAdmin = false }: PortalFeedProps) {
                   <Label>Item Type</Label>
                   <Select
                     value={newItem.itemType}
-                    onValueChange={(value) => setNewItem({ ...newItem, itemType: value })}
+                    onValueChange={(value) => {
+                      setNewItem({ ...newItem, itemType: value, title: "", description: "" });
+                      setSelectedPaymentPreset("");
+                    }}
                   >
                     <SelectTrigger data-testid="select-item-type">
                       <SelectValue />
@@ -233,6 +296,35 @@ export function PortalFeed({ clientId, isAdmin = false }: PortalFeedProps) {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {newItem.itemType === "payment_request" && (
+                  <div className="space-y-2">
+                    <Label>Payment Type</Label>
+                    <Select
+                      value={selectedPaymentPreset}
+                      onValueChange={handlePaymentPresetChange}
+                    >
+                      <SelectTrigger data-testid="select-payment-preset">
+                        <SelectValue placeholder="Select a payment type..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentPresets.map((category) => (
+                          <div key={category.category}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                              {category.category}
+                            </div>
+                            {category.items.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Title</Label>
                   <Input
