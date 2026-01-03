@@ -2854,6 +2854,350 @@ export async function registerRoutes(
     }
   });
 
+  // ============ MAINTENANCE SUBSCRIPTION ROUTES ============
+
+  // Get available maintenance products/prices from Stripe
+  app.get("/api/admin/maintenance-products", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const result = await db.execute(
+        sql`SELECT 
+          p.id as product_id,
+          p.name as product_name,
+          p.description as product_description,
+          p.metadata as product_metadata,
+          pr.id as price_id,
+          pr.unit_amount,
+          pr.currency,
+          pr.recurring
+        FROM stripe.products p
+        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = true 
+        AND p.metadata->>'tier' IS NOT NULL
+        ORDER BY pr.unit_amount ASC`
+      );
+      res.json({ products: result.rows });
+    } catch (error) {
+      console.error("Get maintenance products error:", error);
+      res.status(500).json({ error: "Failed to fetch maintenance products" });
+    }
+  });
+
+  // Start a maintenance subscription for a project
+  app.post("/api/admin/projects/:id/start-maintenance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { priceId, tier } = req.body;
+
+      if (!priceId || !tier) {
+        return res.status(400).json({ error: "Price ID and tier are required" });
+      }
+
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const user = client.userId ? await storage.getUser(client.userId) : null;
+
+      // Check if already has active subscription
+      if (project.stripeSubscriptionId && project.maintenanceStatus === "active") {
+        return res.status(400).json({ error: "Project already has an active maintenance subscription" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      // Get or create Stripe customer for this client
+      let stripeCustomerId = client.stripeCustomerId;
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: client.businessEmail || user?.email || undefined,
+          name: client.businessLegalName,
+          metadata: {
+            client_id: client.id,
+          },
+        });
+        stripeCustomerId = customer.id;
+        
+        // Update client with Stripe customer ID
+        await db.update(clients).set({ stripeCustomerId }).where(eq(clients.id, client.id));
+      }
+
+      // Get price details
+      const price = await stripe.prices.retrieve(priceId);
+      const monthlyAmount = (price.unit_amount || 0) / 100;
+
+      // Create subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: stripeCustomerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+        },
+        expand: ["latest_invoice.payment_intent"],
+        metadata: {
+          project_id: id,
+          client_id: client.id,
+          tier: tier,
+        },
+      });
+
+      // Update project with subscription info
+      await db.update(projects).set({
+        maintenancePlan: tier,
+        maintenanceStartDate: new Date().toISOString().split('T')[0],
+        maintenanceStatus: "active",
+        monthlyMaintenanceFee: monthlyAmount.toString(),
+        maintenanceMinimumMonths: 12,
+        maintenanceMonthsCompleted: 0,
+        stripeSubscriptionId: subscription.id,
+        stripeSubscriptionStatus: subscription.status,
+      }).where(eq(projects.id, id));
+
+      // Get client secret for payment
+      const invoice = subscription.latest_invoice as any;
+      const paymentIntent = invoice?.payment_intent;
+      const clientSecret = paymentIntent?.client_secret || null;
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "maintenance_started",
+        description: `Started ${tier} maintenance subscription at $${monthlyAmount}/month`,
+        ipAddress: req.ip,
+      });
+
+      res.json({
+        subscriptionId: subscription.id,
+        status: subscription.status,
+        clientSecret,
+        monthlyAmount,
+      });
+    } catch (error: any) {
+      console.error("Start maintenance error:", error);
+      res.status(500).json({ error: error.message || "Failed to start maintenance subscription" });
+    }
+  });
+
+  // Cancel a maintenance subscription
+  app.post("/api/admin/projects/:id/cancel-maintenance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { cancelImmediately = false, applyTerminationFee = true } = req.body;
+
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (!project.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No active subscription found" });
+      }
+
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      // Cancel the Stripe subscription
+      const subscription = await stripe.subscriptions.update(project.stripeSubscriptionId, {
+        cancel_at_period_end: !cancelImmediately,
+      });
+
+      if (cancelImmediately) {
+        await stripe.subscriptions.cancel(project.stripeSubscriptionId);
+      }
+
+      // Calculate early termination fee if applicable
+      const monthsCompleted = project.maintenanceMonthsCompleted || 0;
+      const minimumMonths = project.maintenanceMinimumMonths || 12;
+      const monthlyFee = parseFloat(project.monthlyMaintenanceFee || "0");
+      let terminationFee = 0;
+
+      if (applyTerminationFee && monthsCompleted < minimumMonths) {
+        const remainingMonths = minimumMonths - monthsCompleted;
+        terminationFee = (remainingMonths * monthlyFee) * 0.5; // 50% of remaining fees
+      }
+
+      // Update project
+      await db.update(projects).set({
+        maintenanceStatus: "cancelled",
+        maintenanceCancelledAt: new Date(),
+        stripeSubscriptionStatus: cancelImmediately ? "canceled" : "cancel_at_period_end",
+        maintenanceEarlyTerminationFee: terminationFee > 0 ? terminationFee.toString() : null,
+      }).where(eq(projects.id, id));
+
+      // Create termination fee payment if applicable
+      if (terminationFee > 0) {
+        const nextPaymentNumber = await storage.getNextPaymentNumber(project.id);
+        await storage.createPayment({
+          projectId: project.id,
+          clientId: client.id,
+          description: "Early Maintenance Termination Fee (50% of remaining commitment)",
+          amount: terminationFee.toString(),
+          status: "pending",
+          paymentType: "other",
+          paymentNumber: nextPaymentNumber,
+        });
+      }
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        clientId: client.id,
+        action: "maintenance_cancelled",
+        description: `Maintenance subscription cancelled${terminationFee > 0 ? ` with $${terminationFee.toFixed(2)} early termination fee` : ""}`,
+        ipAddress: req.ip,
+      });
+
+      res.json({
+        cancelled: true,
+        canceledImmediately: cancelImmediately,
+        terminationFee: terminationFee > 0 ? terminationFee : null,
+      });
+    } catch (error: any) {
+      console.error("Cancel maintenance error:", error);
+      res.status(500).json({ error: error.message || "Failed to cancel maintenance subscription" });
+    }
+  });
+
+  // Get subscription status for a project
+  app.get("/api/admin/projects/:id/subscription", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const project = await storage.getProject(id);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (!project.stripeSubscriptionId) {
+        return res.json({
+          hasSubscription: false,
+          maintenanceStatus: project.maintenanceStatus,
+        });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      
+      try {
+        const subscription = await stripe.subscriptions.retrieve(project.stripeSubscriptionId);
+        
+        // Update local status if different
+        if (subscription.status !== project.stripeSubscriptionStatus) {
+          await db.update(projects).set({
+            stripeSubscriptionStatus: subscription.status,
+          }).where(eq(projects.id, id));
+        }
+
+        res.json({
+          hasSubscription: true,
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          currentPeriodStart: new Date(subscription.current_period_start * 1000),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          maintenancePlan: project.maintenancePlan,
+          maintenanceStatus: project.maintenanceStatus,
+          monthlyFee: project.monthlyMaintenanceFee,
+          monthsCompleted: project.maintenanceMonthsCompleted,
+          minimumMonths: project.maintenanceMinimumMonths,
+        });
+      } catch (stripeError: any) {
+        if (stripeError.code === "resource_missing") {
+          return res.json({
+            hasSubscription: false,
+            maintenanceStatus: project.maintenanceStatus,
+            error: "Subscription not found in Stripe",
+          });
+        }
+        throw stripeError;
+      }
+    } catch (error: any) {
+      console.error("Get subscription error:", error);
+      res.status(500).json({ error: error.message || "Failed to get subscription status" });
+    }
+  });
+
+  // Client view of their subscription
+  app.get("/api/client/subscription", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Get all projects for this client with active subscriptions
+      const projectsWithSubscriptions = await db.select()
+        .from(projects)
+        .where(and(
+          eq(projects.clientId, client.id),
+          sql`${projects.stripeSubscriptionId} IS NOT NULL`
+        ));
+
+      const subscriptions = [];
+      const stripe = await getUncachableStripeClient();
+
+      for (const project of projectsWithSubscriptions) {
+        if (!project.stripeSubscriptionId) continue;
+
+        try {
+          const subscription = await stripe.subscriptions.retrieve(project.stripeSubscriptionId);
+          subscriptions.push({
+            projectId: project.id,
+            subscriptionId: subscription.id,
+            status: subscription.status,
+            plan: project.maintenancePlan,
+            monthlyFee: project.monthlyMaintenanceFee,
+            currentPeriodStart: new Date(subscription.current_period_start * 1000),
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          });
+        } catch (err) {
+          console.error(`Error fetching subscription ${project.stripeSubscriptionId}:`, err);
+        }
+      }
+
+      res.json({ subscriptions });
+    } catch (error: any) {
+      console.error("Get client subscription error:", error);
+      res.status(500).json({ error: error.message || "Failed to get subscription" });
+    }
+  });
+
+  // Create customer portal session for client to manage payment methods
+  app.post("/api/client/billing-portal", authenticateToken, requireClient, async (req: AuthRequest, res) => {
+    try {
+      const client = await storage.getClientByUserId(req.user!.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      if (!client.stripeCustomerId) {
+        return res.status(400).json({ error: "No billing account found" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: client.stripeCustomerId,
+        return_url: `${baseUrl}/client/dashboard`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Create billing portal error:", error);
+      res.status(500).json({ error: error.message || "Failed to create billing portal session" });
+    }
+  });
+
   // ============ INVOICE ROUTES ============
 
   app.get("/api/payments/:id/invoice", authenticateToken, async (req: AuthRequest, res) => {
