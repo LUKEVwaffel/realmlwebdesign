@@ -42,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import { PortalFeed } from "@/components/portal/portal-feed";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1152,6 +1153,11 @@ export default function ClientDashboard() {
         )}
 
         <NextActionCard action={nextAction} isLoading={isLoading} />
+
+        {/* Portal Feed - New Simplified Model */}
+        <motion.div variants={fadeInUp}>
+          <PortalFeed isAdmin={false} />
+        </motion.div>
 
         {/* Hosting Setup Panel - for hosting_setup_pending status */}
         {project?.status === "hosting_setup_pending" && project?.id && (

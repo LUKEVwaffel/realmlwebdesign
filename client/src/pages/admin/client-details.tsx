@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PortalLayout } from "@/components/portal/portal-layout";
+import { PortalFeed } from "@/components/portal/portal-feed";
 import { PDFSignatureEditor, SignatureField } from "@/components/pdf-signature-editor";
 import { FileUploader } from "@/components/FileUploader";
 import { CloseAccountForm } from "@/components/admin/close-account-form";
@@ -2896,12 +2897,15 @@ export default function ClientDetails() {
             </div>
           </TabsContent>
 
-          <TabsContent value="portal-preview" className="mt-4">
+          <TabsContent value="portal-preview" className="mt-4 space-y-6">
+            {/* Portal Feed - Simplified Admin Push Model */}
+            <PortalFeed clientId={clientId!} isAdmin={true} />
+            
             <Card>
               <CardHeader>
                 <CardTitle className="font-serif text-lg flex items-center gap-2">
                   <Eye className="w-4 h-4" />
-                  Client Portal Preview
+                  Client Portal Preview (Legacy)
                 </CardTitle>
                 <CardDescription>
                   See what your client currently sees on their dashboard

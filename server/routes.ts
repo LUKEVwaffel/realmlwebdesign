@@ -4697,10 +4697,36 @@ export async function registerRoutes(
 
   // ============ PORTAL ITEMS ROUTES (Simplified Portal Model) ============
 
+  // Validation schema for creating portal items
+  const createPortalItemSchema = z.object({
+    itemType: z.enum(["payment_request", "document", "message", "action_required", "info"]),
+    title: z.string().min(1, "Title is required").max(255),
+    description: z.string().optional(),
+    projectId: z.string().optional(),
+    paymentId: z.string().optional(),
+    documentId: z.string().optional(),
+    isPinned: z.boolean().optional().default(false),
+    isUrgent: z.boolean().optional().default(false),
+  });
+
   // Admin: Get all portal items for a client
   app.get("/api/admin/clients/:clientId/portal-items", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { clientId } = req.params;
+      const adminId = req.userId!;
+      
+      // Verify client exists
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Verify admin has access to this client
+      const canEdit = await canAdminEditClientHelper(adminId, clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const items = await db.select().from(portalItems).where(eq(portalItems.clientId, clientId)).orderBy(desc(portalItems.createdAt));
       res.json(items);
     } catch (error) {
@@ -4713,11 +4739,34 @@ export async function registerRoutes(
   app.post("/api/admin/clients/:clientId/portal-items", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { clientId } = req.params;
-      const validatedData = insertPortalItemSchema.parse({
-        ...req.body,
+      const adminId = req.userId!;
+      
+      // Verify client exists
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Verify admin has access to this client
+      const canEdit = await canAdminEditClientHelper(adminId, clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      // Validate input
+      const validationResult = createPortalItemSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const validatedData = {
+        ...validationResult.data,
         clientId,
-        createdBy: req.userId,
-      });
+        createdBy: adminId,
+      };
       
       const [newItem] = await db.insert(portalItems).values(validatedData).returning();
       res.status(201).json(newItem);
@@ -4731,7 +4780,34 @@ export async function registerRoutes(
   app.patch("/api/admin/portal-items/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const [updated] = await db.update(portalItems).set({ ...req.body, updatedAt: new Date() }).where(eq(portalItems.id, id)).returning();
+      const adminId = req.userId!;
+      
+      // Verify item exists
+      const [existingItem] = await db.select().from(portalItems).where(eq(portalItems.id, id));
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Verify admin has access to this client
+      const canEdit = await canAdminEditClientHelper(adminId, existingItem.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      // Only allow updating specific fields (not clientId)
+      const updateSchema = z.object({
+        title: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
+        isPinned: z.boolean().optional(),
+        isUrgent: z.boolean().optional(),
+      });
+      
+      const validationResult = updateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ error: "Validation failed", details: validationResult.error.errors });
+      }
+      
+      const [updated] = await db.update(portalItems).set({ ...validationResult.data, updatedAt: new Date() }).where(eq(portalItems.id, id)).returning();
       res.json(updated);
     } catch (error) {
       console.error("Update portal item error:", error);
@@ -4743,6 +4819,20 @@ export async function registerRoutes(
   app.delete("/api/admin/portal-items/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
+      const adminId = req.userId!;
+      
+      // Verify item exists
+      const [existingItem] = await db.select().from(portalItems).where(eq(portalItems.id, id));
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Verify admin has access to this client
+      const canEdit = await canAdminEditClientHelper(adminId, existingItem.clientId);
+      if (!canEdit) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       await db.delete(portalItems).where(eq(portalItems.id, id));
       res.json({ success: true });
     } catch (error) {
