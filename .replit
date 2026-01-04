@@ -48,5 +48,5 @@ defaultBucketID = "replit-objstore-49379be5-1156-429b-9f6a-11a2a5fb2076"
 
 [userenv.shared]
 VITE_STRIPE_PUBLISHABLE_KEY = "pk_test_51Shb6IQWs4BTfr70KGDZBO97MxMjjNaAxZT7RqEIsThAQldbOwQtkfYovHfwq3B2UNkEyS5fSLVGs0jnV2q2VNmF00EHMYg8kf"
-STRIPE_ENABLED = "false"
-VITE_STRIPE_ENABLED = "false"
+STRIPE_ENABLED = "true"
+VITE_STRIPE_ENABLED = "true"
