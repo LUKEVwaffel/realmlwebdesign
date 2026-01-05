@@ -80,7 +80,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="web-design-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="web-design-theme">
         <AuthProvider>
           <TooltipProvider>
             <Router />
