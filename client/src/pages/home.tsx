@@ -114,7 +114,7 @@ const pricingTiers = [
     name: 'Business / Premium',
     icon: Calendar,
     description: 'Advanced features for growing businesses',
-    price: 'Starting at $2,000',
+    price: 'Starting at $2,500',
     popular: true,
     features: [
       'Everything in Standard',
