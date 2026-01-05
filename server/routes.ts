@@ -873,9 +873,38 @@ export async function registerRoutes(
 
   app.get("/api/admin/dashboard", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const stats = await storage.getAdminStats();
-      const projectsList = await storage.getProjects();
-      const recentProjects = projectsList.slice(0, 5);
+      const adminId = req.user!.id;
+      
+      // Get only clients this admin can access
+      const accessibleClients = await storage.getAccessibleClientIds(adminId);
+      const accessibleClientIds = new Set(accessibleClients.map(a => a.clientId));
+      
+      // Get all projects and filter to only this admin's accessible clients
+      const allProjects = await storage.getProjects();
+      const myProjects = allProjects.filter(p => accessibleClientIds.has(p.clientId));
+      const recentProjects = myProjects.slice(0, 5);
+      
+      // Calculate stats for this admin's clients only
+      const myClients = await Promise.all(
+        Array.from(accessibleClientIds).map(id => storage.getClient(id))
+      );
+      const activeClients = myClients.filter(c => c).length;
+      const activeProjects = myProjects.filter(p => !["completed", "cancelled"].includes(p.status || "")).length;
+      const completedProjects = myProjects.filter(p => p.status === "completed").length;
+      
+      // Get payments for this admin's clients
+      const allPayments = await storage.getPayments();
+      const myPayments = allPayments.filter(p => accessibleClientIds.has(p.clientId));
+      const pendingPayments = myPayments.filter(p => p.status === "pending").length;
+      const totalRevenue = myPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      
+      const stats = {
+        totalClients: activeClients,
+        activeProjects,
+        completedProjects,
+        pendingPayments,
+        totalRevenue,
+      };
       
       const projectsWithClients = await Promise.all(
         recentProjects.map(async (project) => {
@@ -888,21 +917,25 @@ export async function registerRoutes(
         })
       );
 
+      // Filter overdue payments to only this admin's clients
       const overduePayments = await storage.getOverduePayments();
+      const myOverduePayments = overduePayments.filter((p: any) => accessibleClientIds.has(p.clientId));
       const overdueWithClients = await Promise.all(
-        overduePayments.map(async (payment: any) => {
+        myOverduePayments.map(async (payment: any) => {
           const client = await storage.getClient(payment.clientId);
           return { ...payment, client };
         })
       );
 
-      const recentActivity = await storage.getActivityLogs();
+      // Filter activity logs to only this admin's clients
+      const allActivity = await storage.getActivityLogs();
+      const recentActivity = allActivity.filter(a => !a.clientId || accessibleClientIds.has(a.clientId));
 
       res.json({
         stats,
         recentProjects: projectsWithClients,
         overduePayments: overdueWithClients,
-        recentActivity,
+        recentActivity: recentActivity.slice(0, 10),
       });
     } catch (error) {
       console.error("Admin dashboard error:", error);
@@ -913,11 +946,15 @@ export async function registerRoutes(
   app.get("/api/admin/clients", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const adminId = req.user!.id;
-      const clientsList = await storage.getClients();
       
-      // Get access levels for this admin
+      // Get only clients this admin can access (owned + granted access)
       const accessibleClients = await storage.getAccessibleClientIds(adminId);
       const accessMap = new Map(accessibleClients.map(a => [a.clientId, a.accessLevel]));
+      const accessibleClientIds = accessibleClients.map(a => a.clientId);
+      
+      // Only fetch clients the admin has access to
+      const allClients = await storage.getClients();
+      const clientsList = allClients.filter(c => accessibleClientIds.includes(c.id));
       
       const clientsWithUsers = await Promise.all(
         clientsList.map(async (client) => {
@@ -1042,6 +1079,14 @@ export async function registerRoutes(
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
+      
+      // Check if admin has any access to this client
+      const accessibleClients = await storage.getAccessibleClientIds(adminId);
+      const hasAccess = accessibleClients.some(a => a.clientId === id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "You don't have access to this client" });
+      }
+      
       const user = client.userId ? await storage.getUser(client.userId) : null;
       const projects = await storage.getProjectsByClientId(id);
       const payments = await storage.getPaymentsByClientId(id);
@@ -1841,11 +1886,27 @@ export async function registerRoutes(
 
   app.get("/api/admin/projects", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const projectsList = await storage.getProjects();
+      const adminId = req.user!.id;
+      
+      // Get only clients this admin can access
+      const accessibleClients = await storage.getAccessibleClientIds(adminId);
+      const accessibleClientIds = new Set(accessibleClients.map(a => a.clientId));
+      const accessMap = new Map(accessibleClients.map(a => [a.clientId, a.accessLevel]));
+      
+      const allProjects = await storage.getProjects();
+      const projectsList = allProjects.filter(p => accessibleClientIds.has(p.clientId));
+      
       const projectsWithClients = await Promise.all(
         projectsList.map(async (project) => {
           const client = await storage.getClient(project.clientId);
-          return { ...project, client };
+          const isOwner = client?.createdBy === adminId;
+          const accessLevel = accessMap.get(project.clientId) || "view";
+          return { 
+            ...project, 
+            client,
+            isOwner,
+            editable: isOwner || accessLevel === "edit",
+          };
         })
       );
       res.json(projectsWithClients);
