@@ -943,16 +943,37 @@ function ContactSection() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch('/api/public/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    toast({
-      title: "Message Sent",
-      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
-    });
+      const data = await response.json();
 
-    setFormData({ name: '', email: '', company: '', message: '' });
-    setIsSubmitting(false);
+      if (response.ok) {
+        toast({
+          title: "Message Sent!",
+          description: data.message || "Thank you for reaching out. We'll get back to you within 24 hours.",
+        });
+        setFormData({ name: '', email: '', company: '', message: '' });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please email us directly at mlwebdesigntn@gmail.com",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1047,8 +1068,8 @@ function ContactSection() {
                   <p className="text-sm text-muted-foreground">
                     <Mail className="w-4 h-4 inline mr-2" />
                     Or email us directly at{' '}
-                    <a href="mailto:hello@mlwebdesign.com" className="text-primary hover:underline">
-                      hello@mlwebdesign.com
+                    <a href="mailto:mlwebdesign@gmail.com" className="text-primary hover:underline">
+                      mlwebdesign@gmail.com
                     </a>
                   </p>
                   <Button 

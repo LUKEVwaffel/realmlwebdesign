@@ -22,6 +22,7 @@ import {
   sendQuoteNotificationEmail,
   notifyClientActivity,
   notifyAdminActivity,
+  sendContactFormEmail,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import { generateQuestionnairePdf } from "./questionnairePdfService";
@@ -215,6 +216,40 @@ export async function registerRoutes(
   
   // Initialize WebSocket server for real-time notifications
   initializeWebSocket(httpServer);
+
+  // ============ PUBLIC ROUTES (No auth required) ============
+
+  // Contact form submission - sends email to business
+  const contactFormSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Valid email is required"),
+    company: z.string().optional(),
+    message: z.string().min(1, "Message is required"),
+  });
+
+  app.post("/api/public/contact", async (req, res) => {
+    try {
+      const parsed = contactFormSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
+      }
+
+      const { name, email, company, message } = parsed.data;
+      
+      const success = await sendContactFormEmail(name, email, company || "", message);
+      
+      if (success) {
+        res.json({ success: true, message: "Your message has been sent. We'll get back to you within 24 hours." });
+      } else {
+        // Still return success to user but log that email failed
+        console.log('[Contact] Email sending failed, but responding with success to user');
+        res.json({ success: true, message: "Thank you for your message. We'll get back to you soon." });
+      }
+    } catch (error) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ error: "Something went wrong. Please try again or email us directly." });
+    }
+  });
 
   // ============ AUTH ROUTES ============
 

@@ -989,3 +989,73 @@ export async function sendWorkflowEmail(
     return false;
   }
 }
+
+// Contact form email - sends to business email
+export async function sendContactFormEmail(
+  name: string,
+  email: string,
+  company: string,
+  message: string
+): Promise<boolean> {
+  const businessEmail = "mlwebdesigntn@gmail.com";
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Contact Form Submission</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%); padding: 30px; border-radius: 8px 8px 0 0;">
+    <h1 style="color: #fff; margin: 0; font-size: 24px;">New Website Inquiry</h1>
+  </div>
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
+    <p style="margin-bottom: 20px;">You have received a new inquiry from your website contact form:</p>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <p style="margin: 0 0 10px 0;"><strong>Name:</strong> ${name}</p>
+      <p style="margin: 0 0 10px 0;"><strong>Email:</strong> <a href="mailto:${email}" style="color: #8B5CF6;">${email}</a></p>
+      <p style="margin: 0 0 10px 0;"><strong>Company:</strong> ${company || 'Not provided'}</p>
+    </div>
+    
+    <h3 style="margin-bottom: 10px;">Message:</h3>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap;">
+${message}
+    </div>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+      <p style="margin: 0; color: #666; font-size: 14px;">Reply directly to this email or contact them at: <a href="mailto:${email}" style="color: #8B5CF6;">${email}</a></p>
+    </div>
+  </div>
+  <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+    <p>This message was sent from the ML WebDesign website contact form.</p>
+  </div>
+</body>
+</html>`;
+
+  try {
+    const sendgrid = await getUncachableSendGridClient();
+    if (!sendgrid) {
+      console.log('[Email] SendGrid not available for contact form');
+      return false;
+    }
+
+    await sendgrid.client.send({
+      to: businessEmail,
+      from: {
+        email: sendgrid.fromEmail,
+        name: 'ML WebDesign Website'
+      },
+      replyTo: email,
+      subject: `New Website Inquiry from ${name}`,
+      html: html,
+    });
+    console.log(`[Email] Contact form email sent to business`);
+    return true;
+  } catch (error: any) {
+    console.error("[Email] Failed to send contact form email:", error?.response?.body || error?.message || error);
+    return false;
+  }
+}
