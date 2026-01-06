@@ -9,6 +9,11 @@ import Stripe from "stripe";
 const app = express();
 const httpServer = createServer(app);
 
+// Health check endpoint - must respond immediately for deployment
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -105,8 +110,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await initStripe();
+  // Initialize routes first for health checks
   await registerRoutes(httpServer, app);
+  
+  // Initialize Stripe in background (non-blocking)
+  initStripe().catch(err => {
+    console.error("Stripe background init failed:", err);
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
