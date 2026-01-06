@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { getStripeSync, getStripeSecretKey, getUncachableStripeClient, isStripeEnabled } from "./stripeClient";
 import { handleStripeWebhook } from "./webhookHandlers";
+import { seedDatabase } from "./seedDatabase";
 import Stripe from "stripe";
 
 const app = express();
@@ -110,6 +111,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Seed database with default admin users if they don't exist
+  await seedDatabase();
+  
   // Initialize routes first for health checks
   await registerRoutes(httpServer, app);
   
