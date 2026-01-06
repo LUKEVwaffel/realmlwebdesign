@@ -3,14 +3,18 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  // In production, __dirname is 'dist/', so we need 'dist/public'
-  // In development with tsx, __dirname is 'server/', so we need '../dist/public'
-  const isProduction = process.env.NODE_ENV === 'production';
-  const distPath = isProduction 
-    ? path.resolve(__dirname, "public")
-    : path.resolve(__dirname, "..", "dist", "public");
+  // Use process.cwd() for reliable path resolution in both dev and production
+  // In production, cwd is the project root, files are in dist/public
+  const distPath = path.join(process.cwd(), "dist", "public");
+  
+  console.log(`[static] Looking for static files at: ${distPath}`);
+  console.log(`[static] Current working directory: ${process.cwd()}`);
+  console.log(`[static] Directory exists: ${fs.existsSync(distPath)}`);
     
   if (!fs.existsSync(distPath)) {
+    // List what's in the current directory to help debug
+    const cwdContents = fs.readdirSync(process.cwd());
+    console.log(`[static] Contents of cwd: ${cwdContents.join(', ')}`);
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
