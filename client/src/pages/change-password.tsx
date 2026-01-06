@@ -47,11 +47,14 @@ export default function ChangePasswordPage() {
         description: "Your password has been changed successfully.",
       });
 
-      if (user?.role === "admin") {
-        setLocation("/admin/dashboard");
-      } else {
-        setLocation("/client/dashboard");
-      }
+      // Small delay to ensure state updates before redirect
+      setTimeout(() => {
+        if (user?.role === "admin") {
+          setLocation("/admin/dashboard");
+        } else {
+          setLocation("/client/dashboard");
+        }
+      }, 100);
     } catch (error: any) {
       toast({
         title: "Error",
