@@ -4,7 +4,7 @@ import { sendBetaWelcomeEmail } from "./emailService";
 
 const DEFAULT_ADMINS = [
   {
-    email: "lukevetsch@mlwebdesign.net",
+    email: "lukevestch@mlwebdesign.net",
     password: "Goatbaba12!",
     firstName: "Luke",
     lastName: "Vetsch",
