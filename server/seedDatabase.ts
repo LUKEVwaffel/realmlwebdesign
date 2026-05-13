@@ -38,7 +38,14 @@ export async function seedDatabase() {
 
   for (const admin of DEFAULT_ADMINS) {
     try {
-      const existingUser = await storage.getUserByEmail(admin.email);
+      // Look up by target email first, then fall back to any existing admin
+      let existingUser = await storage.getUserByEmail(admin.email);
+
+      if (!existingUser) {
+        // Check if an admin already exists under a different email (e.g. old email)
+        const admins = await storage.getAdmins();
+        existingUser = admins[0] ?? null;
+      }
 
       if (!existingUser) {
         console.log(`[seed] Creating admin user: ${admin.email}`);
@@ -58,16 +65,19 @@ export async function seedDatabase() {
         console.log(`[seed] Created admin user: ${admin.email}`);
       } else {
         adminUserId = existingUser.id;
-        // Ensure email is up to date (handles email changes)
-        if (existingUser.email !== admin.email) {
-          await storage.updateUser(existingUser.id, { email: admin.email });
-          console.log(`[seed] Updated admin email to: ${admin.email}`);
+        const updates: any = {};
+        if (existingUser.email !== admin.email) updates.email = admin.email;
+        if (existingUser.firstName !== admin.firstName) updates.firstName = admin.firstName;
+        if (existingUser.lastName !== admin.lastName) updates.lastName = admin.lastName;
+        if (Object.keys(updates).length > 0) {
+          await storage.updateUser(existingUser.id, updates);
+          console.log(`[seed] Updated admin user (${existingUser.email} → ${admin.email})`);
         } else {
-          console.log(`[seed] Admin user already exists: ${admin.email}`);
+          console.log(`[seed] Admin user already up to date: ${admin.email}`);
         }
       }
     } catch (error) {
-      console.error(`[seed] Error creating admin ${admin.email}:`, error);
+      console.error(`[seed] Error seeding admin ${admin.email}:`, error);
     }
   }
 
