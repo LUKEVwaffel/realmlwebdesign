@@ -58,7 +58,13 @@ export async function seedDatabase() {
         console.log(`[seed] Created admin user: ${admin.email}`);
       } else {
         adminUserId = existingUser.id;
-        console.log(`[seed] Admin user already exists: ${admin.email}`);
+        // Ensure email is up to date (handles email changes)
+        if (existingUser.email !== admin.email) {
+          await storage.updateUser(existingUser.id, { email: admin.email });
+          console.log(`[seed] Updated admin email to: ${admin.email}`);
+        } else {
+          console.log(`[seed] Admin user already exists: ${admin.email}`);
+        }
       }
     } catch (error) {
       console.error(`[seed] Error creating admin ${admin.email}:`, error);
