@@ -145,21 +145,19 @@ export default function BetaReview() {
 
   return (
     <PortalLayout>
+      <div className="p-6 md:p-8 max-w-6xl">
       {/* Hero section */}
-      <div className="mb-10">
+      <div className="mb-8">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ background: "rgba(178,76,64,0.12)", color: "#C46557", border: "1px solid rgba(178,76,64,0.2)" }}>
                 Beta Preview
               </span>
             </div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">
-              Which direction feels like <em className="not-italic" style={{ color: "#C46557" }}>Awaken Creative?</em>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+              Which way ya wanna go, <em className="not-italic" style={{ color: "#C46557" }}>Bro?</em>
             </h1>
-            <p className="text-muted-foreground text-sm max-w-xl leading-relaxed">
-              Five complete portal directions, built just for you. Click any layout to explore it live — deliverable approvals, contracts, inbox, all of it works. Then let me know what you think.
-            </p>
           </div>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -279,6 +277,7 @@ export default function BetaReview() {
           Share Your Thoughts
         </motion.button>
       </motion.div>
+      </div>{/* end padding wrapper */}
 
       {/* Fullscreen iframe overlay */}
       <AnimatePresence>
