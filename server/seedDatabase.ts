@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
+import { sendBetaWelcomeEmail } from "./emailService";
 
 const DEFAULT_ADMINS = [
   {
@@ -74,6 +75,12 @@ export async function seedDatabase() {
           pinEnabled: false,
         });
         console.log(`[seed] Created beta user: ${user.email}`);
+
+        // Send welcome email
+        const loginUrl = `${process.env.APP_URL || "https://portal.mlwebdesign.net"}/portal/login`;
+        await sendBetaWelcomeEmail(user.email, user.firstName, user.password, loginUrl)
+          .then(sent => console.log(`[seed] Beta welcome email ${sent ? "sent" : "skipped (SendGrid not configured)"}: ${user.email}`))
+          .catch(err => console.error("[seed] Failed to send beta welcome email:", err));
       } else {
         console.log(`[seed] Beta user already exists: ${user.email}`);
       }

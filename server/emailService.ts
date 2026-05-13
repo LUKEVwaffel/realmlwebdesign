@@ -39,16 +39,23 @@ async function getCredentials() {
 
 async function getUncachableSendGridClient() {
   try {
+    // First try Replit connector, then fall back to direct env vars (Render)
     const creds = await getCredentials();
-    if (!creds) {
-      console.log('[Email] SendGrid not configured');
-      return null;
+    if (creds) {
+      sgMail.setApiKey(creds.apiKey);
+      return { client: sgMail, fromEmail: creds.email };
     }
-    sgMail.setApiKey(creds.apiKey);
-    return {
-      client: sgMail,
-      fromEmail: creds.email
-    };
+
+    // Render / direct env var fallback
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+    if (apiKey && fromEmail) {
+      sgMail.setApiKey(apiKey);
+      return { client: sgMail, fromEmail };
+    }
+
+    console.log('[Email] SendGrid not configured');
+    return null;
   } catch (error) {
     console.error('[Email] Failed to get SendGrid client:', error);
     return null;
@@ -332,6 +339,139 @@ export async function sendWelcomeEmail(
     to: email,
     subject: "Welcome to Your Client Portal",
     html: baseTemplate(content),
+  });
+}
+
+// ============ Beta Welcome Email ============
+export async function sendBetaWelcomeEmail(
+  email: string,
+  firstName: string,
+  password: string,
+  loginUrl: string
+): Promise<boolean> {
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to DUO — Beta Access</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width:580px;" cellpadding="0" cellspacing="0">
+
+          <!-- Logo bar -->
+          <tr>
+            <td style="padding-bottom:32px;" align="center">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:10px;">
+                    <!-- SVG lamp logo -->
+                    <svg viewBox="0 0 40 40" width="32" height="32" fill="none" stroke="#EFDCC6" stroke-width="2" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
+                      <line x1="4" y1="30" x2="36" y2="30"/>
+                      <path d="M 12 30 A 8 8 0 0 1 28 30"/>
+                      <line x1="20" y1="8" x2="20" y2="14"/>
+                      <line x1="8" y1="14" x2="12" y2="17"/>
+                      <line x1="32" y1="14" x2="28" y2="17"/>
+                    </svg>
+                  </td>
+                  <td>
+                    <span style="font-size:13px;font-weight:700;letter-spacing:0.14em;color:#EFDCC6;text-transform:uppercase;">DUO CLIENT PORTAL</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#111111;border:1px solid rgba(239,220,198,0.12);border-radius:16px;overflow:hidden;">
+
+              <!-- Top accent bar -->
+              <tr>
+                <td style="height:4px;background:linear-gradient(90deg,#B24C40 0%,#C46557 50%,#8B2E25 100%);display:block;"></td>
+              </tr>
+
+              <!-- Body -->
+              <tr>
+                <td style="padding:40px 40px 32px;">
+
+                  <!-- Greeting -->
+                  <p style="margin:0 0 6px;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#B24C40;">Beta Access Granted</p>
+                  <h1 style="margin:0 0 20px;font-size:26px;font-weight:700;color:#EFDCC6;line-height:1.25;">
+                    ${firstName}, your portal<br/>is ready to explore.
+                  </h1>
+                  <p style="margin:0 0 28px;font-size:14px;color:rgba(239,220,198,0.65);line-height:1.7;">
+                    I put together five complete portal directions built specifically for Awaken Creative. Each one is fully interactive — approvals, contracts, inbox, all of it. Take your time, explore them all, and let me know which one feels right.
+                  </p>
+
+                  <!-- Credentials box -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#161616;border:1px solid rgba(239,220,198,0.1);border-radius:10px;margin-bottom:28px;">
+                    <tr>
+                      <td style="padding:20px 24px;">
+                        <p style="margin:0 0 14px;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(239,220,198,0.4);">Your Login Details</p>
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="padding-bottom:10px;">
+                              <span style="display:block;font-size:11px;color:rgba(239,220,198,0.4);margin-bottom:3px;">Email</span>
+                              <span style="font-size:13px;font-weight:600;color:#EFDCC6;background:rgba(239,220,198,0.06);padding:6px 12px;border-radius:6px;display:inline-block;letter-spacing:0.01em;">${email}</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <span style="display:block;font-size:11px;color:rgba(239,220,198,0.4);margin-bottom:3px;">Password</span>
+                              <span style="font-size:13px;font-weight:600;color:#EFDCC6;background:rgba(239,220,198,0.06);padding:6px 12px;border-radius:6px;display:inline-block;letter-spacing:0.04em;font-family:monospace;">${password}</span>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- CTA button -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                    <tr>
+                      <td style="background:#B24C40;border-radius:10px;">
+                        <a href="${loginUrl}" style="display:inline-block;padding:14px 32px;font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.04em;">
+                          Enter the Portal →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Note -->
+                  <p style="margin:0;font-size:12px;color:rgba(239,220,198,0.35);line-height:1.6;border-top:1px solid rgba(239,220,198,0.08);padding-top:20px;">
+                    Once you're in, hit <strong style="color:rgba(239,220,198,0.55);">Share Feedback</strong> when you've had a look around — it goes straight to me. Questions? Just reply to this email.
+                  </p>
+
+                </td>
+              </tr>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:28px 0 0;text-align:center;">
+              <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(239,220,198,0.3);">ML WEBDESIGN</p>
+              <p style="margin:0;font-size:11px;color:rgba(239,220,198,0.2);">Built with intention. Delivered with care.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return sendEmail({
+    to: email,
+    subject: `${firstName}, your DUO beta portal is ready 🎉`,
+    html,
+    text: `Hey ${firstName},\n\nYour DUO beta portal is ready. Here are your login details:\n\nEmail: ${email}\nPassword: ${password}\n\nLogin here: ${loginUrl}\n\nOnce you're in, explore all 5 layout directions and hit "Share Feedback" when you're done.\n\n— Luke at ML WebDesign`,
   });
 }
 
@@ -986,76 +1126,6 @@ export async function sendWorkflowEmail(
     return success;
   } catch (error) {
     console.error(`[Email] Error sending ${emailType}:`, error);
-    return false;
-  }
-}
-
-// Contact form email - sends to business email
-export async function sendContactFormEmail(
-  name: string,
-  email: string,
-  company: string,
-  message: string
-): Promise<boolean> {
-  const businessEmail = "mlwebdesigntn@gmail.com";
-  
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Contact Form Submission</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%); padding: 30px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 24px;">New Website Inquiry</h1>
-  </div>
-  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-    <p style="margin-bottom: 20px;">You have received a new inquiry from your website contact form:</p>
-    
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-      <p style="margin: 0 0 10px 0;"><strong>Name:</strong> ${name}</p>
-      <p style="margin: 0 0 10px 0;"><strong>Email:</strong> <a href="mailto:${email}" style="color: #8B5CF6;">${email}</a></p>
-      <p style="margin: 0 0 10px 0;"><strong>Company:</strong> ${company || 'Not provided'}</p>
-    </div>
-    
-    <h3 style="margin-bottom: 10px;">Message:</h3>
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap;">
-${message}
-    </div>
-    
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-      <p style="margin: 0; color: #666; font-size: 14px;">Reply directly to this email or contact them at: <a href="mailto:${email}" style="color: #8B5CF6;">${email}</a></p>
-    </div>
-  </div>
-  <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-    <p>This message was sent from the ML WebDesign website contact form.</p>
-  </div>
-</body>
-</html>`;
-
-  try {
-    const sendgrid = await getUncachableSendGridClient();
-    if (!sendgrid) {
-      console.log('[Email] SendGrid not available for contact form');
-      return false;
-    }
-
-    await sendgrid.client.send({
-      to: businessEmail,
-      from: {
-        email: sendgrid.fromEmail,
-        name: 'ML WebDesign Website'
-      },
-      replyTo: email,
-      subject: `New Website Inquiry from ${name}`,
-      html: html,
-    });
-    console.log(`[Email] Contact form email sent to business`);
-    return true;
-  } catch (error: any) {
-    console.error("[Email] Failed to send contact form email:", error?.response?.body || error?.message || error);
     return false;
   }
 }
