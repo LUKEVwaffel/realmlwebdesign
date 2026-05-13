@@ -112,7 +112,10 @@ export async function seedDatabase() {
           .catch(err => console.error("[seed] Failed to send beta welcome email:", err));
       } else {
         userId = existing.id;
-        console.log(`[seed] Beta user already exists: ${user.email}`);
+        // Always keep the password in sync with the seed value
+        const passwordHash = await bcrypt.hash(user.password, 10);
+        await storage.updateUser(existing.id, { passwordHash });
+        console.log(`[seed] Reset beta user password: ${user.email}`);
       }
 
       // Ensure a client record exists for this user
