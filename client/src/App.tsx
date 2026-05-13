@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,14 +7,12 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 
 import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import Portfolio from "@/pages/portfolio";
-import About from "@/pages/about";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ChangePassword from "@/pages/change-password";
 
 import ClientDashboard from "@/pages/client/dashboard";
+import BetaReview from "@/pages/client/beta-review";
 import ClientPayments from "@/pages/client/payments";
 import PaymentSuccess from "@/pages/client/payment-success";
 import PaymentCancel from "@/pages/client/payment-cancel";
@@ -38,16 +36,17 @@ import AdminMessages from "@/pages/admin/messages";
 function Router() {
   return (
     <Switch>
-      {/* Public Routes */}
-      <Route path="/" component={Home} />
-      <Route path="/portfolio" component={Portfolio} />
-      <Route path="/about" component={About} />
-      
+      {/* Root redirects to login */}
+      <Route path="/">{() => <Redirect to="/portal/login" />}</Route>
+
       {/* Auth Routes */}
       <Route path="/portal/login" component={Login} />
       <Route path="/portal/forgot-password" component={ForgotPassword} />
       <Route path="/portal/change-password" component={ChangePassword} />
       
+      {/* Beta review */}
+      <Route path="/beta-review" component={BetaReview} />
+
       {/* Client Portal Routes */}
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/client/tutorial" component={ClientTutorial} />
