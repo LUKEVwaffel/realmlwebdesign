@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Building2,
   Trash2,
   MapPin,
@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Sparkles,
   PlayCircle,
-  Settings
+  Settings,
+  Mail,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,26 @@ export default function AdminClients() {
       toast({
         title: "Failed to create client",
         description: errorMessage || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendWelcomeMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const res = await apiRequest("POST", `/api/admin/clients/${clientId}/resend-welcome`);
+      return res.json();
+    },
+    onSuccess: (_, clientId) => {
+      toast({
+        title: "Welcome email sent!",
+        description: "A fresh password was generated and emailed to the client.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send email",
+        description: error.message || "Check that SENDGRID_API_KEY is set in Render.",
         variant: "destructive",
       });
     },
@@ -507,8 +528,8 @@ export default function AdminClients() {
                               </Button>
                             </Link>
                             <Link href={`/admin/clients/${client.id}`}>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="icon"
                                 onClick={(e) => e.stopPropagation()}
                                 data-testid={`button-details-${client.id}`}
@@ -516,9 +537,22 @@ export default function AdminClients() {
                                 <Settings className="w-4 h-4" />
                               </Button>
                             </Link>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary"
+                              title="Resend welcome email"
+                              disabled={resendWelcomeMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                resendWelcomeMutation.mutate(client.id);
+                              }}
+                            >
+                              <Mail className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="text-destructive hover:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();

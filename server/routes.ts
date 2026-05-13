@@ -22,7 +22,6 @@ import {
   sendQuoteNotificationEmail,
   notifyClientActivity,
   notifyAdminActivity,
-  sendContactFormEmail,
 } from "./emailService";
 import { generateInvoicePdf, generateInvoiceNumber } from "./invoiceService";
 import { generateQuestionnairePdf } from "./questionnairePdfService";
@@ -216,40 +215,6 @@ export async function registerRoutes(
   
   // Initialize WebSocket server for real-time notifications
   initializeWebSocket(httpServer);
-
-  // ============ PUBLIC ROUTES (No auth required) ============
-
-  // Contact form submission - sends email to business
-  const contactFormSchema = z.object({
-    name: z.string().min(1, "Name is required"),
-    email: z.string().email("Valid email is required"),
-    company: z.string().optional(),
-    message: z.string().min(1, "Message is required"),
-  });
-
-  app.post("/api/public/contact", async (req, res) => {
-    try {
-      const parsed = contactFormSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid data" });
-      }
-
-      const { name, email, company, message } = parsed.data;
-      
-      const success = await sendContactFormEmail(name, email, company || "", message);
-      
-      if (success) {
-        res.json({ success: true, message: "Your message has been sent. We'll get back to you within 24 hours." });
-      } else {
-        // Still return success to user but log that email failed
-        console.log('[Contact] Email sending failed, but responding with success to user');
-        res.json({ success: true, message: "Thank you for your message. We'll get back to you soon." });
-      }
-    } catch (error) {
-      console.error("Contact form error:", error);
-      res.status(500).json({ error: "Something went wrong. Please try again or email us directly." });
-    }
-  });
 
   // ============ AUTH ROUTES ============
 
@@ -1193,13 +1158,15 @@ export async function registerRoutes(
         secondaryContactEmail,
         secondaryContactPhone,
         secondaryContactRelationship,
+        internalNotes,
+        priority,
         // User fields
         firstName,
         lastName,
         email,
         phone,
       } = req.body;
-      
+
       // Update client record
       const clientUpdate: any = {};
       if (businessLegalName !== undefined) clientUpdate.businessLegalName = businessLegalName;
@@ -1215,6 +1182,8 @@ export async function registerRoutes(
       if (secondaryContactEmail !== undefined) clientUpdate.secondaryContactEmail = secondaryContactEmail || null;
       if (secondaryContactPhone !== undefined) clientUpdate.secondaryContactPhone = secondaryContactPhone;
       if (secondaryContactRelationship !== undefined) clientUpdate.secondaryContactRelationship = secondaryContactRelationship;
+      if (internalNotes !== undefined) clientUpdate.internalNotes = internalNotes;
+      if (priority !== undefined) clientUpdate.priority = priority;
       
       if (Object.keys(clientUpdate).length > 0) {
         await storage.updateClient(id, clientUpdate);
@@ -5414,6 +5383,39 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Get portfolio error:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ Resend Beta Welcome Email ============
+  app.post("/api/admin/clients/:clientId/resend-welcome", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.params;
+      const client = await storage.getClient(clientId);
+      if (!client) return res.status(404).json({ error: "Client not found" });
+      if (!client.userId) return res.status(400).json({ error: "Client has no linked user account" });
+
+      const user = await storage.getUser(client.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      // Generate a fresh temp password and update the account
+      const { sendBetaWelcomeEmail } = await import("./emailService");
+      const bcrypt = await import("bcrypt");
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
+      const tempPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      await storage.updateUser(user.id, { passwordHash });
+
+      const loginUrl = `${process.env.APP_URL || "https://portal.mlwebdesign.net"}/portal/login`;
+      const sent = await sendBetaWelcomeEmail(user.email, user.firstName || "there", tempPassword, loginUrl);
+
+      if (sent) {
+        res.json({ success: true, message: `Welcome email sent to ${user.email}` });
+      } else {
+        res.status(500).json({ error: "Email service not configured — check SENDGRID_API_KEY env var on Render" });
+      }
+    } catch (error) {
+      console.error("Resend welcome error:", error);
+      res.status(500).json({ error: "Failed to resend welcome email" });
     }
   });
 
