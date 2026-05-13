@@ -5386,6 +5386,27 @@ export async function registerRoutes(
     }
   });
 
+  // ============ Send Test Email to Admin ============
+  app.post("/api/admin/send-test-email", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const admin = await storage.getUser(req.user!.id);
+      if (!admin?.email) return res.status(400).json({ error: "Admin email not found" });
+
+      const { sendBetaWelcomeEmail } = await import("./emailService");
+      const loginUrl = `${process.env.APP_URL || "https://portal.mlwebdesign.net"}/portal/login`;
+      const sent = await sendBetaWelcomeEmail(admin.email, admin.firstName || "Luke", "PreviewPassword123!", loginUrl);
+
+      if (sent) {
+        res.json({ success: true, message: `Preview email sent to ${admin.email}` });
+      } else {
+        res.status(500).json({ error: "Email service not configured — check SENDGRID_API_KEY on Render" });
+      }
+    } catch (error) {
+      console.error("Test email error:", error);
+      res.status(500).json({ error: "Failed to send test email" });
+    }
+  });
+
   // ============ Resend Beta Welcome Email ============
   app.post("/api/admin/clients/:clientId/resend-welcome", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {

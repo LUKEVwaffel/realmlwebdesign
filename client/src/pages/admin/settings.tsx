@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { User, Lock, Building2, Loader2, Check, Bell, Palette, KeyRound, Delete, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { User, Lock, Loader2, Check, Palette, KeyRound, Delete, CheckCircle2, XCircle, Trash2, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { PortalLayout } from "@/components/portal/portal-layout";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,30 +17,29 @@ export default function AdminSettings() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/send-test-email");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Preview sent!", description: data.message });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send", description: error.message, variant: "destructive" });
+    },
+  });
+
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || "",
     lastName: user?.lastName || "",
     phone: "",
   });
 
-  const [businessData, setBusinessData] = useState({
-    companyName: "Creative Web Solutions",
-    email: "hello@creativeweb.com",
-    phone: "(555) 123-4567",
-    address: "123 Design Street, Creative City, ST 12345",
-  });
-
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-  });
-
-  const [notifications, setNotifications] = useState({
-    emailNewClient: true,
-    emailPaymentReceived: true,
-    emailDocumentSigned: true,
-    emailNewMessage: false,
   });
 
   const [pinSetupMode, setPinSetupMode] = useState(false);
@@ -318,66 +316,6 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
-        {/* Business Information */}
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Business Information
-            </CardTitle>
-            <CardDescription>
-              Update your business details displayed to clients
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  value={businessData.companyName}
-                  onChange={(e) => setBusinessData({ ...businessData, companyName: e.target.value })}
-                  data-testid="input-company-name"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessEmail">Business Email</Label>
-                  <Input
-                    id="businessEmail"
-                    type="email"
-                    value={businessData.email}
-                    onChange={(e) => setBusinessData({ ...businessData, email: e.target.value })}
-                    data-testid="input-business-email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="businessPhone">Business Phone</Label>
-                  <Input
-                    id="businessPhone"
-                    value={businessData.phone}
-                    onChange={(e) => setBusinessData({ ...businessData, phone: e.target.value })}
-                    data-testid="input-business-phone"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={businessData.address}
-                  onChange={(e) => setBusinessData({ ...businessData, address: e.target.value })}
-                  data-testid="input-address"
-                />
-              </div>
-              <Button type="button" data-testid="button-save-business">
-                <Check className="w-4 h-4 mr-2" />
-                Save Business Info
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
         {/* Appearance */}
         <Card className="border-border/50">
           <CardHeader>
@@ -401,84 +339,6 @@ export default function AdminSettings() {
                 checked={theme === "dark"}
                 onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
                 data-testid="switch-dark-mode"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              Email Notifications
-            </CardTitle>
-            <CardDescription>
-              Choose what emails you want to receive
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">New Client Added</p>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when a new client is created
-                </p>
-              </div>
-              <Switch
-                checked={notifications.emailNewClient}
-                onCheckedChange={(checked) => 
-                  setNotifications({ ...notifications, emailNewClient: checked })
-                }
-                data-testid="switch-new-client"
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Payment Received</p>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when a payment is processed
-                </p>
-              </div>
-              <Switch
-                checked={notifications.emailPaymentReceived}
-                onCheckedChange={(checked) => 
-                  setNotifications({ ...notifications, emailPaymentReceived: checked })
-                }
-                data-testid="switch-payment-received"
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Document Signed</p>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when a client signs a document
-                </p>
-              </div>
-              <Switch
-                checked={notifications.emailDocumentSigned}
-                onCheckedChange={(checked) => 
-                  setNotifications({ ...notifications, emailDocumentSigned: checked })
-                }
-                data-testid="switch-document-signed"
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">New Messages</p>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when a client sends a message
-                </p>
-              </div>
-              <Switch
-                checked={notifications.emailNewMessage}
-                onCheckedChange={(checked) => 
-                  setNotifications({ ...notifications, emailNewMessage: checked })
-                }
-                data-testid="switch-new-message"
               />
             </div>
           </CardContent>
@@ -728,6 +588,34 @@ export default function AdminSettings() {
             )}
           </CardContent>
         </Card>
+        {/* Email Preview */}
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg flex items-center gap-2">
+              <Mail className="w-5 h-5" />
+              Email Preview
+            </CardTitle>
+            <CardDescription>
+              Send a test copy of the client welcome email to your inbox so you can see exactly what clients receive.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => testEmailMutation.mutate()}
+              disabled={testEmailMutation.isPending}
+              variant="outline"
+              className="gap-2"
+            >
+              {testEmailMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              {testEmailMutation.isPending ? "Sending..." : "Send Preview to My Email"}
+            </Button>
+          </CardContent>
+        </Card>
+
       </div>
     </PortalLayout>
   );
