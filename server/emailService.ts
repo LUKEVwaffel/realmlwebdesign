@@ -342,6 +342,32 @@ export async function sendWelcomeEmail(
   });
 }
 
+// ============ Contact Form Email ============
+export async function sendContactFormEmail(
+  name: string,
+  email: string,
+  company: string,
+  message: string
+): Promise<boolean> {
+  const adminEmail = process.env.SENDGRID_FROM_EMAIL || "luke@mlwebdesign.com";
+  const content = `
+    <h2 style="color:#1a1a2e;margin-top:0;">New Contact Form Submission</h2>
+    <p><strong>Name:</strong> ${name}</p>
+    <p><strong>Email:</strong> ${email}</p>
+    ${company ? `<p><strong>Company:</strong> ${company}</p>` : ""}
+    <p><strong>Message:</strong></p>
+    <div style="background:#f8f9fa;padding:16px;border-radius:8px;margin:12px 0;">
+      <p style="margin:0;white-space:pre-wrap;">${message}</p>
+    </div>
+  `;
+  return sendEmail({
+    to: adminEmail,
+    subject: `New Contact: ${name}${company ? ` (${company})` : ""}`,
+    html: baseTemplate(content),
+    text: `Name: ${name}\nEmail: ${email}\nCompany: ${company}\n\nMessage:\n${message}`,
+  });
+}
+
 // ============ Beta Welcome Email ============
 export async function sendBetaWelcomeEmail(
   email: string,
